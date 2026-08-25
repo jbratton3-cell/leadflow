@@ -1,3 +1,4 @@
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
