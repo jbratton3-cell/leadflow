@@ -1,0 +1,302 @@
+"use server";
+
+import { randomBytes } from "crypto";
+import { db } from "@/db";
+import { estimates, estimateItems, leads } from "@/db/schema";
+import { eq, and, asc, sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { requireAccess } from "@/lib/auth";
+import {
+  sendEmail,
+  estimateEmailHtml,
+  getBaseUrl,
+} from "@/lib/notify";
+import { BUSINESS_NAME } from "@/lib/constants";
+
+function str(v: FormDataEntryValue | null): string | null {
+  const s = (v ?? "").toString().trim();
+  return s === "" ? null : s;
+}
+function req(v: FormDataEntryValue | null): string {
+  return (v ?? "").toString().trim();
+}
+function num(v: FormDataEntryValue | null): number {
+  const n = Number((v ?? "").toString().trim());
+  return Number.isNaN(n) ? 0 : n;
+}
+function toDate(v: FormDataEntryValue | null): Date | null {
+  const s = (v ?? "").toString().trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Recalculate subtotal/tax/total from line items and save onto the estimate.
+async function recalcTotals(estimateId: number) {
+  const items = await db
+    .select()
+    .from(estimateItems)
+    .where(eq(estimateItems.estimateId, estimateId));
+  const subtotal = items.reduce((s, i) => s + Number(i.amount), 0);
+
+  const [est] = await db.select().from(estimates).where(eq(estimates.id, estimateId)).limit(1);
+  if (!est) return;
+
+  const discount = Number(est.discount);
+  const taxRate = Number(est.taxRate);
+  const taxable = Math.max(subtotal - discount, 0);
+  const taxAmount = +(taxable * (taxRate / 100)).toFixed(2);
+  const total = +(taxable + taxAmount).toFixed(2);
+
+  await db
+    .update(estimates)
+    .set({
+      subtotal: subtotal.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      total: total.toFixed(2),
+      updatedAt: new Date(),
+    })
+    .where(eq(estimates.id, estimateId));
+}
+
+/* ------------------------------ estimates ------------------------------ */
+
+export async function createEstimate(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const leadId = Number(formData.get("leadId"));
+
+  // Generate a sequential-ish estimate number (per organization)
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(estimates)
+    .where(eq(estimates.orgId, orgId));
+  const number = `EST-${String((count ?? 0) + 1001).padStart(4, "0")}`;
+
+  const inserted = await db
+    .insert(estimates)
+    .values({
+      orgId,
+      leadId,
+      number,
+      title: req(formData.get("title")) || "Project Estimate",
+      taxRate: num(formData.get("taxRate")).toString(),
+      discount: num(formData.get("discount")).toString(),
+      notes: str(formData.get("notes")),
+      terms: str(formData.get("terms")),
+      validUntil: toDate(formData.get("validUntil")),
+      publicToken: randomBytes(24).toString("hex"),
+      status: "draft",
+    })
+    .returning();
+
+  const est = inserted[0];
+  revalidatePath("/estimates");
+  revalidatePath(`/leads/${leadId}`);
+  if (est) redirect(`/estimates/${est.id}`);
+}
+
+export async function updateEstimate(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+
+  await db
+    .update(estimates)
+    .set({
+      title: req(formData.get("title")) || "Project Estimate",
+      taxRate: num(formData.get("taxRate")).toString(),
+      discount: num(formData.get("discount")).toString(),
+      notes: str(formData.get("notes")),
+      terms: str(formData.get("terms")),
+      validUntil: toDate(formData.get("validUntil")),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
+
+  await recalcTotals(id);
+  revalidatePath(`/estimates/${id}`);
+}
+
+export async function deleteEstimate(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+  const leadId = Number(formData.get("leadId"));
+  await db
+    .delete(estimateItems)
+    .where(and(eq(estimateItems.estimateId, id), eq(estimateItems.orgId, orgId)));
+  await db.delete(estimates).where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
+  revalidatePath("/estimates");
+  revalidatePath(`/leads/${leadId}`);
+  redirect("/estimates");
+}
+
+/* ---------------------------- line items ------------------------------- */
+
+export async function addEstimateItem(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const estimateId = Number(formData.get("estimateId"));
+  const quantity = num(formData.get("quantity")) || 1;
+  const unitPrice = num(formData.get("unitPrice"));
+  const amount = +(quantity * unitPrice).toFixed(2);
+
+  // Ensure the estimate belongs to this org before adding items.
+  const [owner] = await db
+    .select({ id: estimates.id })
+    .from(estimates)
+    .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!owner) return;
+
+  const [{ maxOrder }] = await db
+    .select({ maxOrder: sql<number>`coalesce(max(${estimateItems.sortOrder}),0)::int` })
+    .from(estimateItems)
+    .where(eq(estimateItems.estimateId, estimateId));
+
+  await db.insert(estimateItems).values({
+    orgId,
+    estimateId,
+    description: req(formData.get("description")),
+    quantity: quantity.toString(),
+    unitPrice: unitPrice.toString(),
+    amount: amount.toString(),
+    sortOrder: (maxOrder ?? 0) + 1,
+  });
+
+  await recalcTotals(estimateId);
+  revalidatePath(`/estimates/${estimateId}`);
+}
+
+export async function deleteEstimateItem(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+  const estimateId = Number(formData.get("estimateId"));
+  await db
+    .delete(estimateItems)
+    .where(and(eq(estimateItems.id, id), eq(estimateItems.orgId, orgId)));
+  await recalcTotals(estimateId);
+  revalidatePath(`/estimates/${estimateId}`);
+}
+
+/* ------------------------------ sending -------------------------------- */
+
+export async function sendEstimate(
+  _prev: { message?: string; link?: string; error?: string } | undefined,
+  formData: FormData
+): Promise<{ message?: string; link?: string; error?: string }> {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!est) return { error: "Estimate not found." };
+
+  const items = await db
+    .select()
+    .from(estimateItems)
+    .where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, id)));
+  if (items.length === 0) {
+    return { error: "Add at least one line item before sending." };
+  }
+
+  const [lead] = await db
+    .select()
+    .from(leads)
+    .where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId)))
+    .limit(1);
+  if (!lead) return { error: "Customer not found." };
+
+  const link = `${getBaseUrl()}/estimate/${est.publicToken}`;
+  const companyName = process.env.COMPANY_NAME ?? BUSINESS_NAME;
+  const total = Number(est.total).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+
+  let emailed = false;
+  if (lead.email) {
+    emailed = await sendEmail({
+      to: lead.email,
+      subject: `Your estimate ${est.number} from ${companyName}`,
+      html: estimateEmailHtml({
+        customerName: `${lead.firstName} ${lead.lastName}`,
+        companyName,
+        number: est.number,
+        total,
+        link,
+      }),
+    });
+  }
+
+  await db
+    .update(estimates)
+    .set({ status: "sent", sentAt: new Date(), updatedAt: new Date() })
+    .where(eq(estimates.id, id));
+
+  revalidatePath(`/estimates/${id}`);
+  revalidatePath("/estimates");
+
+  if (emailed) {
+    return {
+      message: `Estimate emailed to ${lead.email}. You can also share the link below.`,
+      link,
+    };
+  }
+  return {
+    message: lead.email
+      ? "Email isn't configured yet — share this link with your customer:"
+      : "No customer email on file — share this link with your customer:",
+    link,
+  };
+}
+
+/* ----------------- public customer responses (no auth) ----------------- */
+
+export async function markEstimateViewed(token: string) {
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(eq(estimates.publicToken, token))
+    .limit(1);
+  if (est && est.status === "sent") {
+    await db
+      .update(estimates)
+      .set({ status: "viewed", viewedAt: new Date() })
+      .where(eq(estimates.id, est.id));
+  }
+}
+
+export async function respondToEstimate(formData: FormData) {
+  const token = req(formData.get("token"));
+  const decision = req(formData.get("decision")); // accept | decline
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(eq(estimates.publicToken, token))
+    .limit(1);
+  if (!est) return;
+  if (est.status === "accepted" || est.status === "declined") return;
+
+  const status = decision === "accept" ? "accepted" : "declined";
+  await db
+    .update(estimates)
+    .set({ status, respondedAt: new Date() })
+    .where(eq(estimates.id, est.id));
+
+  revalidatePath(`/estimate/${token}`);
+  revalidatePath(`/estimates/${est.id}`);
+  revalidatePath("/estimates");
+}
+
+export async function getEstimateWithItems(id: number) {
+  const [est] = await db.select().from(estimates).where(eq(estimates.id, id)).limit(1);
+  if (!est) return null;
+  const items = await db
+    .select()
+    .from(estimateItems)
+    .where(eq(estimateItems.estimateId, id))
+    .orderBy(asc(estimateItems.sortOrder));
+  return { estimate: est, items };
+}
