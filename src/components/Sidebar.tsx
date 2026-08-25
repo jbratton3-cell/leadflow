@@ -37,7 +37,7 @@ export default function Sidebar({
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-slate-900 text-slate-200">
-      <div className="flex items-center gap-2 px-5 py-5">
+            <Link href="/dashboard" className="flex items-center gap-2 px-5 py-5 hover:bg-slate-800">
         <div className="grid h-9 w-9 place-items-center rounded-lg bg-orange-500 text-lg font-bold text-white">
           {APP_NAME.slice(0, 1)}
         </div>
@@ -45,7 +45,7 @@ export default function Sidebar({
           <div className="text-sm font-bold text-white">{APP_NAME}</div>
           <div className="text-[11px] text-slate-400">by {BUSINESS_NAME}</div>
         </div>
-      </div>
+      </Link>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
         {nav.map((item) => (
           <Link
