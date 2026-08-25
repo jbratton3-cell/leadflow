@@ -1,4 +1,5 @@
 import "server-only";
+import nodemailer from "nodemailer";
 
 // Best-effort email + SMS delivery for invitations.
 // Both are optional: if the relevant env vars aren't set, we return false and
@@ -13,7 +14,7 @@ export function getBaseUrl(): string {
 }
 
 export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASS);
 }
 
 export function smsConfigured(): boolean {
@@ -24,26 +25,33 @@ export function smsConfigured(): boolean {
   );
 }
 
-// Send an email via the Resend REST API (no SDK dependency).
+// Send an email via Gmail SMTP using Nodemailer.
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
 }): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return false;
-  const from = process.env.RESEND_FROM ?? "LeadFlow <onboarding@resend.dev>";
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASS;
+  if (!user || !pass) return false;
+
+  const fromName = process.env.CRM_ORGANIZATION_NAME || "LeadFlow";
+
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from, to: opts.to, subject: opts.subject, html: opts.html }),
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
     });
-    return res.ok;
-  } catch {
+
+    await transporter.sendMail({
+      from: `"${fromName}" <${user}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+    return true;
+  } catch (err) {
+    console.error("Gmail send error:", err);
     return false;
   }
 }
