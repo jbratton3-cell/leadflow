@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
