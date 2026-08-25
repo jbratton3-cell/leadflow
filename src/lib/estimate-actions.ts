@@ -282,12 +282,93 @@ export async function respondToEstimate(formData: FormData) {
   const status = decision === "accept" ? "accepted" : "declined";
   await db
     .update(estimates)
-    .set({ status, respondedAt: new Date() })
+    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
     .where(eq(estimates.id, est.id));
+
+  if (status === "accepted") {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.orgId, est.orgId), eq(leads.id, est.leadId)))
+      .limit(1);
+
+    if (lead) {
+      const [existingSale] = await db
+        .select()
+        .from(sales)
+        .where(and(eq(sales.orgId, est.orgId), eq(sales.leadId, est.leadId)))
+        .limit(1);
+
+      let saleId = existingSale?.id ?? null;
+      if (!existingSale) {
+        const inserted = await db
+          .insert(sales)
+          .values({
+            orgId: est.orgId,
+            leadId: est.leadId,
+            salesRepId: null,
+            productId: lead.productId,
+            amount: String(est.total),
+            financeType: "cash",
+            soldAt: new Date(),
+            notes: `Auto-created from accepted estimate ${est.number}.`,
+          })
+          .returning();
+        saleId = inserted[0]?.id ?? null;
+      }
+
+      const [existingJob] = await db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(and(eq(jobs.orgId, est.orgId), eq(jobs.leadId, est.leadId)))
+        .limit(1);
+
+      let productName: string | null = null;
+      if (lead.productId) {
+        const [product] = await db
+          .select()
+          .from(products)
+          .where(and(eq(products.orgId, est.orgId), eq(products.id, lead.productId)))
+          .limit(1);
+        productName = product?.name ?? null;
+      }
+
+      if (!existingJob) {
+        await db.insert(jobs).values({
+          orgId: est.orgId,
+          saleId,
+          leadId: est.leadId,
+          customerName: `${lead.firstName} ${lead.lastName}`.trim(),
+          customerAddress: lead.address,
+          customerCity: lead.city,
+          customerPhone: lead.phone,
+          contractAmount: String(est.total),
+          productName,
+          status: "pending",
+          milestones: "{}",
+          notes: `Customer accepted estimate ${est.number} online. Contact to schedule the job.`,
+        });
+      }
+
+      await db
+        .update(leads)
+        .set({
+          stage: "sold",
+          estimatedValue: String(est.total),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));
+    }
+  }
 
   revalidatePath(`/estimate/${token}`);
   revalidatePath(`/estimates/${est.id}`);
   revalidatePath("/estimates");
+  revalidatePath(`/leads/${est.leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/sales");
+  revalidatePath("/production");
+  revalidatePath("/");
 }
 
 export async function getEstimateWithItems(id: number) {
