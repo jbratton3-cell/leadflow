@@ -70,6 +70,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased">
+        <ServiceWorkerRegister />
         <Sidebar userName={user.name} userRole={user.role} />
         <div className="ml-60 min-h-screen">
           <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
