@@ -99,12 +99,26 @@ async function insertAndSendInvoice(opts: {
 
 /* ------------------------- automatic triggers ------------------------- */
 
-// Called when a customer accepts an estimate and chose to pay directly.
-export async function createAndSendDepositInvoice(
+// Called when a customer accepts an estimate.
+// financing=true → they chose financing at acceptance: alert the office, no deposit invoice.
+// financing=false → they chose to pay directly: auto-send the 50% deposit invoice.
+export async function handleEstimateAccepted(
   est: Estimate,
   lead: Lead,
-  saleId: number | null
+  saleId: number | null,
+  financing: boolean
 ): Promise<void> {
+  if (financing) {
+    await notifyOfficeOfFinancing({
+      customerName: `${lead.firstName} ${lead.lastName ?? ""}`.trim(),
+      number: est.number,
+      amount: money(est.total),
+      kind: "estimate accepted — customer chose financing",
+    });
+    revalidatePath("/invoices");
+    return;
+  }
+
   const [existing] = await db
     .select({ id: invoices.id })
     .from(invoices)
@@ -201,6 +215,20 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
 }
 
 /* ------------------------- customer (public) ------------------------- */
+
+export async function markInvoiceViewed(token: string) {
+  const [inv] = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.publicToken, token))
+    .limit(1);
+  if (inv && inv.status === "sent") {
+    await db
+      .update(invoices)
+      .set({ status: "viewed", viewedAt: new Date() })
+      .where(eq(invoices.id, inv.id));
+  }
+}
 
 export async function customerInvoiceChoice(formData: FormData) {
   const token = (formData.get("token") ?? "").toString().trim();

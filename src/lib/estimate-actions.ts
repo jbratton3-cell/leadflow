@@ -12,6 +12,7 @@ import {
   estimateEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
+import { handleEstimateAccepted } from "@/lib/invoice-actions";
 import { BUSINESS_NAME } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
@@ -271,6 +272,7 @@ export async function markEstimateViewed(token: string) {
 export async function respondToEstimate(formData: FormData) {
   const token = req(formData.get("token"));
   const decision = req(formData.get("decision")); // accept | decline
+  const financing = req(formData.get("paymentIntent")) === "finance";
   const [est] = await db
     .select()
     .from(estimates)
@@ -309,7 +311,7 @@ export async function respondToEstimate(formData: FormData) {
             salesRepId: null,
             productId: lead.productId,
             amount: String(est.total),
-            financeType: "cash",
+            financeType: financing ? "financed" : "cash",
             soldAt: new Date(),
             notes: `Auto-created from accepted estimate ${est.number}.`,
           })
@@ -358,6 +360,9 @@ export async function respondToEstimate(formData: FormData) {
           updatedAt: new Date(),
         })
         .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));
+
+      // Auto-invoice: deposit invoice (paying directly) or financing alert.
+      await handleEstimateAccepted(est, lead, saleId, financing);
     }
   }
 
@@ -368,6 +373,7 @@ export async function respondToEstimate(formData: FormData) {
   revalidatePath("/leads");
   revalidatePath("/sales");
   revalidatePath("/production");
+  revalidatePath("/invoices");
   revalidatePath("/");
 }
 

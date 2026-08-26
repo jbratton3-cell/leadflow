@@ -167,12 +167,49 @@ export default async function PublicEstimatePage({
             </div>
           )}
 
-          {/* Accept / Decline */}
+          {/* Accept (with payment choice) / Decline */}
           {!responded && (
-            <div className="flex flex-wrap gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
-              <form action={respondToEstimate}>
+            <div className="space-y-4 border-t border-slate-100 bg-slate-50 px-6 py-5">
+              <form action={respondToEstimate} className="space-y-3">
                 <input type="hidden" name="token" value={token} />
                 <input type="hidden" name="decision" value="accept" />
+                <div className="text-sm font-semibold text-slate-700">
+                  How would you like to pay for this project?
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-emerald-400">
+                  <input
+                    type="radio"
+                    name="paymentIntent"
+                    value="direct"
+                    defaultChecked
+                    className="mt-1 h-4 w-4 accent-emerald-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">
+                      Pay directly
+                    </span>
+                    <span className="block text-sm text-slate-500">
+                      50% down payment now, remaining balance when the job is complete.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-amber-400">
+                  <input
+                    type="radio"
+                    name="paymentIntent"
+                    value="finance"
+                    className="mt-1 h-4 w-4 accent-amber-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">
+                      Finance this project
+                    </span>
+                    <span className="block text-sm text-slate-500">
+                      Affordable monthly payments — we&apos;ll follow up to complete a
+                      quick financing application.
+                    </span>
+                  </span>
+                </label>
                 <button className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
                   Accept Estimate
                 </button>

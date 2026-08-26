@@ -11,6 +11,7 @@ import {
   leadSources,
   products,
 } from "@/db/schema";
+import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
@@ -363,7 +364,21 @@ export async function updateJob(formData: FormData) {
     revalidatePath(`/leads/${leadId}`);
   }
 
+  // Auto-invoice: when the job is completed, send the final invoice for the
+  // remaining balance (skips financed deals and already-invoiced jobs on its own).
+  if (status === "completed") {
+    const [finished] = await db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
+      .limit(1);
+    if (finished) {
+      await createAndSendFinalInvoice(finished);
+    }
+  }
+
   revalidatePath("/production");
+  revalidatePath("/invoices");
   revalidatePath("/");
 }
 
