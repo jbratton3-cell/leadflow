@@ -7,6 +7,7 @@ const TIERS = [
   {
     name: "Starter",
     tagline: "For solo operators & small crews",
+    price: 149,
     highlight: false,
     features: [
       "Up to 3 users",
@@ -20,6 +21,7 @@ const TIERS = [
   {
     name: "Pro",
     tagline: "For growing sales teams",
+    price: 399,
     highlight: true,
     features: [
       "Up to 10 users",
@@ -35,6 +37,7 @@ const TIERS = [
   {
     name: "Business",
     tagline: "For established companies",
+    price: 749,
     highlight: false,
     features: [
       "Up to 25 users",
@@ -73,15 +76,24 @@ export default function PricingPage() {
 
       {/* Heading */}
       <section className="mx-auto max-w-3xl px-6 pb-8 pt-12 text-center sm:pt-16">
-        <h1 className="text-4xl font-bold sm:text-5xl">Plans for every size team</h1>
+        <div className="inline-flex items-center gap-2 rounded-full bg-orange-500/10 px-4 py-1.5 text-sm font-semibold text-orange-400 ring-1 ring-orange-500/30">
+          Month-to-month · No contracts · Cancel anytime
+        </div>
+        <h1 className="mt-5 text-4xl font-bold sm:text-5xl">Plans for every size team</h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-          Pick the plan that fits your business. Contact us for current pricing and to
-          get set up — we&apos;ll tailor {APP_NAME} to how you sell.
+          Pick the plan that fits your business — then we do the rest. Every plan
+          includes done-for-you setup and live team training.
         </p>
       </section>
 
       {/* Tiers */}
       <section className="mx-auto max-w-6xl px-6 pb-16">
+        <div className="mx-auto mb-8 max-w-2xl rounded-2xl bg-orange-500/10 px-6 py-4 text-center ring-1 ring-orange-500/40">
+          <span className="font-bold text-orange-300">Founding Customer Offer:</span>{" "}
+          <span className="text-slate-200">
+            setup fee waived for our first five customers — a value of up to $4,000.
+          </span>
+        </div>
         <div className="grid gap-6 lg:grid-cols-3">
           {TIERS.map((tier) => (
             <div
@@ -100,8 +112,12 @@ export default function PricingPage() {
               <h2 className="text-xl font-bold">{tier.name}</h2>
               <p className="mt-1 text-sm text-slate-400">{tier.tagline}</p>
               <div className="mt-4">
-                <span className="text-2xl font-bold">Contact us</span>
-                <span className="block text-sm text-slate-400">for pricing</span>
+                <span className="text-4xl font-bold">${tier.price}</span>
+                <span className="text-sm text-slate-400"> /month</span>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                  + one-time setup fee — covers full data migration, account setup &amp;
+                  live training for your whole team
+                </p>
               </div>
               <Link
                 href="/contact"
@@ -111,7 +127,7 @@ export default function PricingPage() {
                     : "border border-slate-700 text-slate-200 hover:bg-slate-800"
                 }`}
               >
-                Get Started
+                Book a Setup Call
               </Link>
               <ul className="mt-6 space-y-2.5 text-sm">
                 {tier.features.map((f) => (
@@ -132,6 +148,10 @@ export default function PricingPage() {
         </div>
 
         <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-slate-400">
+          Comparable in-home sales systems run $900–$1,200+/month — and lock you into
+          annual contracts. We don&apos;t.
+        </p>
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-slate-400">
           Need more than 25 users or multiple locations?{" "}
           <span className="font-semibold text-slate-200">Enterprise plans available</span> —
           contact us for custom pricing, onboarding, and integrations.
@@ -157,8 +177,8 @@ export default function PricingPage() {
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">Included</div>
-                <div className="text-xs text-slate-400">with every plan</div>
+                <div className="text-2xl font-bold">One-time fee</div>
+                <div className="text-xs text-slate-400">sized to your team — far less than hiring staff to do it</div>
               </div>
             </div>
 
