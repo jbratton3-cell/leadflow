@@ -86,6 +86,7 @@ async function insertAndSendInvoice(opts: {
       amount: money(opts.amount),
       total: money(opts.contractTotal),
       link,
+      kind: opts.kind,
     }),
   });
 
@@ -329,6 +330,7 @@ export async function resendInvoice(formData: FormData) {
       amount: money(inv.amount),
       total: money(inv.contractTotal),
       link,
+      kind: inv.kind,
     }),
   });
   if (sent) {

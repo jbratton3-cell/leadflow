@@ -126,8 +126,8 @@ export default async function PublicInvoicePage({
             </div>
           )}
 
-          {/* Pay / Finance choice */}
-          {!paid && !financed && !decided && (
+          {/* Pay / Finance choice — final invoices only */}
+          {inv.kind === "final" && !paid && !financed && !decided && (
             <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
               <div className="mb-3 text-sm font-semibold text-slate-700">
                 How would you like to take care of this balance?
@@ -152,6 +152,15 @@ export default async function PublicInvoicePage({
                 Choosing financing pauses this payment — we&apos;ll contact you to set up
                 a monthly payment plan instead.
               </p>
+            </div>
+          )}
+
+          {/* Deposit invoices: simple payment note, no choices */}
+          {inv.kind !== "final" && !paid && !financed && (
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5 text-sm text-slate-500">
+              <span className="font-medium text-slate-700">This down payment is due upon receipt.</span>{" "}
+              Our office will reach out to arrange payment — or feel free to call us to
+              pay by card.
             </div>
           )}
 

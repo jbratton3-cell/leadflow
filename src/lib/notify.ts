@@ -152,6 +152,7 @@ export function invoiceEmailHtml(opts: {
   amount: string;
   total: string;
   link: string;
+  kind?: string;
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
@@ -174,9 +175,13 @@ export function invoiceEmailHtml(opts: {
       background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">
       View &amp; Pay Invoice
     </a>
-    <p style="color:#334155;font-size:14px;line-height:1.5">
+    ${opts.kind === "final"
+      ? `<p style="color:#334155;font-size:14px;line-height:1.5">
       On the invoice page you can pay this amount directly or choose to finance it.
-    </p>
+    </p>`
+      : `<p style="color:#334155;font-size:14px;line-height:1.5">
+      This down payment is due upon receipt — our office will reach out to arrange payment.
+    </p>`}
     <p style="color:#94a3b8;font-size:13px">
       Or paste this link into your browser:<br>
       <span style="color:#475569">${opts.link}</span>
