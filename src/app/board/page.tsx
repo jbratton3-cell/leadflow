@@ -1,13 +1,12 @@
 import { db } from "@/db";
 import { jobs, leads, sales } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import Link from "next/link";
 import { requireAccess } from "@/lib/auth";
 import { APP_NAME, jobStatusLabel, money } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-const BOARD_STATUSES = [
+const ACTIVE_STATUSES = [
   "pending",
   "measure",
   "permits",
@@ -27,6 +26,32 @@ const STATUS_COLORS: Record<string, string> = {
   on_hold: "bg-rose-500",
 };
 
+function asDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateKey(value: Date | string | null | undefined): string {
+  const date = asDate(value);
+  return date ? date.toISOString().slice(0, 10) : "no-date";
+}
+
+function dateLabel(value: Date | string | null | undefined): string {
+  const date = asDate(value);
+  if (!date) return "No Date";
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function timeValue(value: Date | string | null | undefined): number {
+  return asDate(value)?.getTime() ?? 0;
+}
+
 export default async function BoardPage() {
   const { orgId } = await requireAccess("production");
 
@@ -42,33 +67,44 @@ export default async function BoardPage() {
     .from(jobs)
     .leftJoin(leads, eq(jobs.leadId, leads.id))
     .leftJoin(sales, eq(jobs.saleId, sales.id))
-    .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, [...BOARD_STATUSES])))
-    .orderBy(desc(jobs.updatedAt), desc(jobs.createdAt));
+    .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, [...ACTIVE_STATUSES])))
+    .orderBy(desc(jobs.createdAt));
 
-  const view = rows.map((r) => {
-    const displayName = r.firstName
-      ? `${r.firstName} ${r.lastName ?? ""}`.trim()
-      : r.job.customerName ?? "(unnamed job)";
-    const displayAddress = r.address ?? r.job.customerAddress ?? null;
-    const displayCity = r.city ?? r.job.customerCity ?? null;
-    const displayAmount = r.amount ?? r.job.contractAmount ?? 0;
+  const view = rows
+    .map((r) => {
+      const displayName = r.firstName
+        ? `${r.firstName} ${r.lastName ?? ""}`.trim()
+        : r.job.customerName ?? "(unnamed job)";
+      const displayAddress = r.address ?? r.job.customerAddress ?? null;
+      const displayCity = r.city ?? r.job.customerCity ?? null;
+      const displayAmount = r.amount ?? r.job.contractAmount ?? 0;
+      const boardDate = r.job.startDate ?? r.job.createdAt;
 
-    return {
-      ...r,
-      displayName,
-      displayAddress,
-      displayCity,
-      displayAmount,
-    };
-  });
+      return {
+        ...r,
+        displayName,
+        displayAddress,
+        displayCity,
+        displayAmount,
+        boardDate,
+      };
+    })
+    .sort((a, b) => timeValue(b.boardDate) - timeValue(a.boardDate));
 
-  const groups = new Map(BOARD_STATUSES.map((status) => [status, view.filter((r) => r.job.status === status)]));
+  const groups = new Map<string, { label: string; items: typeof view }>();
+  for (const item of view) {
+    const key = dateKey(item.boardDate);
+    if (!groups.has(key)) {
+      groups.set(key, { label: dateLabel(item.boardDate), items: [] });
+    }
+    groups.get(key)!.items.push(item);
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-900/95 px-6 py-4">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-slate-800">
+          <a href="/dashboard" className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-slate-800">
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-orange-500 text-2xl font-bold text-white">
               {APP_NAME.slice(0, 1)}
             </div>
@@ -76,7 +112,7 @@ export default async function BoardPage() {
               <div className="text-2xl font-bold tracking-tight text-white">{APP_NAME}</div>
               <div className="text-sm text-slate-400">TV Production Board</div>
             </div>
-          </Link>
+          </a>
 
           <div className="text-right">
             <div className="text-sm text-slate-400">Active Jobs</div>
@@ -85,46 +121,59 @@ export default async function BoardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-4 2xl:grid-cols-7">
-        {BOARD_STATUSES.map((status) => {
-          const items = groups.get(status) ?? [];
-          return (
-            <section key={status} className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-              <div className={`px-4 py-3 ${STATUS_COLORS[status] ?? "bg-slate-700"}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                    {jobStatusLabel(status)}
-                  </h2>
-                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold text-white">
-                    {items.length}
-                  </span>
+      <div className="space-y-4 p-4">
+        {view.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-700 px-6 py-12 text-center text-lg text-slate-500">
+            No active jobs yet.
+          </div>
+        ) : (
+          Array.from(groups.entries()).map(([key, group]) => (
+            <section key={key} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg">
+              <div className="flex items-center justify-between gap-4 bg-slate-800 px-5 py-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{group.label}</h2>
+                  <p className="text-sm text-slate-400">
+                    {group.items.length} job{group.items.length === 1 ? "" : "s"}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto p-3">
-                {items.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-700 px-3 py-6 text-center text-sm text-slate-500">
-                    No jobs
-                  </div>
-                ) : (
-                  items.map((r) => (
-                    <article key={r.job.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 shadow-sm">
-                      <div className="mb-2 text-base font-bold text-white">{r.displayName}</div>
-                      <div className="space-y-1 text-sm text-slate-300">
+              <div className="divide-y divide-slate-800">
+                {group.items.map((r) => (
+                  <article
+                    key={r.job.id}
+                    className="grid gap-4 px-5 py-4 md:grid-cols-[220px_1fr_auto] md:items-center"
+                  >
+                    <div>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className={`${STATUS_COLORS[r.job.status] ?? "bg-slate-600"} inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white`}
+                        >
+                          {jobStatusLabel(r.job.status)}
+                        </span>
+                      </div>
+                      {r.job.crew && <div className="text-sm text-cyan-300">Crew: {r.job.crew}</div>}
+                    </div>
+
+                    <div>
+                      <div className="text-2xl font-bold text-white">{r.displayName}</div>
+                      <div className="mt-1 space-y-1 text-sm text-slate-300">
                         {r.displayAddress && <div>{r.displayAddress}</div>}
                         {r.displayCity && <div>{r.displayCity}</div>}
                         {r.job.productName && <div>{r.job.productName}</div>}
-                        <div className="font-semibold text-emerald-400">{money(r.displayAmount)}</div>
-                        {r.job.crew && <div className="text-cyan-300">Crew: {r.job.crew}</div>}
-                        {r.job.notes && <div className="line-clamp-3 text-xs text-slate-400">{r.job.notes}</div>}
+                        {r.job.notes && <div className="text-xs text-slate-400">{r.job.notes}</div>}
                       </div>
-                    </article>
-                  ))
-                )}
+                    </div>
+
+                    <div className="text-left md:text-right">
+                      <div className="text-2xl font-bold text-emerald-400">{money(r.displayAmount)}</div>
+                    </div>
+                  </article>
+                ))}
               </div>
             </section>
-          );
-        })}
+          ))
+        )}
       </div>
     </main>
   );
