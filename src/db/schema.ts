@@ -299,7 +299,36 @@ export const estimateItems = pgTable("estimate_items", {
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
+// Customer invoices — auto-sent deposit (estimate accepted) and final (job completed)
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  leadId: integer("lead_id").notNull(),
+  jobId: integer("job_id"),
+  saleId: integer("sale_id"),
+  estimateId: integer("estimate_id"),
+  number: varchar("number", { length: 30 }).notNull(),
+  // kind: deposit | final | manual
+  kind: varchar("kind", { length: 20 }).notNull().default("manual"),
+  // status: sent | viewed | paid | financed | void
+  status: varchar("status", { length: 20 }).notNull().default("sent"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  contractTotal: numeric("contract_total", { precision: 12, scale: 2 }).notNull().default("0"),
+  // customer's choice on the invoice page: direct | finance
+  paymentChoice: varchar("payment_choice", { length: 20 }),
+  choiceAt: timestamp("choice_at"),
+  publicToken: text("public_token").notNull().unique(),
+  dueDate: timestamp("due_date"),
+  sentAt: timestamp("sent_at"),
+  viewedAt: timestamp("viewed_at"),
+  paidAt: timestamp("paid_at"),
+  paymentMethod: varchar("payment_method", { length: 40 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [index("invoices_org_idx").on(t.orgId)]);
 
+export type Invoice = typeof invoices.$inferSelect;
 export type DemoRequest = typeof demoRequests.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type User = typeof users.$inferSelect;
