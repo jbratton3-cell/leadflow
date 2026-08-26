@@ -171,9 +171,7 @@ export default function PricingPage() {
                   We&apos;ll get you up and running — tailored to your business
                 </h2>
                 <p className="mt-2 max-w-xl text-sm text-slate-400">
-                  Skip the setup work. Our team configures {APP_NAME} around your exact
-                  sales process, migrates your data, and trains your team so you&apos;re
-                  ready to sell from day one.
+                  {`Skip the setup work. Our team configures ${APP_NAME} around your exact sales process, migrates your data, and trains your team so you're ready to sell from day one.`}
                 </p>
               </div>
               <div className="text-right">
