@@ -85,6 +85,7 @@ export const JOB_MILESTONES = [
   { key: "measured", label: "Final Measure" },
   { key: "permits_pulled", label: "Permits Pulled" },
   { key: "materials_ordered", label: "Materials Ordered" },
+  { key: "materials_received", label: "Materials Received" },
   { key: "crew_assigned", label: "Crew Assigned" },
   { key: "installed", label: "Installed" },
   { key: "inspected", label: "Inspected" },
