@@ -3,6 +3,8 @@ import { sales, leads } from "@/db/schema";
 import { and, desc, eq, sql, gte } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
+import { deleteSale } from "@/lib/delete-actions";
+import DeleteButton from "@/components/DeleteButton";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate } from "@/lib/constants";
@@ -95,6 +97,7 @@ export default async function SalesPage() {
                     <th className="px-4 py-3 font-medium">Finance</th>
                     <th className="px-4 py-3 text-right font-medium">Amount</th>
                     <th className="px-4 py-3 font-medium">Date</th>
+                    <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -120,6 +123,15 @@ export default async function SalesPage() {
                         {money(r.sale.amount)}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(r.sale.soldAt)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <form action={deleteSale}>
+                          <input type="hidden" name="id" value={r.sale.id} />
+                          <DeleteButton
+                            label="Delete"
+                            confirmText={`Delete the ${money(r.sale.amount)} sale record? This cannot be undone.`}
+                          />
+                        </form>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

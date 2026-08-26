@@ -3,6 +3,8 @@ import { jobs, leads, sales } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
+import { deleteJob } from "@/lib/delete-actions";
+import DeleteButton from "@/components/DeleteButton";
 import { requireAccess } from "@/lib/auth";
 import { updateJob, createJob } from "@/lib/actions";
 import {
@@ -279,6 +281,13 @@ export default async function ProductionPage() {
                         </span>
                       )}
                     </div>
+                  </form>
+                  <form action={deleteJob} className="mt-3 border-t border-slate-100 pt-3">
+                    <input type="hidden" name="id" value={r.job.id} />
+                    <DeleteButton
+                      label="Delete this job"
+                      confirmText={`Delete the job for ${r.displayName}? This cannot be undone.`}
+                    />
                   </form>
                 </details>
               </Card>
