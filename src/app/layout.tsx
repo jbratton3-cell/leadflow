@@ -15,8 +15,12 @@ export const metadata: Metadata = {
   applicationName: "LeadFlow",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "black",
     title: "LeadFlow",
+  },
+  icons: {
+    icon: "/icons/192",
+    apple: "/icons/192",
   },
 };
 
