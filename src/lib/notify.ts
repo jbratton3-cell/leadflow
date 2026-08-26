@@ -143,3 +143,67 @@ export function inviteEmailHtml(name: string, link: string): string {
     </p>
   </div>`;
 }
+
+export function invoiceEmailHtml(opts: {
+  customerName: string;
+  companyName: string;
+  number: string;
+  amountLabel: string;
+  amount: string;
+  total: string;
+  link: string;
+}): string {
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
+        display:grid;place-items:center;font-weight:700;font-size:20px">H</div>
+      <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
+    </div>
+    <h2 style="color:#0f172a;font-size:20px">Your invoice is ready</h2>
+    <p style="color:#334155;line-height:1.5">
+      Hi ${opts.customerName}, thank you for your business.
+      Invoice <strong>${opts.number}</strong> for your <strong>${opts.amountLabel}</strong> is ready.
+    </p>
+    <div style="margin:16px 0;padding:16px;background:#f8fafc;border-radius:12px">
+      <div style="color:#64748b;font-size:13px">Amount due</div>
+      <div style="color:#0f172a;font-size:28px;font-weight:700">${opts.amount}</div>
+      <div style="color:#64748b;font-size:13px;margin-top:4px">Project total: ${opts.total}</div>
+    </div>
+    <a href="${opts.link}" style="display:inline-block;margin:8px 0;padding:12px 20px;
+      background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">
+      View &amp; Pay Invoice
+    </a>
+    <p style="color:#334155;font-size:14px;line-height:1.5">
+      On the invoice page you can pay this amount directly or choose to finance it.
+    </p>
+    <p style="color:#94a3b8;font-size:13px">
+      Or paste this link into your browser:<br>
+      <span style="color:#475569">${opts.link}</span>
+    </p>
+  </div>`;
+}
+
+export function financingRequestedEmailHtml(opts: {
+  customerName: string;
+  number: string;
+  amount: string;
+  kind: string;
+}): string {
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+    <h2 style="color:#0f172a;font-size:20px">&#128176; Financing requested</h2>
+    <p style="color:#334155;line-height:1.5">
+      <strong>${opts.customerName}</strong> chose financing on invoice
+      <strong>${opts.number}</strong> (${opts.kind}).
+    </p>
+    <div style="margin:16px 0;padding:16px;background:#fef3c7;border-radius:12px">
+      <div style="color:#92400e;font-size:13px">Amount to finance</div>
+      <div style="color:#78350f;font-size:28px;font-weight:700">${opts.amount}</div>
+    </div>
+    <p style="color:#334155;font-size:14px">
+      No payment is expected for this invoice. Follow up with the customer to complete
+      the financing application.
+    </p>
+  </div>`;
+}
