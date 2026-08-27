@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { db } from "@/db";
 import { invoices, leads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { markInvoiceViewed, customerInvoiceChoice } from "@/lib/invoice-actions";
+import { getSessionUser } from "@/lib/auth";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +37,9 @@ export default async function PublicInvoicePage({
   // Record the first view
   await markInvoiceViewed(token);
 
+  // CRM users previewing get a way back; customers see nothing.
+  const internalUser = await getSessionUser();
+
   const [lead] = await db
     .select()
     .from(leads)
@@ -51,6 +56,14 @@ export default async function PublicInvoicePage({
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto max-w-2xl">
+        {internalUser && (
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-sm">
+            <Link href="/invoices" className="text-sm font-medium text-orange-600 hover:underline">
+              &larr; Back to Invoices
+            </Link>
+            <span className="text-xs text-slate-400">Previewing as {internalUser.name}</span>
+          </div>
+        )}
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-xl font-bold text-white">

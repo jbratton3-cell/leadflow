@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/db";
 import { estimates, estimateItems, leads } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -5,6 +6,7 @@ import {
   markEstimateViewed,
   respondToEstimate,
 } from "@/lib/estimate-actions";
+import { getSessionUser } from "@/lib/auth";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +40,9 @@ export default async function PublicEstimatePage({
   // Record the first view
   await markEstimateViewed(token);
 
+  // CRM users previewing get a way back; customers see nothing.
+  const internalUser = await getSessionUser();
+
   const [items, [lead]] = await Promise.all([
     db.select().from(estimateItems).where(eq(estimateItems.estimateId, est.id)).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(eq(leads.id, est.leadId)).limit(1),
@@ -49,6 +54,14 @@ export default async function PublicEstimatePage({
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto max-w-2xl">
+        {internalUser && (
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-sm">
+            <Link href="/estimates" className="text-sm font-medium text-orange-600 hover:underline">
+              &larr; Back to Estimates
+            </Link>
+            <span className="text-xs text-slate-400">Previewing as {internalUser.name}</span>
+          </div>
+        )}
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-xl font-bold text-white">
