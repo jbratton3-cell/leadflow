@@ -224,6 +224,13 @@ export default async function EstimateDetailPage({
                 </div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={est.signatureData} alt="Customer signature" className="h-20 rounded-lg border border-emerald-100 bg-white p-1.5" />
+                <a
+                  href={`/api/estimates/${est.id}/pdf`}
+                  target="_blank"
+                  className="mt-2 inline-block rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                >
+                  📄 Download signed PDF
+                </a>
               </div>
             )}
             <div className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs text-slate-400">

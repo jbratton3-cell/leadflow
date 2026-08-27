@@ -14,6 +14,10 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { handleEstimateAccepted } from "@/lib/invoice-actions";
+import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
+import { signedEstimateEmailHtml } from "@/lib/notify";
+
+const APP_NAME_FALLBACK = "LeadFlow";
 import { BUSINESS_NAME, personName } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
@@ -325,6 +329,53 @@ export async function saveSignature(input: {
       updatedAt: new Date(),
     })
     .where(eq(estimates.id, est.id));
+
+  // Email the customer a PDF copy of their signed estimate (best-effort).
+  try {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.orgId, est.orgId), eq(leads.id, est.leadId)))
+      .limit(1);
+    if (lead?.email) {
+      const [fresh] = await db
+        .select()
+        .from(estimates)
+        .where(eq(estimates.id, est.id))
+        .limit(1);
+      const items = await db
+        .select()
+        .from(estimateItems)
+        .where(eq(estimateItems.estimateId, est.id))
+        .orderBy(asc(estimateItems.sortOrder));
+      const pdfBytes = await buildSignedEstimatePdf({
+        est: fresh,
+        items,
+        lead,
+        orgName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
+      });
+      await sendEmail({
+        to: lead.email,
+        subject: `Your signed estimate ${est.number}`,
+        html: signedEstimateEmailHtml({
+          customerName: `${lead.firstName} ${lead.lastName ?? ""}`.trim() || "there",
+          companyName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
+          number: est.number,
+          link: `${getBaseUrl()}/estimate/${est.publicToken}`,
+        }),
+        attachments: [
+          {
+            filename: `${est.number}-signed.pdf`,
+            content: Buffer.from(pdfBytes),
+            contentType: "application/pdf",
+          },
+        ],
+      });
+    }
+  } catch (err) {
+    console.error("Signed-estimate email failed:", err);
+  }
+
   revalidatePath(`/estimate/${input.token}`);
   revalidatePath(`/estimates/${est.id}`);
 }

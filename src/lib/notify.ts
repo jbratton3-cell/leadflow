@@ -31,6 +31,7 @@ export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }): Promise<boolean> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASS;
@@ -49,6 +50,11 @@ export async function sendEmail(opts: {
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
+      attachments: opts.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
     return true;
   } catch (err) {
@@ -211,5 +217,33 @@ export function financingRequestedEmailHtml(opts: {
       No payment is expected for this invoice. Follow up with the customer to complete
       the financing application.
     </p>
+  </div>`;
+}
+
+export function signedEstimateEmailHtml(opts: {
+  customerName: string;
+  companyName: string;
+  number: string;
+  link: string;
+}): string {
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
+        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
+      <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
+    </div>
+    <h2 style="color:#0f172a;font-size:20px">Your signed estimate is attached</h2>
+    <p style="color:#334155;line-height:1.5">
+      Hi ${opts.customerName}, thank you for your business! A copy of your accepted and
+      signed estimate <strong>${opts.number}</strong> is attached as a PDF for your records.
+    </p>
+    <p style="color:#334155;font-size:14px">
+      You can also view it online anytime:
+    </p>
+    <a href="${opts.link}" style="display:inline-block;margin:8px 0;padding:12px 20px;
+      background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">
+      View Estimate Online
+    </a>
   </div>`;
 }
