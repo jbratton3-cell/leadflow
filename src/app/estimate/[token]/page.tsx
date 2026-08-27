@@ -7,6 +7,7 @@ import {
   respondToEstimate,
 } from "@/lib/estimate-actions";
 import { getSessionUser } from "@/lib/auth";
+import SignatureStep from "@/components/SignatureStep";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -110,6 +111,22 @@ export default async function PublicEstimatePage({
             </div>
           )}
 
+          {/* Signature on file */}
+          {est.signatureData && (
+            <div className="border-t border-slate-100 px-6 py-5">
+              <div className="mb-2 text-sm font-medium text-slate-700">
+                Signed{est.signatureName ? ` by ${est.signatureName}` : ""}
+                {est.signatureAt ? ` — ${fmtDate(est.signatureAt)}` : ""}
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={est.signatureData}
+                alt="Customer signature"
+                className="h-24 rounded-lg border border-slate-200 bg-white p-2"
+              />
+            </div>
+          )}
+
           {/* Line items */}
           <div className="px-6 py-5">
             <table className="w-full text-sm">
@@ -155,6 +172,16 @@ export default async function PublicEstimatePage({
               </div>
             </div>
           </div>
+
+          {/* Optional signature step after accepting */}
+          {est.status === "accepted" && !est.signatureData && lead && (
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
+              <SignatureStep
+                token={token}
+                customerName={personName(lead.firstName, lead.lastName, "Customer")}
+              />
+            </div>
+          )}
 
           {/* Notes & terms */}
           {(est.notes || est.terms || est.validUntil) && (

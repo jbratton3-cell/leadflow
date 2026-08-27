@@ -216,6 +216,16 @@ export default async function EstimateDetailPage({
                 customerEmail={lead?.email ?? null}
               />
             )}
+            {est.signatureData && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
+                <div className="mb-1 text-xs font-semibold text-emerald-700">
+                  ✍️ Signed{est.signatureName ? ` by ${est.signatureName}` : ""}
+                  {est.signatureAt ? ` — ${fmtDateTime(est.signatureAt)}` : ""}
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={est.signatureData} alt="Customer signature" className="h-20 rounded-lg border border-emerald-100 bg-white p-1.5" />
+              </div>
+            )}
             <div className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs text-slate-400">
               {est.sentAt && <div>Sent: {fmtDateTime(est.sentAt)}</div>}
               {est.viewedAt && <div>Viewed by customer: {fmtDateTime(est.viewedAt)}</div>}

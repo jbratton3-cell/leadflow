@@ -282,6 +282,10 @@ export const estimates = pgTable(
     sentAt: timestamp("sent_at"),
     viewedAt: timestamp("viewed_at"),
     respondedAt: timestamp("responded_at"),
+    // optional customer signature (PNG data URL), captured at acceptance
+    signatureData: text("signature_data"),
+    signatureName: varchar("signature_name", { length: 160 }),
+    signatureAt: timestamp("signature_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

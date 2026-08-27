@@ -303,6 +303,32 @@ export async function markEstimateStatus(formData: FormData) {
   revalidatePath("/");
 }
 
+
+// Store a customer signature captured on the public estimate page.
+export async function saveSignature(input: {
+  token: string;
+  signature: string;
+  name: string;
+}) {
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(eq(estimates.publicToken, input.token))
+    .limit(1);
+  if (!est) throw new Error("Estimate not found");
+  await db
+    .update(estimates)
+    .set({
+      signatureData: input.signature,
+      signatureName: input.name,
+      signatureAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(estimates.id, est.id));
+  revalidatePath(`/estimate/${input.token}`);
+  revalidatePath(`/estimates/${est.id}`);
+}
+
 export async function markEstimateViewed(token: string) {
   const [est] = await db
     .select()
