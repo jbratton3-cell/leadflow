@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* Print layout: clean documents (signed estimates, invoices) */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .print-plain {
+    background: #fff !important;
+    box-shadow: none !important;
+    border-color: #e2e8f0 !important;
+  }
+}

@@ -8,6 +8,7 @@ import {
 } from "@/lib/estimate-actions";
 import { getSessionUser } from "@/lib/auth";
 import SignatureStep from "@/components/SignatureStep";
+import PrintButton from "@/components/PrintButton";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default async function PublicEstimatePage({
     <main className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto max-w-2xl">
         {internalUser && (
-          <div className="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-sm">
+          <div className="no-print mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-sm">
             <Link href="/estimates" className="text-sm font-medium text-orange-600 hover:underline">
               &larr; Back to Estimates
             </Link>
@@ -64,7 +65,8 @@ export default async function PublicEstimatePage({
           </div>
         )}
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-xl font-bold text-white">
             {APP_NAME.slice(0, 1)}
           </div>
@@ -72,9 +74,11 @@ export default async function PublicEstimatePage({
             <div className="text-lg font-bold text-slate-900">{companyName}</div>
             <div className="text-xs text-slate-500">Project Estimate</div>
           </div>
+          </div>
+          <PrintButton />
         </div>
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow">
+        <div className="print-plain overflow-hidden rounded-2xl bg-white shadow">
           {/* Title bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-6 py-5">
             <div>
@@ -175,7 +179,7 @@ export default async function PublicEstimatePage({
 
           {/* Optional signature step after accepting */}
           {est.status === "accepted" && !est.signatureData && lead && (
-            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
+            <div className="no-print border-t border-slate-100 bg-slate-50 px-6 py-5">
               <SignatureStep
                 token={token}
                 customerName={personName(lead.firstName, lead.lastName, "Customer")}
