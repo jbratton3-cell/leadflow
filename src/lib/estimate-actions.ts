@@ -3,6 +3,7 @@
 import { randomBytes } from "crypto";
 import { db } from "@/db";
 import { estimates, estimateItems, leads, jobs, sales, products } from "@/db/schema";
+import type { Estimate, Lead } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -256,6 +257,51 @@ export async function sendEstimate(
 
 /* ----------------- public customer responses (no auth) ----------------- */
 
+
+// Office-side status control: record a signed paper estimate (or a decline)
+// without requiring the customer to click anything.
+export async function markEstimateStatus(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+  const status = req(formData.get("status")); // accepted | declined
+  const sendDeposit = formData.get("sendDeposit") === "on";
+  if (status !== "accepted" && status !== "declined") return;
+
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!est) return;
+  if (est.status === "accepted" || est.status === "declined") return;
+
+  await db
+    .update(estimates)
+    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
+    .where(eq(estimates.id, id));
+
+  if (status === "accepted") {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId)))
+      .limit(1);
+    if (lead) {
+      // No automatic invoice email unless the office explicitly asks for it.
+      await applyAcceptanceBookkeeping(est, lead, false, sendDeposit);
+    }
+  }
+
+  revalidatePath(`/estimates/${id}`);
+  revalidatePath("/estimates");
+  revalidatePath(`/leads/${est.leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/sales");
+  revalidatePath("/production");
+  revalidatePath("/invoices");
+  revalidatePath("/");
+}
+
 export async function markEstimateViewed(token: string) {
   const [est] = await db
     .select()
@@ -270,32 +316,15 @@ export async function markEstimateViewed(token: string) {
   }
 }
 
-export async function respondToEstimate(formData: FormData) {
-  const token = req(formData.get("token"));
-  const decision = req(formData.get("decision")); // accept | decline
-  const financing = req(formData.get("paymentIntent")) === "finance";
-  const [est] = await db
-    .select()
-    .from(estimates)
-    .where(eq(estimates.publicToken, token))
-    .limit(1);
-  if (!est) return;
-  if (est.status === "accepted" || est.status === "declined") return;
-
-  const status = decision === "accept" ? "accepted" : "declined";
-  await db
-    .update(estimates)
-    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
-    .where(eq(estimates.id, est.id));
-
-  if (status === "accepted") {
-    const [lead] = await db
-      .select()
-      .from(leads)
-      .where(and(eq(leads.orgId, est.orgId), eq(leads.id, est.leadId)))
-      .limit(1);
-
-    if (lead) {
+// Shared bookkeeping when an estimate is accepted (online by the customer, or
+// recorded by the office from a signed paper estimate): sale, job, lead stage,
+// and (optionally) the automatic deposit invoice.
+async function applyAcceptanceBookkeeping(
+  est: Estimate,
+  lead: Lead,
+  financing: boolean,
+  triggerInvoices: boolean
+): Promise<void> {
       const [existingSale] = await db
         .select()
         .from(sales)
@@ -363,7 +392,39 @@ export async function respondToEstimate(formData: FormData) {
         .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));
 
       // Auto-invoice: deposit invoice (paying directly) or financing alert.
-      await handleEstimateAccepted(est, lead, saleId, financing);
+      if (triggerInvoices) {
+        await handleEstimateAccepted(est, lead, saleId, financing);
+      }
+    
+}
+
+export async function respondToEstimate(formData: FormData) {
+  const token = req(formData.get("token"));
+  const decision = req(formData.get("decision")); // accept | decline
+  const financing = req(formData.get("paymentIntent")) === "finance";
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(eq(estimates.publicToken, token))
+    .limit(1);
+  if (!est) return;
+  if (est.status === "accepted" || est.status === "declined") return;
+
+  const status = decision === "accept" ? "accepted" : "declined";
+  await db
+    .update(estimates)
+    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
+    .where(eq(estimates.id, est.id));
+
+  if (status === "accepted") {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.orgId, est.orgId), eq(leads.id, est.leadId)))
+      .limit(1);
+
+    if (lead) {
+      await applyAcceptanceBookkeeping(est, lead, financing, true);
     }
   }
 
