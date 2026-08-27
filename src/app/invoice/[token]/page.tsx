@@ -65,13 +65,11 @@ export default async function PublicInvoicePage({
           </div>
         )}
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-xl font-bold text-white">
-            {APP_NAME.slice(0, 1)}
-          </div>
+        <div className="mb-6 flex items-end gap-3">
           <div>
-            <div className="text-lg font-bold text-slate-900">{companyName}</div>
-            <div className="text-xs text-slate-500">Invoice — {kindLabel}</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/buildpros-logo.png" alt={companyName} className="h-12 w-auto" />
+            <div className="mt-1 text-xs text-slate-500">Invoice — {kindLabel}</div>
           </div>
         </div>
 

@@ -1,5 +1,19 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
+
+let logoCache: Buffer | null = null;
+function buildprosLogo(): Buffer | null {
+  try {
+    logoCache ??= fs.readFileSync(
+      path.join(process.cwd(), "public", "buildpros-logo.png")
+    );
+    return logoCache;
+  } catch {
+    return null;
+  }
+}
 import { APP_NAME } from "@/lib/constants";
 
 // Best-effort email + SMS delivery for invitations.
@@ -31,7 +45,7 @@ export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
-  attachments?: { filename: string; content: Buffer; contentType?: string }[];
+  attachments?: { filename: string; content: Buffer; contentType?: string; cid?: string }[];
 }): Promise<boolean> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASS;
@@ -45,16 +59,29 @@ export async function sendEmail(opts: {
       auth: { user, pass },
     });
 
+    const attachments = (opts.attachments ?? []).map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      contentType: a.contentType,
+      cid: a.cid,
+    }));
+    if (opts.html.includes("cid:buildpros-logo")) {
+      const logo = buildprosLogo();
+      if (logo) {
+        attachments.push({
+          filename: "buildpros-logo.png",
+          content: logo,
+          contentType: "image/png",
+          cid: "buildpros-logo",
+        });
+      }
+    }
     await transporter.sendMail({
       from: `"${fromName}" <${user}>`,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
-      attachments: opts.attachments?.map((a) => ({
-        filename: a.filename,
-        content: a.content,
-        contentType: a.contentType,
-      })),
+      attachments,
     });
     return true;
   } catch (err) {
@@ -96,10 +123,9 @@ export function estimateEmailHtml(opts: {
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
-      <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
+    <div style="margin-bottom:20px">
+      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+        style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your estimate is ready</h2>
     <p style="color:#334155;line-height:1.5">
@@ -163,10 +189,9 @@ export function invoiceEmailHtml(opts: {
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
-      <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
+    <div style="margin-bottom:20px">
+      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+        style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your invoice is ready</h2>
     <p style="color:#334155;line-height:1.5">
@@ -228,10 +253,9 @@ export function signedEstimateEmailHtml(opts: {
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
-      <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
+    <div style="margin-bottom:20px">
+      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+        style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your signed estimate is attached</h2>
     <p style="color:#334155;line-height:1.5">

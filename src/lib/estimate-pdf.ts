@@ -1,4 +1,6 @@
 import "server-only";
+import fs from "fs";
+import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Estimate, EstimateItem, Lead } from "@/db/schema";
 import { money } from "@/lib/constants";
@@ -61,16 +63,33 @@ export async function buildSignedEstimatePdf(opts: {
     }
   };
 
-  // Header
-  page.drawRectangle({ x: M, y: y - 34, width: 34, height: 34, color: ACCENT });
-  text(orgName.slice(0, 1), M + 9, y - 25, 20, bold, rgb(1, 1, 1));
-  text(orgName, M + 44, y - 12, 16, bold);
-  text("Estimate", M + 44, y - 26, 10, font, MUTED);
+  // Header — BuildPros logo, falling back to a letter square if unavailable
+  let logoOk = false;
+  const logoH = 44;
+  try {
+    const logoBytes = fs.readFileSync(
+      path.join(process.cwd(), "public", "buildpros-logo.png")
+    );
+    const logo = await pdf.embedPng(logoBytes);
+    const w = logo.width * (logoH / logo.height);
+    page.drawImage(logo, { x: M, y: y - logoH + 8, width: w, height: logoH });
+    logoOk = true;
+  } catch {
+    // fall through to text header
+  }
+  if (logoOk) {
+    text("Estimate", M, y - logoH - 6, 10, font, MUTED);
+  } else {
+    page.drawRectangle({ x: M, y: y - 34, width: 34, height: 34, color: ACCENT });
+    text(orgName.slice(0, 1), M + 9, y - 25, 20, bold, rgb(1, 1, 1));
+    text(orgName, M + 44, y - 12, 16, bold);
+    text("Estimate", M + 44, y - 26, 10, font, MUTED);
+  }
   text(est.number, W - M - 90, y - 12, 12, bold);
   if (est.status === "accepted") {
     text("ACCEPTED", W - M - 90, y - 26, 9, bold, rgb(0.02, 0.6, 0.35));
   }
-  y -= 56;
+  y -= logoOk ? 84 : 56;
 
   // Bill-to block
   if (lead) {
