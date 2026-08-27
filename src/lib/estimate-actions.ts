@@ -264,7 +264,8 @@ export async function markEstimateStatus(formData: FormData) {
   const { orgId } = await requireAccess("estimates");
   const id = Number(formData.get("id"));
   const status = req(formData.get("status")); // accepted | declined
-  const sendDeposit = formData.get("sendDeposit") === "on";
+  const financing = formData.get("financing") === "on";
+  const sendDeposit = formData.get("sendDeposit") === "on" && !financing;
   if (status !== "accepted" && status !== "declined") return;
 
   const [est] = await db
@@ -288,7 +289,7 @@ export async function markEstimateStatus(formData: FormData) {
       .limit(1);
     if (lead) {
       // No automatic invoice email unless the office explicitly asks for it.
-      await applyAcceptanceBookkeeping(est, lead, false, sendDeposit);
+      await applyAcceptanceBookkeeping(est, lead, financing, sendDeposit);
     }
   }
 

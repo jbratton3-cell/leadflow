@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import SendEstimatePanel from "@/components/SendEstimatePanel";
+import OfficeAcceptForm from "@/components/OfficeAcceptForm";
 import {
   estimateStatusLabel,
   estimateStatusColor,
@@ -231,29 +232,7 @@ export default async function EstimateDetailPage({
                 For paper estimates signed in the field — record the outcome here instead
                 of waiting for the customer to respond online.
               </p>
-              <form
-                action={markEstimateStatus}
-                className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3"
-              >
-                <input type="hidden" name="id" value={est.id} />
-                <input type="hidden" name="status" value="accepted" />
-                <label className="flex items-start gap-2 text-xs text-slate-600">
-                  <input
-                    type="checkbox"
-                    name="sendDeposit"
-                    className="mt-0.5 h-4 w-4 accent-emerald-600"
-                  />
-                  <span>
-                    Also email the customer their 50% deposit invoice
-                    <span className="block text-slate-400">
-                      Leave unchecked if the deposit was already collected
-                    </span>
-                  </span>
-                </label>
-                <button className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                  Mark as Accepted
-                </button>
-              </form>
+              <OfficeAcceptForm estimateId={est.id} />
               <form action={markEstimateStatus} className="mt-3">
                 <input type="hidden" name="id" value={est.id} />
                 <input type="hidden" name="status" value="declined" />
