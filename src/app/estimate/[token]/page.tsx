@@ -5,7 +5,7 @@ import {
   markEstimateViewed,
   respondToEstimate,
 } from "@/lib/estimate-actions";
-import { money, fmtDate, BUSINESS_NAME, APP_NAME } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
