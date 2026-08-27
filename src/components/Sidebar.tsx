@@ -13,6 +13,7 @@ const NAV: { href: string; label: string; icon: string; perm: Permission }[] = [
   { href: "/call-center", label: "Call Center", icon: "📞", perm: "call_center" },
   { href: "/appointments", label: "Appointments", icon: "📅", perm: "appointments" },
   { href: "/estimates", label: "Estimates", icon: "📝", perm: "estimates" },
+  { href: "/invoices", label: "Invoices", icon: "🧾", perm: "invoices" },
   { href: "/sales", label: "Sales", icon: "💰", perm: "sales" },
   { href: "/production", label: "Production", icon: "🏗️", perm: "production" },
   { href: "/marketing", label: "Marketing", icon: "📈", perm: "marketing" },

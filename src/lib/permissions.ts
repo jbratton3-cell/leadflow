@@ -10,6 +10,7 @@ export type Permission =
   | "call_center"
   | "appointments"
   | "estimates"
+  | "invoices"
   | "sales"
   | "production"
   | "marketing"
@@ -48,6 +49,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "call_center",
     "appointments",
     "estimates",
+    "invoices",
     "sales",
     "production",
     "marketing",
@@ -62,6 +64,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "call_center",
     "appointments",
     "estimates",
+    "invoices",
     "sales",
     "production",
     "marketing",
