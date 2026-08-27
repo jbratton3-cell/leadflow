@@ -175,18 +175,6 @@ export async function buildSignedEstimatePdf(opts: {
       const scale = Math.min(maxW / png.width, maxH / png.height, 1);
       const w = png.width * scale;
       const h = png.height * scale;
-      const boxH = h + 30;
-      const boxW = w + 16;
-      page.drawRectangle({
-        x: M,
-        y: y - boxH,
-        width: boxW,
-        height: boxH,
-        borderColor: LINE,
-        borderWidth: 1,
-        color: rgb(0.985, 0.99, 0.995),
-      });
-      page.drawImage(png, { x: M + 8, y: y - h - 10, width: w, height: h });
       const signedLine = [
         "Signed" + (est.signatureName ? ` by ${est.signatureName}` : ""),
         est.signatureAt
@@ -197,6 +185,20 @@ export async function buildSignedEstimatePdf(opts: {
       ]
         .filter(Boolean)
         .join(" — ");
+      // Box must fit BOTH the signature and the caption text.
+      const captionWidth = font.widthOfTextAtSize(signedLine, 8);
+      const boxW = Math.max(w + 16, captionWidth + 16, 180);
+      const boxH = h + 30;
+      page.drawRectangle({
+        x: M,
+        y: y - boxH,
+        width: boxW,
+        height: boxH,
+        borderColor: LINE,
+        borderWidth: 1,
+        color: rgb(0.985, 0.99, 0.995),
+      });
+      page.drawImage(png, { x: M + 8, y: y - h - 10, width: w, height: h });
       text(signedLine, M + 8, y - boxH + 9, 8, font, MUTED);
       y -= boxH + 10;
     } catch {
