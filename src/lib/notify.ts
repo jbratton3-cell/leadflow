@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { APP_NAME } from "@/lib/constants";
 
 // Best-effort email + SMS delivery for invitations.
 // Both are optional: if the relevant env vars aren't set, we return false and
@@ -91,7 +92,7 @@ export function estimateEmailHtml(opts: {
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">H</div>
+        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
       <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your estimate is ready</h2>
@@ -122,7 +123,7 @@ export function inviteEmailHtml(name: string, link: string): string {
   <div style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">H</div>
+        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
       <strong style="font-size:18px;color:#0f172a">LeadFlow</strong>
     </div>
     <h2 style="color:#0f172a;font-size:20px">You've been invited</h2>
@@ -158,7 +159,7 @@ export function invoiceEmailHtml(opts: {
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
-        display:grid;place-items:center;font-weight:700;font-size:20px">H</div>
+        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
       <strong style="font-size:18px;color:#0f172a">${opts.companyName}</strong>
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your invoice is ready</h2>

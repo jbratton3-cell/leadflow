@@ -210,7 +210,7 @@ export async function sendEstimate(
   if (!lead) return { error: "Customer not found." };
 
   const link = `${getBaseUrl()}/estimate/${est.publicToken}`;
-  const companyName = process.env.COMPANY_NAME ?? BUSINESS_NAME;
+  const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
   const total = Number(est.total).toLocaleString("en-US", {
     style: "currency",
     currency: "USD",

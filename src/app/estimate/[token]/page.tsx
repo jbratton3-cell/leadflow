@@ -43,7 +43,7 @@ export default async function PublicEstimatePage({
     db.select().from(leads).where(eq(leads.id, est.leadId)).limit(1),
   ]);
 
-  const companyName = process.env.COMPANY_NAME ?? BUSINESS_NAME;
+  const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
   const responded = est.status === "accepted" || est.status === "declined";
 
   return (
@@ -52,7 +52,7 @@ export default async function PublicEstimatePage({
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-xl font-bold text-white">
-            H
+            {APP_NAME.slice(0, 1)}
           </div>
           <div>
             <div className="text-lg font-bold text-slate-900">{companyName}</div>
