@@ -123,8 +123,7 @@ export default async function InvoicesPage() {
                   <tr key={inv.id} className="align-top hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <Link
-                        href={`/invoice/${inv.publicToken}`}
-                        target="_blank"
+                        href={`/invoices/${inv.id}`}
                         className="font-semibold text-slate-800 hover:text-orange-600"
                       >
                         {inv.number}
