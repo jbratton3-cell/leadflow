@@ -13,7 +13,7 @@ import {
   financingRequestedEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
-import { money } from "@/lib/constants";
+import { money, personName } from "@/lib/constants";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
 
@@ -79,7 +79,7 @@ async function insertAndSendInvoice(opts: {
     to: email,
     subject: `Invoice ${number} — ${opts.kind === "deposit" ? "50% down payment" : "final payment"}`,
     html: invoiceEmailHtml({
-      customerName: `${opts.lead.firstName} ${opts.lead.lastName ?? ""}`.trim(),
+      customerName: personName(opts.lead.firstName, opts.lead.lastName, "there"),
       companyName,
       number,
       amountLabel: opts.kind === "deposit" ? "50% down payment" : "final payment",
@@ -111,7 +111,7 @@ export async function handleEstimateAccepted(
 ): Promise<void> {
   if (financing) {
     await notifyOfficeOfFinancing({
-      customerName: `${lead.firstName} ${lead.lastName ?? ""}`.trim(),
+      customerName: personName(lead.firstName, lead.lastName, "there"),
       number: est.number,
       amount: money(est.total),
       kind: "estimate accepted — customer chose financing",
@@ -262,7 +262,7 @@ export async function customerInvoiceChoice(formData: FormData) {
       .limit(1);
     await notifyOfficeOfFinancing({
       customerName: lead
-        ? `${lead.firstName} ${lead.lastName ?? ""}`.trim()
+        ? personName(lead.firstName, lead.lastName, "Customer")
         : "Customer",
       number: inv.number,
       amount: money(inv.amount),
@@ -323,7 +323,7 @@ export async function resendInvoice(formData: FormData) {
     to: lead.email,
     subject: `Invoice ${inv.number} — ${inv.kind === "deposit" ? "50% down payment" : "final payment"}`,
     html: invoiceEmailHtml({
-      customerName: `${lead.firstName} ${lead.lastName ?? ""}`.trim(),
+      customerName: personName(lead.firstName, lead.lastName, "there"),
       companyName: process.env.CRM_ORGANIZATION_NAME || "LeadFlow",
       number: inv.number,
       amountLabel: inv.kind === "deposit" ? "50% down payment" : "final payment",

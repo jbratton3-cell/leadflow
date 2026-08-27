@@ -13,8 +13,7 @@ import {
   fmtDate,
   dispositionLabel,
   deadReasonLabel,
-  REHASHABLE_REASONS,
-} from "@/lib/constants";
+  REHASHABLE_REASONS, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -196,7 +195,7 @@ export default async function CallCenterPage({
             </div>
             <div className="flex flex-wrap items-baseline gap-3">
               <Link href={`/leads/${next.id}`} className="text-2xl font-bold text-slate-900 hover:text-orange-600">
-                {next.firstName} {next.lastName}
+                {personName(next.firstName, next.lastName)}
               </Link>
               <a href={`tel:${next.phone ?? ""}`} className={`text-lg font-semibold ${accentText}`}>
                 {next.phone ?? "No phone"}
@@ -250,7 +249,7 @@ export default async function CallCenterPage({
                 <li key={l.id} className="py-2">
                   <Link href={`/leads/${l.id}`} className="flex items-center justify-between hover:text-orange-600">
                     <span className="text-sm font-medium text-slate-700">
-                      {l.firstName} {l.lastName}
+                      {personName(l.firstName, l.lastName)}
                     </span>
                     <span className="text-xs text-slate-400">{l.phone}</span>
                   </Link>

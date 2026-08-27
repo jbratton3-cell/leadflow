@@ -181,3 +181,13 @@ export function fmtDateTime(d: Date | string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+// Display name for a person, tolerating missing names (address-only prospects).
+export function personName(
+  first: string | null | undefined,
+  last: string | null | undefined,
+  fallback = "(No name)"
+): string {
+  const full = `${first ?? ""} ${last ?? ""}`.trim();
+  return full || fallback;
+}

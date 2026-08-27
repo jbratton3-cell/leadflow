@@ -12,8 +12,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime,
-} from "@/lib/constants";
+  fmtDateTime, personName } from "@/lib/constants";
 import {
   updateEstimate,
   addEstimateItem,
@@ -61,7 +60,7 @@ export default async function EstimateDetailPage({
     <div>
       <PageHeader
         title={`${est.number}`}
-        subtitle={lead ? `For ${lead.firstName} ${lead.lastName}` : undefined}
+        subtitle={lead ? `For ${personName(lead.firstName, lead.lastName, "customer")}` : undefined}
         action={
           <div className="flex items-center gap-2">
             <Badge className={estimateStatusColor(est.status)}>

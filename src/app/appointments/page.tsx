@@ -11,8 +11,7 @@ import {
   APPT_RESULTS,
   apptStatusLabel,
   apptStatusColor,
-  fmtDateTime,
-} from "@/lib/constants";
+  fmtDateTime, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +117,7 @@ export default async function AppointmentsPage({
                       href={`/leads/${r.appt.leadId}`}
                       className="font-semibold text-slate-800 hover:text-orange-600"
                     >
-                      {r.firstName} {r.lastName}
+                      {personName(r.firstName, r.lastName)}
                     </Link>
                     <Badge className={apptStatusColor(r.appt.status)}>
                       {apptStatusLabel(r.appt.status)}

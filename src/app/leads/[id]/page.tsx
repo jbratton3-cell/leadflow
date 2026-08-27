@@ -21,8 +21,7 @@ import {
   APPT_RESULTS,
   FINANCE_TYPES,
   estimateStatusLabel,
-  estimateStatusColor,
-} from "@/lib/constants";
+  estimateStatusColor, personName } from "@/lib/constants";
 import {
   createAppointment,
   updateAppointmentStatus,
@@ -75,7 +74,7 @@ export default async function LeadDetailPage({
   return (
     <div>
       <PageHeader
-        title={`${lead.firstName} ${lead.lastName}`}
+        title={personName(lead.firstName, lead.lastName)}
         subtitle={
           lead.address
             ? `${lead.address}, ${lead.city ?? ""} ${lead.state ?? ""} ${lead.zip ?? ""}`
@@ -95,7 +94,7 @@ export default async function LeadDetailPage({
               <input type="hidden" name="id" value={lead.id} />
               <DeleteButton
                 label="Delete"
-                confirmText={`Delete ${lead.firstName} ${lead.lastName} and EVERYTHING attached (estimates, sales, jobs, invoices)? This cannot be undone.`}
+                confirmText={`Delete ${personName(lead.firstName, lead.lastName)} and EVERYTHING attached (estimates, sales, jobs, invoices)? This cannot be undone.`}
                 className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
               />
             </form>

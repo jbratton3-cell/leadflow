@@ -4,7 +4,7 @@ import { invoices, leads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { markInvoiceViewed, customerInvoiceChoice } from "@/lib/invoice-actions";
 import { getSessionUser } from "@/lib/auth";
-import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +85,7 @@ export default async function PublicInvoicePage({
             <div className="text-right text-sm text-slate-500">
               {lead && (
                 <div className="font-medium text-slate-700">
-                  {lead.firstName} {lead.lastName}
+                  {personName(lead.firstName, lead.lastName, "Customer")}
                 </div>
               )}
               {lead?.address && <div>{lead.address}</div>}

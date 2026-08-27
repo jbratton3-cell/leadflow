@@ -7,6 +7,7 @@ import { PageHeader, Card } from "@/components/ui";
 import { getSources, getProducts, getReps } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { updateLead } from "@/lib/actions";
+import { personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -43,17 +44,17 @@ export default async function EditLeadPage({
 
   return (
     <div>
-      <PageHeader title="Edit Prospect" subtitle={`${lead.firstName} ${lead.lastName}`} />
+      <PageHeader title="Edit Prospect" subtitle={personName(lead.firstName, lead.lastName)} />
       <Card className="max-w-3xl p-6">
         <form action={action} className="grid grid-cols-2 gap-4">
           <input type="hidden" name="id" value={lead.id} />
           <div>
             <label className={label}>First Name *</label>
-            <input name="firstName" required defaultValue={lead.firstName} className={input} />
+            <input name="firstName" defaultValue={lead.firstName} className={input} />
           </div>
           <div>
             <label className={label}>Last Name *</label>
-            <input name="lastName" required defaultValue={lead.lastName} className={input} />
+            <input name="lastName" defaultValue={lead.lastName} className={input} />
           </div>
           <div>
             <label className={label}>Phone</label>

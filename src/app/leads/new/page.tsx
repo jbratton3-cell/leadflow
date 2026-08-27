@@ -34,11 +34,11 @@ export default async function NewLeadPage() {
         <form action={action} className="grid grid-cols-2 gap-4">
           <div>
             <label className={label}>First Name *</label>
-            <input name="firstName" required className={input} />
+            <input name="firstName" className={input} />
           </div>
           <div>
             <label className={label}>Last Name *</label>
-            <input name="lastName" required className={input} />
+            <input name="lastName" className={input} />
           </div>
           <div>
             <label className={label}>Phone</label>

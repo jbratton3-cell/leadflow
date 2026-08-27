@@ -14,7 +14,7 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { handleEstimateAccepted } from "@/lib/invoice-actions";
-import { BUSINESS_NAME } from "@/lib/constants";
+import { BUSINESS_NAME, personName } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = (v ?? "").toString().trim();
@@ -223,7 +223,7 @@ export async function sendEstimate(
       to: lead.email,
       subject: `Your estimate ${est.number} from ${companyName}`,
       html: estimateEmailHtml({
-        customerName: `${lead.firstName} ${lead.lastName}`,
+        customerName: personName(lead.firstName, lead.lastName, "there"),
         companyName,
         number: est.number,
         total,
@@ -371,7 +371,7 @@ async function applyAcceptanceBookkeeping(
           orgId: est.orgId,
           saleId,
           leadId: est.leadId,
-          customerName: `${lead.firstName} ${lead.lastName}`.trim(),
+          customerName: personName(lead.firstName, lead.lastName, "Customer"),
           customerAddress: lead.address,
           customerCity: lead.city,
           customerPhone: lead.phone,

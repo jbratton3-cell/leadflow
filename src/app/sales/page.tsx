@@ -7,7 +7,7 @@ import { deleteSale } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
-import { money, fmtDate } from "@/lib/constants";
+import { money, fmtDate, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +108,7 @@ export default async function SalesPage() {
                           href={`/leads/${r.sale.leadId}`}
                           className="font-semibold text-slate-800 hover:text-orange-600"
                         >
-                          {r.firstName} {r.lastName}
+                          {personName(r.firstName, r.lastName)}
                         </Link>
                         <div className="text-xs text-slate-400">{r.city ?? "—"}</div>
                       </td>

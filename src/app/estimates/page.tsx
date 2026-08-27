@@ -8,8 +8,7 @@ import {
   estimateStatusLabel,
   estimateStatusColor,
   money,
-  fmtDate,
-} from "@/lib/constants";
+  fmtDate, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +98,7 @@ export default async function EstimatesPage() {
                         href={`/leads/${r.est.leadId}`}
                         className="text-slate-700 hover:text-orange-600"
                       >
-                        {r.firstName} {r.lastName}
+                        {personName(r.firstName, r.lastName)}
                       </Link>
                       <div className="text-xs text-slate-400">{r.city ?? "—"}</div>
                     </td>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
-import { money, fmtDate } from "@/lib/constants";
+import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +65,7 @@ export default async function InvoiceDetailPage({
 
   const active = inv.status !== "paid" && inv.status !== "void";
   const customerName = lead
-    ? `${lead.firstName} ${lead.lastName ?? ""}`.trim()
+    ? personName(lead.firstName, lead.lastName)
     : "Unknown customer";
   const publicLink = `/invoice/${inv.publicToken}`;
 

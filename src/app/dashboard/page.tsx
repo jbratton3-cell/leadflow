@@ -10,8 +10,7 @@ import {
   stageColor,
   money,
   fmtDateTime,
-  dispositionLabel,
-} from "@/lib/constants";
+  dispositionLabel, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -249,6 +248,6 @@ async function getLeadNames(orgId: number, ids: number[]) {
     .select({ id: leads.id, firstName: leads.firstName, lastName: leads.lastName })
     .from(leads)
     .where(and(eq(leads.orgId, orgId), inArray(leads.id, unique)));
-  for (const r of rows) map.set(r.id, `${r.firstName} ${r.lastName}`);
+  for (const r of rows) map.set(r.id, personName(r.firstName, r.lastName));
   return map;
 }
