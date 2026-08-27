@@ -228,9 +228,7 @@ export default async function PublicEstimatePage({
         <p className="mt-4 text-center text-xs text-slate-400">
           Powered by {APP_NAME}
         </p>
-        <p className="mt-1 text-center text-[11px] text-slate-400">
-          © {new Date().getFullYear()} {companyName}. All rights reserved.
-        </p>
+        <p className="mt-1 text-center text-[11px] text-slate-400">{copyright()}</p>
       </div>
     </main>
   );
