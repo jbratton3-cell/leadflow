@@ -46,7 +46,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     pathname === "/invite" ||
     pathname.startsWith("/invite/") ||
     pathname === "/estimate" ||
-    pathname.startsWith("/estimate/");
+    pathname.startsWith("/estimate/") ||
+    pathname === "/invoice" ||
+    pathname.startsWith("/invoice/");
 
   // Public marketing/auth routes render bare (no sidebar, no auth gate).
   if (isPublic) {
