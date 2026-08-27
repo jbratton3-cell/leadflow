@@ -245,9 +245,10 @@ export async function sendEstimate(
       link,
     };
   }
+  const emailDebug = `GMAIL_USER=${process.env.GMAIL_USER ? "set" : "MISSING"}, GMAIL_APP_PASS=${process.env.GMAIL_APP_PASS ? "set" : "MISSING"}, deployment=${(process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7) || "local"}`;
   return {
     message: lead.email
-      ? "Email isn't configured yet — share this link with your customer:"
+      ? `Email couldn't be sent (${emailDebug}) — share this link with your customer:`
       : "No customer email on file — share this link with your customer:",
     link,
   };
