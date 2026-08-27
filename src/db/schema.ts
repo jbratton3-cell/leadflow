@@ -329,6 +329,24 @@ export const invoices = pgTable("invoices", {
 }, (t) => [index("invoices_org_idx").on(t.orgId)]);
 
 export type Invoice = typeof invoices.$inferSelect;
+
+// Uploaded documents (scanned paper estimates, etc.) attached to a lead.
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  leadId: integer("lead_id").notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 120 }),
+  sizeBytes: integer("size_bytes"),
+  url: text("url").notNull(),
+  uploadedById: integer("uploaded_by_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  index("documents_org_idx").on(t.orgId),
+  index("documents_lead_idx").on(t.leadId),
+]);
+
+export type Document = typeof documents.$inferSelect;
 export type DemoRequest = typeof demoRequests.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type User = typeof users.$inferSelect;

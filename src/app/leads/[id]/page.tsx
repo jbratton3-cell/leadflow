@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { documents } from "@/db/schema";
 import { leads, callLogs, appointments, sales, jobs, estimates } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -30,8 +31,17 @@ import {
 import { createEstimate } from "@/lib/estimate-actions";
 import { deleteLead } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
+import UploadDocument from "@/components/UploadDocument";
+import { deleteDocument } from "@/lib/document-actions";
 
 export const dynamic = "force-dynamic";
+
+function fmtBytes(n: number | null | undefined): string {
+  if (!n) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const input =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-400";
@@ -43,6 +53,7 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { orgId } = await requireAccess("leads");
+
   const { id } = await params;
   const leadId = Number(id);
   const [lead] = await db
@@ -51,6 +62,12 @@ export default async function LeadDetailPage({
     .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
     .limit(1);
   if (!lead) notFound();
+
+  const docs = await db
+    .select()
+    .from(documents)
+    .where(and(eq(documents.orgId, orgId), eq(documents.leadId, leadId)))
+    .orderBy(desc(documents.createdAt));
 
   const [calls, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
     await Promise.all([
@@ -310,6 +327,44 @@ export default async function LeadDetailPage({
 
         {/* Right: timeline + sale/job summary */}
         <div className="space-y-6">
+          {/* Documents & scans */}
+          <Card className="p-5">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Documents &amp; Scans</h2>
+            <UploadDocument leadId={lead.id} />
+            <div className="mt-3 space-y-2">
+              {docs.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  No documents yet. Scan the paper estimate with your phone and upload
+                  the PDF here.
+                </p>
+              )}
+              {docs.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2"
+                >
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 hover:text-orange-600"
+                    title={d.fileName}
+                  >
+                    📄 {d.fileName}
+                    <span className="ml-1 font-normal text-slate-400">
+                      {fmtBytes(d.sizeBytes)}
+                    </span>
+                  </a>
+                  <form action={deleteDocument}>
+                    <input type="hidden" name="id" value={d.id} />
+                    <input type="hidden" name="leadId" value={lead.id} />
+                    <button className="text-xs font-medium text-rose-500 hover:underline">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </Card>
           {/* Estimates */}
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
