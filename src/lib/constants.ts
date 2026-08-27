@@ -168,6 +168,7 @@ export function fmtDate(d: Date | string | null | undefined): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "America/New_York",
   });
 }
 
@@ -179,6 +180,7 @@ export function fmtDateTime(d: Date | string | null | undefined): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/New_York",
   });
 }
 

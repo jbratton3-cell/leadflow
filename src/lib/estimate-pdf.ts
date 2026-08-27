@@ -189,7 +189,11 @@ export async function buildSignedEstimatePdf(opts: {
       page.drawImage(png, { x: M + 8, y: y - h - 10, width: w, height: h });
       const signedLine = [
         "Signed" + (est.signatureName ? ` by ${est.signatureName}` : ""),
-        est.signatureAt ? new Date(est.signatureAt).toLocaleString("en-US") : "",
+        est.signatureAt
+          ? new Date(est.signatureAt).toLocaleString("en-US", {
+              timeZone: "America/New_York",
+            })
+          : "",
       ]
         .filter(Boolean)
         .join(" — ");
