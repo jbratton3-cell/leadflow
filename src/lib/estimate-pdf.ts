@@ -164,33 +164,40 @@ export async function buildSignedEstimatePdf(opts: {
     }
   }
 
-  // Signature block
+  // Signature block — box sized to the signature, caption inside its bottom edge
   if (est.signatureData) {
-    ensureSpace(140);
-    y -= 28;
+    ensureSpace(150);
+    y -= 24;
     try {
       const png = await pdf.embedPng(est.signatureData);
-      const dims = png.scale(0.55);
+      const maxW = 260;
+      const maxH = 70;
+      const scale = Math.min(maxW / png.width, maxH / png.height, 1);
+      const w = png.width * scale;
+      const h = png.height * scale;
+      const boxH = h + 30;
+      const boxW = w + 16;
       page.drawRectangle({
         x: M,
-        y: y - dims.height - 10,
-        width: 220,
-        height: dims.height + 12,
+        y: y - boxH,
+        width: boxW,
+        height: boxH,
         borderColor: LINE,
         borderWidth: 1,
+        color: rgb(0.985, 0.99, 0.995),
       });
-      page.drawImage(png, { x: M + 8, y: y - dims.height - 2, width: dims.width, height: dims.height });
+      page.drawImage(png, { x: M + 8, y: y - h - 10, width: w, height: h });
+      const signedLine = [
+        "Signed" + (est.signatureName ? ` by ${est.signatureName}` : ""),
+        est.signatureAt ? new Date(est.signatureAt).toLocaleString("en-US") : "",
+      ]
+        .filter(Boolean)
+        .join(" — ");
+      text(signedLine, M + 8, y - boxH + 9, 8, font, MUTED);
+      y -= boxH + 10;
     } catch {
       // ignore bad signature image
     }
-    const signedLine = [
-      "Signed" + (est.signatureName ? ` by ${est.signatureName}` : ""),
-      est.signatureAt ? new Date(est.signatureAt).toLocaleString("en-US") : "",
-    ]
-      .filter(Boolean)
-      .join(" — ");
-    text(signedLine, M, y - 90, 9, font, MUTED);
-    y -= 110;
   }
 
   // Footer

@@ -68,10 +68,51 @@ export default function SignaturePad({
     setHasInk(false);
   }
 
+  // Crop the canvas to just the ink (plus padding) so the stored signature
+  // has no wide empty margins around it.
+  function trimmedDataUrl(): string {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    const { width, height } = canvas;
+    const data = ctx.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    let found = false;
+    for (let yy = 0; yy < height; yy++) {
+      for (let xx = 0; xx < width; xx++) {
+        const i = (yy * width + xx) * 4;
+        const alpha = data[i + 3];
+        const darkness = 255 - data[i]; // ink is dark
+        if (alpha > 20 && darkness > 60) {
+          found = true;
+          if (xx < minX) minX = xx;
+          if (xx > maxX) maxX = xx;
+          if (yy < minY) minY = yy;
+          if (yy > maxY) maxY = yy;
+        }
+      }
+    }
+    if (!found) return canvas.toDataURL("image/png");
+    const pad = 10;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(width - 1, maxX + pad);
+    maxY = Math.min(height - 1, maxY + pad);
+    const w = maxX - minX + 1;
+    const h = maxY - minY + 1;
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    out.getContext("2d")!.drawImage(canvas, minX, minY, w, h, 0, 0, w, h);
+    return out.toDataURL("image/png");
+  }
+
   function save() {
     if (mode === "draw") {
       if (!hasInk) return;
-      onSaved(canvasRef.current!.toDataURL("image/png"));
+      onSaved(trimmedDataUrl());
     } else {
       if (!typed.trim()) return;
       const canvas = document.createElement("canvas");
