@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { loadSampleData, clearSampleData } from "@/lib/trial-actions";
 
 // The guide that follows you: a docked card showing the CURRENT step with its
@@ -19,8 +19,21 @@ export default function FloatingTrialGuide({
   hasInvoice: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+
+  // Keep progress fresh: re-run server components (which re-query the DB) on
+  // navigation and on a slow background pulse, so steps completed elsewhere
+  // (e.g. accepting the estimate from email on a phone) advance the guide.
+  useEffect(() => {
+    router.refresh();
+  }, [pathname, router]);
+
+  useEffect(() => {
+    const id = setInterval(() => router.refresh(), 20000);
+    return () => clearInterval(id);
+  }, [router]);
 
   const steps = [
     {
