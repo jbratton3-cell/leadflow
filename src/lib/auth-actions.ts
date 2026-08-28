@@ -3,7 +3,7 @@
 import { randomBytes } from "crypto";
 import { db } from "@/db";
 import { users, invitations, organizations } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
@@ -86,6 +86,48 @@ export async function createInvite(
   const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing[0]) {
     return { error: "A user with that email already exists." };
+  }
+
+  // Seat-limit enforcement: active users + pending invites each hold a seat.
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, admin.orgId))
+    .limit(1);
+  const PLAN_SEATS: Record<string, number | null> = {
+    trial: null, // unlimited during pilot
+    starter: 3,
+    pro: 10,
+    business: 25,
+  };
+  const seatCap = org?.maxUsers ?? PLAN_SEATS[org?.plan ?? "trial"] ?? null;
+  if (seatCap !== null) {
+    const [{ activeUsers }] = await db
+      .select({ activeUsers: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(eq(users.orgId, admin.orgId), eq(users.active, true)));
+    const [{ pendingInvites }] = await db
+      .select({ pendingInvites: sql<number>`count(*)::int` })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.orgId, admin.orgId),
+          gt(invitations.expiresAt, new Date())
+        )
+      );
+    if (activeUsers + pendingInvites >= seatCap) {
+      // Best-effort heads-up to the provider so upgrades can be offered proactively.
+      try {
+        await sendEmail({
+          to: process.env.CRM_ADMIN_EMAIL || process.env.GMAIL_USER || "",
+          subject: `Seat limit reached — ${org?.name ?? "a LeadFlow customer"}`,
+          html: `<p>${admin.name} tried to invite ${email} but the account is at its cap of ${seatCap} users.</p><p>Reach out to offer an upgrade.</p>`,
+        });
+      } catch {}
+      return {
+        error: `Your plan includes up to ${seatCap} users. To add more seats, contact JMB Business Solutions about upgrading — we'll have you extended in minutes.`,
+      };
+    }
   }
 
   // Remove any prior pending invite for this email

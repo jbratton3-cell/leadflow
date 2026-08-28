@@ -29,6 +29,8 @@ export const organizations = pgTable("organizations", {
   name: varchar("name", { length: 160 }).notNull(),
   // plan: trial | starter | pro | business
   plan: varchar("plan", { length: 30 }).notNull().default("trial"),
+  // optional seat-cap override; when null, the plan default applies (trial = unlimited)
+  maxUsers: integer("max_users"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
