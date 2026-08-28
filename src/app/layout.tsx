@@ -1,4 +1,5 @@
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import TrialGuideHost from "@/components/TrialGuideHost";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
@@ -77,6 +78,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased">
         <ServiceWorkerRegister />
+        <TrialGuideHost />
         <Sidebar userName={user.name} userRole={user.role} />
         <div className="min-h-screen pt-16 md:ml-60 md:pt-0">
           <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
