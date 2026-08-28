@@ -1,8 +1,9 @@
 import { db } from "@/db";
-import { leads, appointments, sales, jobs, callLogs } from "@/db/schema";
+import { leads, appointments, sales, jobs, callLogs, organizations } from "@/db/schema";
 import { sql, desc, eq, gte, and, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, StatCard, Card, Badge } from "@/components/ui";
+import TrialChecklist from "@/components/TrialChecklist";
 import { requireUser } from "@/lib/auth";
 import {
   STAGES,
@@ -21,6 +22,8 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const orgId = user.orgId;
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
+  const isTrial = org?.plan === "trial";
   const { denied } = await searchParams;
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -112,6 +115,12 @@ export default async function DashboardPage({
           </Link>
         }
       />
+
+      {isTrial && (
+        <div className="mb-6">
+          <TrialChecklist orgId={orgId} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="New Leads (MTD)" value={monthLeads} sub="This month" />
