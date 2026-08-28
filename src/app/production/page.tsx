@@ -6,6 +6,7 @@ import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
 import { deleteJob } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { requireAccess } from "@/lib/auth";
+import { organizations } from "@/db/schema";
 import { updateJob, createJob } from "@/lib/actions";
 import {
   JOB_STATUSES,
@@ -30,6 +31,8 @@ function toDateInput(d: Date | string | null): string {
 
 export default async function ProductionPage() {
   const { orgId } = await requireAccess("production");
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
+  const isTrial = org?.plan === "trial";
 
   const rows = await db
     .select({
@@ -68,13 +71,15 @@ export default async function ProductionPage() {
         title="Production"
         subtitle="Track every job from contract to completion."
         action={
-          <Link
-            href="/board"
-            target="_blank"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-          >
-            📺 Open TV Job Board
-          </Link>
+          !isTrial ? (
+            <Link
+              href="/board"
+              target="_blank"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+            >
+              📺 Open TV Job Board
+            </Link>
+          ) : undefined
         }
       />
 
