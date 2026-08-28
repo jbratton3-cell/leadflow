@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { jobs, leads, sales } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
+import AutoRefresh from "@/components/AutoRefresh";
 import { requireAccess } from "@/lib/auth";
 import { APP_NAME, jobStatusLabel, money } from "@/lib/constants";
 
@@ -180,6 +181,7 @@ export default async function BoardPage() {
           ))
         )}
       </div>
+      <AutoRefresh seconds={60} />
     </main>
   );
 }
