@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { jobs, leads, sales } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import Link from "next/link";
 import { requireAccess } from "@/lib/auth";
 import { APP_NAME, jobStatusLabel, money } from "@/lib/constants";
 
@@ -141,9 +142,10 @@ export default async function BoardPage() {
 
               <div className="divide-y divide-slate-800">
                 {group.items.map((r) => (
-                  <article
+                  <Link
                     key={r.job.id}
-                    className="grid gap-4 px-5 py-4 md:grid-cols-[220px_1fr_auto] md:items-center"
+                    href={r.job.leadId ? `/leads/${r.job.leadId}` : "/production"}
+                    className="grid gap-4 rounded-xl px-5 py-4 transition hover:bg-slate-800/60 md:grid-cols-[220px_1fr_auto] md:items-center"
                   >
                     <div>
                       <div className="mb-2 flex items-center gap-2">
@@ -157,10 +159,11 @@ export default async function BoardPage() {
                     </div>
 
                     <div>
-                      <div className="text-2xl font-bold text-white">{r.displayName}</div>
+                      <div className="text-2xl font-bold text-white">
+                        {r.displayAddress ?? r.displayName}
+                      </div>
                       <div className="mt-1 space-y-1 text-sm text-slate-300">
-                        {r.displayAddress && <div>{r.displayAddress}</div>}
-                        {r.displayCity && <div>{r.displayCity}</div>}
+                        {r.displayAddress && r.displayCity && <div>{r.displayCity}</div>}
                         {r.job.productName && <div>{r.job.productName}</div>}
                         {r.job.notes && <div className="text-xs text-slate-400">{r.job.notes}</div>}
                       </div>
@@ -168,8 +171,9 @@ export default async function BoardPage() {
 
                     <div className="text-left md:text-right">
                       <div className="text-2xl font-bold text-emerald-400">{money(r.displayAmount)}</div>
+                      <div className="text-xs text-slate-500">click for details</div>
                     </div>
-                  </article>
+                  </Link>
                 ))}
               </div>
             </section>
