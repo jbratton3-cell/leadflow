@@ -3,6 +3,10 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 
+const PRODUCT_DOMAIN = process.env.APP_URL
+  ? new URL(process.env.APP_URL).hostname
+  : "leadflowcrm.info";
+
 let logoCache: Buffer | null = null;
 function buildprosLogo(): Buffer | null {
   try {
@@ -40,13 +44,43 @@ export function smsConfigured(): boolean {
   );
 }
 
-// Send an email via Gmail SMTP using Nodemailer.
+// Send an email. Preferred path: Resend on the product domain (authenticated,
+// verified deliverability). Fallback: Gmail SMTP via Nodemailer.
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer; contentType?: string; cid?: string }[];
 }): Promise<boolean> {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `${process.env.CRM_ORGANIZATION_NAME || "LeadFlow"} <no-reply@${PRODUCT_DOMAIN}>`,
+          to: opts.to,
+          subject: opts.subject,
+          html: opts.html,
+          attachments: opts.attachments?.map((a) => ({
+            filename: a.filename,
+            content: a.content.toString("base64"),
+            ...(a.contentType ? { content_type: a.contentType } : {}),
+          })),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send error:", await res.text());
+    } catch (err) {
+      console.error("Resend fetch error:", err);
+    }
+    return false;
+  }
+
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASS;
   if (!user || !pass) return false;
@@ -65,17 +99,6 @@ export async function sendEmail(opts: {
       contentType: a.contentType,
       cid: a.cid,
     }));
-    if (opts.html.includes("cid:buildpros-logo")) {
-      const logo = buildprosLogo();
-      if (logo) {
-        attachments.push({
-          filename: "buildpros-logo.png",
-          content: logo,
-          contentType: "image/png",
-          cid: "buildpros-logo",
-        });
-      }
-    }
     await transporter.sendMail({
       from: `"${fromName}" <${user}>`,
       to: opts.to,
@@ -124,7 +147,7 @@ export function estimateEmailHtml(opts: {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
-      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+      <img src="${getBaseUrl()}/buildpros-logo.png" alt="${opts.companyName}" width="219" height="30"
         style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your estimate is ready</h2>
@@ -190,7 +213,7 @@ export function invoiceEmailHtml(opts: {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
-      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+      <img src="${getBaseUrl()}/buildpros-logo.png" alt="${opts.companyName}" width="219" height="30"
         style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your invoice is ready</h2>
@@ -254,7 +277,7 @@ export function signedEstimateEmailHtml(opts: {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
-      <img src="cid:buildpros-logo" alt="${opts.companyName}" width="219" height="30"
+      <img src="${getBaseUrl()}/buildpros-logo.png" alt="${opts.companyName}" width="219" height="30"
         style="display:block;height:30px;width:auto" />
     </div>
     <h2 style="color:#0f172a;font-size:20px">Your signed estimate is attached</h2>
