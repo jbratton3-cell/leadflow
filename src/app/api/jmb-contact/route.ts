@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ORIGIN = "https://jmbcreative.org";
 const ALLOWED_WWW = "https://www.jmbcreative.org";
-const cors = () => ({ "Access-Control-Allow-Origin": ALLOWED_ORIGIN });
+const cors = (req: Request) => ({
+  "Access-Control-Allow-Origin":
+    req.headers.get("origin") === ALLOWED_WWW ? ALLOWED_WWW : ALLOWED_ORIGIN,
+});
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -24,7 +27,7 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   const origin = req.headers.get("origin") ?? "";
   if (origin && origin !== ALLOWED_ORIGIN && origin !== ALLOWED_WWW) {
-    return NextResponse.json({ error: "not allowed" }, { status: 403, headers: cors() });
+    return NextResponse.json({ error: "not allowed" }, { status: 403, headers: cors(req) });
   }
 
   let name = "";
@@ -41,14 +44,14 @@ export async function POST(req: Request) {
     service = String(body.service ?? "").trim().slice(0, 120);
     message = String(body.message ?? "").trim().slice(0, 4000);
   } catch {
-    return NextResponse.json({ error: "invalid" }, { status: 400, headers: cors() });
+    return NextResponse.json({ error: "invalid" }, { status: 400, headers: cors(req) });
   }
 
   if (!name || !email || !message) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400, headers: cors() });
+    return NextResponse.json({ error: "missing_fields" }, { status: 400, headers: cors(req) });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "invalid_email" }, { status: 400, headers: cors() });
+    return NextResponse.json({ error: "invalid_email" }, { status: 400, headers: cors(req) });
   }
 
   const to = process.env.JMB_CONTACT_EMAIL || process.env.CRM_ADMIN_EMAIL || "leadflow76@gmail.com";
@@ -71,9 +74,9 @@ export async function POST(req: Request) {
   });
 
   if (!ok) {
-    return NextResponse.json({ error: "send_failed" }, { status: 500, headers: cors() });
+    return NextResponse.json({ error: "send_failed" }, { status: 500, headers: cors(req) });
   }
-  return NextResponse.json({ ok: true }, { headers: cors() });
+  return NextResponse.json({ ok: true }, { headers: cors(req) });
 }
 
 function escapeHtml(s: string): string {

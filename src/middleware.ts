@@ -10,15 +10,18 @@ export function middleware(req: NextRequest) {
   // CORS preflight for the public JMB contact endpoint (Next auto-handles
   // OPTIONS in route handlers, so the preflight must be answered here).
   if (req.method === "OPTIONS" && pathname === "/api/jmb-contact") {
-    return new NextResponse(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "https://jmbcreative.org",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
+    const origin = req.headers.get("origin") ?? "";
+    if (origin === "https://jmbcreative.org" || origin === "https://www.jmbcreative.org") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
   }
 
   // Expose the current path to server components (used by the root layout).
