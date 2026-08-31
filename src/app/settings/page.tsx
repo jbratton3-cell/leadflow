@@ -8,6 +8,7 @@ import { requireAccess } from "@/lib/auth";
 import { can, ROLES, roleLabel as userRoleLabel } from "@/lib/permissions";
 import { deleteUser } from "@/lib/auth-actions";
 import DeleteButton from "@/components/DeleteButton";
+import RoleSelect from "@/components/RoleSelect";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
 import InvitePanel from "@/components/InvitePanel";
 import CopyInviteLink from "@/components/CopyInviteLink";
@@ -237,23 +238,7 @@ export default async function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {!u.active && <Badge className="bg-rose-100 text-rose-700">Disabled</Badge>}
-                    <form action={updateUserRole} className="flex items-center gap-1">
-                      <input type="hidden" name="id" value={u.id} />
-                      <select
-                        name="role"
-                        defaultValue={u.role}
-                        className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r.key} value={r.key}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-700">
-                        Save
-                      </button>
-                    </form>
+                    <RoleSelect userId={u.id} currentRole={u.role} />
                     {u.id !== me.id && (
                       <form action={toggleUserActive}>
                         <input type="hidden" name="id" value={u.id} />
