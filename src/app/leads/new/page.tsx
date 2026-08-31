@@ -2,20 +2,27 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Card } from "@/components/ui";
 import { getSources, getProducts, getCallReps } from "@/lib/queries";
-import { requireAccess } from "@/lib/auth";
+import { requireAccess, getSessionUser } from "@/lib/auth";
+import { getReps } from "@/lib/queries";
+import { can } from "@/lib/permissions";
 import { createLead } from "@/lib/actions";
 import { roleLabel } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewLeadPage() {
-  await requireAccess("leads");
+  const me = await requireAccess("leads");
 
-  const [sources, prods, callReps] = await Promise.all([
+  const [sources, prods, callReps, allReps] = await Promise.all([
     getSources(),
     getProducts(),
     getCallReps(),
+    getReps(),
   ]);
+
+  // Reps self-assign automatically; admins/managers keep the dropdown.
+  const isRep = !can(me.role, "users");
+  const myRep = allReps.find((r) => r.email === me.email) ?? null;
 
   async function action(formData: FormData) {
     "use server";
@@ -94,14 +101,27 @@ export default async function NewLeadPage() {
           </div>
           <div>
             <label className={label}>Assigned Rep</label>
-            <select name="assignedRepId" className={input} defaultValue="">
-              <option value="">— Unassigned —</option>
-              {callReps.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({roleLabel(r.role)})
-                </option>
-              ))}
-            </select>
+            {isRep && myRep ? (
+              <>
+                <input type="hidden" name="assignedRepId" value={myRep.id} />
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                  {myRep.name} (you — assigned automatically)
+                </div>
+              </>
+            ) : isRep ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                — Unassigned (office will assign) —
+              </div>
+            ) : (
+              <select name="assignedRepId" className={input} defaultValue="">
+                <option value="">— Unassigned —</option>
+                {callReps.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({roleLabel(r.role)})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className={label}>Estimated Value ($)</label>
