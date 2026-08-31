@@ -71,7 +71,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports",
     "import",
   ],
-  agent: ["dashboard", "leads", "call_center", "appointments", "estimates", "sales"],
+  agent: ["dashboard", "leads", "appointments", "estimates", "sales"],
   production: ["dashboard", "leads", "appointments", "production"],
 };
 
