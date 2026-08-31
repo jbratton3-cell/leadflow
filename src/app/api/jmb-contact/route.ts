@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400, headers: cors(req) });
   }
 
-  const to = process.env.JMB_CONTACT_EMAIL || process.env.CRM_ADMIN_EMAIL || "leadflow76@gmail.com";
+  const to = process.env.JMB_CONTACT_EMAIL || "leadflow76@gmail.com";
 
   const ok = await sendEmail({
     to,
