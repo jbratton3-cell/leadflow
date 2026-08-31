@@ -6,6 +6,8 @@ import { createRep, createSource, createProduct } from "@/lib/actions";
 import { updateUserRole, toggleUserActive, resendInvite, revokeInvite } from "@/lib/auth-actions";
 import { requireAccess } from "@/lib/auth";
 import { can, ROLES, roleLabel as userRoleLabel } from "@/lib/permissions";
+import { deleteUser } from "@/lib/auth-actions";
+import DeleteButton from "@/components/DeleteButton";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
 import InvitePanel from "@/components/InvitePanel";
 import CopyInviteLink from "@/components/CopyInviteLink";
@@ -264,6 +266,15 @@ export default async function SettingsPage() {
                         >
                           {u.active ? "Disable" : "Enable"}
                         </button>
+                      </form>
+                    )}
+                    {me.role === "admin" && u.id !== me.id && !u.active && (
+                      <form action={deleteUser}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <DeleteButton
+                          label="Delete"
+                          confirmText={`Permanently delete ${u.name}'s login? Their past sales and records stay, but they can never sign in again (even with Enable).`}
+                        />
                       </form>
                     )}
                   </div>

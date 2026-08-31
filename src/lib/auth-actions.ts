@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { users, invitations, organizations } from "@/db/schema";
+import { users, invitations, organizations, sessions } from "@/db/schema";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -306,6 +306,35 @@ export async function toggleUserActive(formData: FormData) {
 }
 
 // Current user changes their own password.
+
+// Permanently remove a user (admin only). The user's historical records
+// (sales, calls, estimates they created) are preserved — only the login
+// identity goes. Guards: cannot delete yourself or the last active admin.
+export async function deleteUser(formData: FormData) {
+  const admin = await requireAccess("users");
+  if (admin.role !== "admin") return;
+
+  const id = Number(formData.get("id"));
+  if (!id || id === admin.id) return;
+
+  const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  if (!target || target.orgId !== admin.orgId) return;
+
+  // Never delete the last active admin of the org.
+  if (target.role === "admin" && target.active) {
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(eq(users.orgId, admin.orgId), eq(users.role, "admin"), eq(users.active, true)));
+    if (n <= 1) return;
+  }
+
+  await db.delete(sessions).where(eq(sessions.userId, id));
+  await db.delete(users).where(and(eq(users.id, id), eq(users.orgId, admin.orgId)));
+
+  revalidatePath("/settings");
+}
+
 export async function changeOwnPassword(
   _prev: { error?: string; success?: string } | undefined,
   formData: FormData
