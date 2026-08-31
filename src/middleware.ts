@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Note: /signup still works (kept as a back-pocket link for negotiations) but is
 // intentionally not advertised anywhere on the public marketing pages.
-const PUBLIC_PATHS = ["/login", "/signup", "/invite", "/estimate", "/invoice", "/pricing", "/contact", "/api/health", "/api/email-check", "/api/jmb-contact", "/sw.js", "/icons"];
+const PUBLIC_PATHS = ["/login", "/signup", "/tour", "/invite", "/estimate", "/invoice", "/pricing", "/contact", "/api/health", "/api/email-check", "/api/jmb-contact", "/sw.js", "/icons"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

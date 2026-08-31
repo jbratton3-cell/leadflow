@@ -8,14 +8,14 @@ const input =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-400";
 const label = "mb-1 block text-xs font-medium text-slate-600";
 
-function SubmitButton() {
+function SubmitButton({ label = "Create Account", pendingLabel = "Creating account…" }: { label?: string; pendingLabel?: string }) {
   const { pending } = useFormStatus();
   return (
     <button
       disabled={pending}
       className="w-full rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
     >
-      {pending ? "Creating account…" : "Create Account"}
+      {pending ? pendingLabel : label}
     </button>
   );
 }
@@ -63,7 +63,7 @@ export default function SignupForm() {
         />
         <p className="mt-1 text-xs text-slate-400">At least 8 characters.</p>
       </div>
-      <SubmitButton />
+      <SubmitButton label="Start the Tour" pendingLabel="Starting…" />
     </form>
   );
 }
