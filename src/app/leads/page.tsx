@@ -118,6 +118,7 @@ export default async function LeadsPage({
                   <th className="px-4 py-3 font-medium">Rep</th>
                   <th className="px-4 py-3 text-right font-medium">Est. Value</th>
                   <th className="px-4 py-3 font-medium">Updated</th>
+                  <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -151,6 +152,14 @@ export default async function LeadsPage({
                       {money(l.estimatedValue)}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(l.updatedAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/leads/${l.id}/edit`}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        Edit
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
