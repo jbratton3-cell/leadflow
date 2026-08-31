@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { estimates, estimateItems, leads } from "@/db/schema";
+import { estimates, estimateItems, leads, invoices } from "@/db/schema";
 import { and, eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -20,6 +20,7 @@ import {
   deleteEstimate,
   markEstimateStatus,
 } from "@/lib/estimate-actions";
+import { recordDepositPaid } from "@/lib/invoice-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,18 @@ export default async function EstimateDetailPage({
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
+
+  const [depositInv] = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.orgId, orgId),
+        eq(invoices.estimateId, est.id),
+        eq(invoices.kind, "deposit")
+      )
+    )
+    .limit(1);
 
   return (
     <div>
@@ -200,6 +213,55 @@ export default async function EstimateDetailPage({
                 <dd className="text-xl font-bold text-slate-900">{money(est.total)}</dd>
               </div>
             </dl>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Deposit</h2>
+            {depositInv ? (
+              depositInv.status === "paid" ? (
+                <p className="text-sm font-medium text-emerald-700">
+                  ✓ {money(depositInv.amount)} deposit paid {fmtDate(depositInv.paidAt)}
+                  {depositInv.paymentMethod ? ` · ${depositInv.paymentMethod}` : ""}
+                </p>
+              ) : depositInv.status === "void" ? (
+                <p className="text-sm text-slate-400">Deposit invoice voided.</p>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  {money(depositInv.amount)} deposit invoice {depositInv.number} outstanding —{" "}
+                  <Link href={`/invoices/${depositInv.id}`} className="font-medium text-orange-600 hover:underline">
+                    view
+                  </Link>
+                </p>
+              )
+            ) : est.status === "accepted" ? (
+              <>
+                <p className="mb-2 text-xs text-slate-400">
+                  Record a 50% deposit that was collected outside the automated flow
+                  (e.g. already paid on a paper estimate). No email is sent.
+                </p>
+                <form action={recordDepositPaid} className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="estimateId" value={est.id} />
+                  <select
+                    name="method"
+                    defaultValue="check"
+                    className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                  >
+                    <option value="card">Card</option>
+                    <option value="cash">Cash</option>
+                    <option value="check">Check</option>
+                    <option value="ach">ACH</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                    Record Deposit Paid
+                  </button>
+                </form>
+              </>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Deposit tracking appears once the estimate is accepted.
+              </p>
+            )}
           </Card>
 
           <Card className="p-5">

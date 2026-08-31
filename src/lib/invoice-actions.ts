@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { invoices, leads, sales } from "@/db/schema";
+import { invoices, leads, sales, estimates } from "@/db/schema";
 import type { Estimate, Job, Lead } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -213,6 +213,69 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
     lead,
   });
   revalidatePath("/invoices");
+}
+
+
+// Record a 50% deposit as already collected (e.g. paper estimate paid in the
+// field). Creates the deposit invoice in PAID state — no email is sent.
+export async function recordDepositPaid(formData: FormData) {
+  const { orgId } = await requireUser();
+  const estimateId = Number(formData.get("estimateId"));
+  const method = (formData.get("method") ?? "other").toString();
+  if (!estimateId) return;
+
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!est || est.status !== "accepted") return;
+
+  const total = Number(est.total);
+  if (total <= 0) return;
+
+  const [existing] = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.orgId, orgId),
+        eq(invoices.estimateId, est.id),
+        eq(invoices.kind, "deposit")
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    if (existing.status !== "paid" && existing.status !== "void") {
+      await db
+        .update(invoices)
+        .set({ status: "paid", paidAt: new Date(), paymentMethod: method, updatedAt: new Date() })
+        .where(eq(invoices.id, existing.id));
+    }
+  } else {
+    const number = await nextInvoiceNumber(orgId);
+    await db.insert(invoices).values({
+      orgId,
+      leadId: est.leadId,
+      jobId: null,
+      saleId: null,
+      estimateId: est.id,
+      number,
+      kind: "deposit",
+      status: "paid",
+      amount: (total * 0.5).toFixed(2),
+      contractTotal: total.toFixed(2),
+      publicToken: randomBytes(24).toString("hex"),
+      paidAt: new Date(),
+      paymentMethod: method,
+      notes: "Deposit collected outside the automated flow (recorded by office).",
+    });
+  }
+
+  revalidatePath(`/estimates/${estimateId}`);
+  revalidatePath("/invoices");
+  revalidatePath("/");
 }
 
 /* ------------------------- customer (public) ------------------------- */
