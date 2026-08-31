@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { users, invitations, organizations, sessions } from "@/db/schema";
+import { users, invitations, organizations, sessions, reps } from "@/db/schema";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -266,6 +266,19 @@ export async function acceptInvite(
     .update(invitations)
     .set({ acceptedAt: new Date() })
     .where(eq(invitations.token, token));
+
+  // Keep the reps directory in sync so this person appears in
+  // assignment dropdowns immediately.
+  if (inserted[0]) {
+    await db.insert(reps).values({
+      orgId: inserted[0].orgId,
+      name: inserted[0].name,
+      email: inserted[0].email,
+      phone: inserted[0].phone,
+      role: inserted[0].role === "production" ? "production" : "sales",
+      active: true,
+    });
+  }
 
   const user = inserted[0];
   if (user) await createSession(user.id);
