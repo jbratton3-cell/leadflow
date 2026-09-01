@@ -5,8 +5,10 @@ import { PageHeader, Card, Badge } from "@/components/ui";
 import { createRep, createSource, createProduct } from "@/lib/actions";
 import { updateUserRole, toggleUserActive, resendInvite, revokeInvite } from "@/lib/auth-actions";
 import { requireAccess } from "@/lib/auth";
+import { suppliers, materials } from "@/db/schema";
 import { can, ROLES, roleLabel as userRoleLabel } from "@/lib/permissions";
 import { deleteUser } from "@/lib/auth-actions";
+import { createSupplier, deleteSupplier, createMaterial, deleteMaterial } from "@/lib/material-actions";
 import DeleteButton from "@/components/DeleteButton";
 import RoleSelect from "@/components/RoleSelect";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
@@ -23,6 +25,11 @@ export default async function SettingsPage() {
   const me = await requireAccess("settings");
   const orgId = me.orgId;
   const canManageUsers = can(me.role, "users");
+
+  const [supplierRows, materialRows] = await Promise.all([
+    db.select().from(suppliers).where(eq(suppliers.orgId, orgId)).orderBy(asc(suppliers.name)),
+    db.select().from(materials).where(and(eq(materials.orgId, orgId), eq(materials.active, true))).orderBy(asc(materials.name)),
+  ]);
   // Only the platform-owner org (#1) sees inbound sales leads from the marketing site.
   const isPlatformOwner = orgId === 1 && me.role === "admin";
   const demoRows = isPlatformOwner
@@ -217,6 +224,56 @@ export default async function SettingsPage() {
               </ul>
             </Card>
           )}
+
+          {/* Suppliers */}
+          <Card className="p-5">
+            <h2 className="mb-1 text-sm font-semibold text-slate-700">Material Suppliers</h2>
+            <p className="mb-4 text-xs text-slate-400">Vendors you order from — material orders are emailed to the address on file.</p>
+            <form action={createSupplier} className="mb-4 grid gap-2 md:grid-cols-4">
+              <input name="name" required placeholder="Supplier name" className={input} />
+              <input name="email" type="email" placeholder="Order email" className={input} />
+              <input name="phone" placeholder="Phone (optional)" className={input} />
+              <button className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600">Add Supplier</button>
+            </form>
+            <ul className="divide-y divide-slate-100">
+              {supplierRows.map((sp) => (
+                <li key={sp.id} className="flex items-center justify-between py-2 text-sm">
+                  <div>
+                    <span className="font-medium text-slate-700">{sp.name}</span>
+                    <span className="ml-2 text-xs text-slate-400">{sp.email ?? "no email"}</span>
+                  </div>
+                  <form action={deleteSupplier}>
+                    <input type="hidden" name="id" value={sp.id} />
+                    <button className="text-xs font-medium text-rose-500 hover:underline">Remove</button>
+                  </form>
+                </li>
+              ))}
+              {supplierRows.length === 0 && <li className="py-2 text-sm text-slate-400">No suppliers yet.</li>}
+            </ul>
+          </Card>
+
+          {/* Materials list */}
+          <Card className="p-5">
+            <h2 className="mb-1 text-sm font-semibold text-slate-700">Materials List</h2>
+            <p className="mb-4 text-xs text-slate-400">Pre-populated choices when ordering — common roofing items are pre-loaded.</p>
+            <form action={createMaterial} className="mb-4 grid gap-2 md:grid-cols-4">
+              <input name="name" required placeholder="Material name" className={input} />
+              <input name="unit" placeholder="Unit (sq, roll, each…)" className={input} />
+              <div />
+              <button className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600">Add Material</button>
+            </form>
+            <div className="grid gap-1 md:grid-cols-2">
+              {materialRows.map((mt) => (
+                <div key={mt.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-1.5 text-sm">
+                  <span className="text-slate-700">{mt.name} <span className="text-xs text-slate-400">({mt.unit})</span></span>
+                  <form action={deleteMaterial}>
+                    <input type="hidden" name="id" value={mt.id} />
+                    <button className="text-xs font-medium text-rose-500 hover:underline">Remove</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </Card>
 
           {/* Active users */}
           <Card className="p-5">

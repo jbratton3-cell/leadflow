@@ -298,6 +298,12 @@ export default async function ProductionPage() {
                       )}
                     </div>
                   </form>
+                  <Link
+                    href={"/materials/new?jobId=" + r.job.id}
+                    className="mt-3 inline-block rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+                  >
+                    🧱 Order Materials for this job
+                  </Link>
                   <form action={deleteJob} className="mt-3 border-t border-slate-100 pt-3">
                     <input type="hidden" name="id" value={r.job.id} />
                     <DeleteButton

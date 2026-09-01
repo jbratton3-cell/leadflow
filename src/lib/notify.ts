@@ -295,3 +295,39 @@ export function signedEstimateEmailHtml(opts: {
     </a>
   </div>`;
 }
+
+export function materialOrderEmailHtml(opts: {
+  companyName: string;
+  orderNumber: string;
+  supplierName: string;
+  jobLabel: string;
+  items: { name: string; quantity: string; unit: string }[];
+  officeEmail: string;
+}): string {
+  const rows = opts.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${i.name}</td>` +
+        `<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right">${i.quantity} ${i.unit}</td></tr>`
+    )
+    .join("");
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <img src="${getBaseUrl()}/buildpros-logo.png" alt="${opts.companyName}" width="219" height="30" style="display:block;height:30px;width:auto" />
+    </div>
+    <h2 style="color:#0f172a;font-size:20px">Materials Order ${opts.orderNumber}</h2>
+    <p style="color:#334155;line-height:1.5">Hello${opts.supplierName ? ` ${opts.supplierName}` : ""},</p>
+    <p style="color:#334155;line-height:1.5">Please supply the following materials for <strong>${opts.jobLabel}</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;color:#334155">
+      <thead><tr>
+        <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #cbd5e1">Material</th>
+        <th style="padding:8px 12px;text-align:right;border-bottom:2px solid #cbd5e1">Quantity</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="color:#334155;line-height:1.5">Please reply to confirm availability and a delivery date to the job site.</p>
+    <p style="color:#334155;line-height:1.5">Thank you,<br/>${opts.companyName}<br/>
+    <span style="color:#64748b;font-size:13px">Office contact: ${opts.officeEmail}</span></p>
+  </div>`;
+}

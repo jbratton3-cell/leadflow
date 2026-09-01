@@ -336,6 +336,53 @@ export const invoices = pgTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 
+// Material suppliers (Settings-managed; orders are emailed to them)
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  email: varchar("email", { length: 190 }),
+  phone: varchar("phone", { length: 40 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("suppliers_org_idx").on(t.orgId)]);
+
+// Pre-populated materials list for ordering
+export const materials = pgTable("materials", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  name: varchar("name", { length: 190 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull().default("each"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("materials_org_idx").on(t.orgId)]);
+
+// Material orders (emailed to supplier on submit)
+export const materialOrders = pgTable("material_orders", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  jobId: integer("job_id"),
+  supplierId: integer("supplier_id").notNull(),
+  number: varchar("number", { length: 30 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("sent"),
+  sentTo: varchar("sent_to", { length: 190 }),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("material_orders_org_idx").on(t.orgId)]);
+
+export const materialOrderItems = pgTable("material_order_items", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  orderId: integer("order_id").notNull(),
+  name: varchar("name", { length: 190 }).notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull().default("1"),
+  unit: varchar("unit", { length: 20 }).notNull().default("each"),
+}, (t) => [index("material_order_items_order_idx").on(t.orderId)]);
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type Material = typeof materials.$inferSelect;
+export type MaterialOrder = typeof materialOrders.$inferSelect;
+
 // Uploaded documents (scanned paper estimates, etc.) attached to a lead.
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
