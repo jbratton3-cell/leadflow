@@ -172,6 +172,19 @@ export function fmtDate(d: Date | string | null | undefined): string {
   });
 }
 
+// Pure calendar dates (start dates, completion dates, due dates): display in UTC
+// so "Sept 4" never shifts to Sept 3. Only real timestamps use local time.
+export function fmtDateOnly(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function fmtDateTime(d: Date | string | null | undefined): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;

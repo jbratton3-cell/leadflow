@@ -14,8 +14,7 @@ import {
   jobStatusLabel,
   jobStatusColor,
   money,
-  fmtDate,
-} from "@/lib/constants";
+  fmtDate, fmtDateOnly } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -282,7 +281,7 @@ export default async function ProductionPage() {
                       </button>
                       {r.job.completionDate && (
                         <span className="ml-3 text-xs text-slate-400">
-                          Completed {fmtDate(r.job.completionDate)}
+                          Completed {fmtDateOnly(r.job.completionDate)}
                         </span>
                       )}
                     </div>

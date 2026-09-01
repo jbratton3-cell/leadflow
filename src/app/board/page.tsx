@@ -43,7 +43,7 @@ function dateLabel(value: Date | string | null | undefined): string {
   const date = asDate(value);
   if (!date) return "No Date";
   return date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
+    timeZone: "UTC",
     weekday: "long",
     month: "long",
     day: "numeric",
