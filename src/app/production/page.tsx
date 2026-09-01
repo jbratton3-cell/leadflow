@@ -7,7 +7,7 @@ import { deleteJob } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { requireAccess } from "@/lib/auth";
 import { organizations } from "@/db/schema";
-import { updateJob, createJob } from "@/lib/actions";
+import { updateJob, createJob, markJobCompleted } from "@/lib/actions";
 import {
   JOB_STATUSES,
   JOB_MILESTONES,
@@ -279,6 +279,18 @@ export default async function ProductionPage() {
                       <button className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
                         Save Job
                       </button>
+                      {r.job.status !== "completed" && (
+                        <form action={markJobCompleted} className="inline">
+                          <input type="hidden" name="id" value={r.job.id} />
+                          <input type="hidden" name="leadId" value={r.job.leadId ?? ""} />
+                          <button
+                            type="submit"
+                            className="ml-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                          >
+                            ✓ Mark Completed
+                          </button>
+                        </form>
+                      )}
                       {r.job.completionDate && (
                         <span className="ml-3 text-xs text-slate-400">
                           Completed {fmtDateOnly(r.job.completionDate)}

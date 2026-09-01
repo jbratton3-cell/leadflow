@@ -382,6 +382,54 @@ export async function updateJob(formData: FormData) {
   revalidatePath("/");
 }
 
+
+// One-click completion: sets status + stamps today's date, leaves everything else.
+export async function markJobCompleted(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = Number(formData.get("id"));
+  const leadId = num(formData.get("leadId"));
+  if (!id) return;
+
+  const [job] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
+    .limit(1);
+  if (!job || job.status === "completed") return;
+
+  await db
+    .update(jobs)
+    .set({
+      status: "completed",
+      completionDate: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
+
+  if (leadId) {
+    await db
+      .update(leads)
+      .set({ stage: "completed", updatedAt: new Date() })
+      .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
+    revalidatePath(`/leads/${leadId}`);
+  }
+
+  // Triggers the final invoice automatically (same as the manual path).
+  await createAndSendFinalInvoice(
+    await db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
+      .limit(1)
+      .then((r) => r[0])
+  );
+
+  revalidatePath("/production");
+  revalidatePath("/board");
+  revalidatePath("/invoices");
+  revalidatePath("/");
+}
+
 /* --------------------------- SETTINGS ------------------------------ */
 
 export async function createRep(formData: FormData) {
