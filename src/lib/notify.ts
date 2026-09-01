@@ -50,6 +50,7 @@ export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  fromName?: string;
   attachments?: { filename: string; content: Buffer; contentType?: string; cid?: string }[];
 }): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
@@ -62,7 +63,7 @@ export async function sendEmail(opts: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${process.env.CRM_ORGANIZATION_NAME || "LeadFlow"} <no-reply@${PRODUCT_DOMAIN}>`,
+          from: `${opts.fromName ?? process.env.CRM_ORGANIZATION_NAME ?? "LeadFlow"} <no-reply@${PRODUCT_DOMAIN}>`,
           to: opts.to,
           subject: opts.subject,
           html: opts.html,

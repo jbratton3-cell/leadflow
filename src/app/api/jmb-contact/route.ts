@@ -36,8 +36,10 @@ export async function POST(req: Request) {
   let service = "";
   let message = "";
 
+  let website = "";
   try {
     const body = await req.json();
+    website = String(body.website ?? "").trim();
     name = String(body.name ?? "").trim().slice(0, 120);
     email = String(body.email ?? "").trim().slice(0, 190);
     phone = String(body.phone ?? "").trim().slice(0, 40);
@@ -45,6 +47,11 @@ export async function POST(req: Request) {
     message = String(body.message ?? "").trim().slice(0, 4000);
   } catch {
     return NextResponse.json({ error: "invalid" }, { status: 400, headers: cors(req) });
+  }
+
+  if (website) {
+    // Honeypot tripped: bots fill the invisible 'website' field. Pretend success, drop.
+    return NextResponse.json({ ok: true }, { headers: cors(req) });
   }
 
   if (!name || !email || !message) {
@@ -58,6 +65,7 @@ export async function POST(req: Request) {
 
   const ok = await sendEmail({
     to,
+    fromName: "JMB Business Solutions",
     subject: `JMB website inquiry — ${service || "General"} — ${name}`,
     html: `
       <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
