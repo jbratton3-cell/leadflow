@@ -14,7 +14,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime, personName, cashPrice, hasCashOffer } from "@/lib/constants";
+  fmtDateTime, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
 import {
   updateEstimate,
   deleteEstimateItem,
@@ -206,8 +206,8 @@ export default async function EstimateDetailPage({
                 </div>
                 <div>
                   <label className={label}>Cash price ($)</label>
-                  <input name="cashPrice" type="number" step="0.01" defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
-                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash. Leave blank for no cash offer. Save details after you type it.</p>
+                  <input name="cashPrice" type="number" step="0.01" min="0" max={Number(est.total) || undefined} defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash — cannot be higher than the list total. Leave blank for no cash offer.</p>
                 </div>
                 <input type="hidden" name="cashDiscountPercent" value={est.cashDiscountPercent} />
                 <div>
@@ -260,7 +260,7 @@ export default async function EstimateDetailPage({
                     </dd>
                   </div>
                   <p className="mt-1 text-[11px] text-emerald-700">
-                    50% deposit, 50% when the job is complete.
+                    Save {money(cashSavings(est.total, est.cashDiscountPercent, est.cashPrice))} with 50% deposit, 50% when the job is complete.
                   </p>
                 </div>
               )}

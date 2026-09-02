@@ -55,12 +55,18 @@ async function recalcTotals(estimateId: number) {
   const taxAmount = +(taxable * (taxRate / 100)).toFixed(2);
   const total = +(taxable + taxAmount).toFixed(2);
 
+  let cashPrice = est.cashPrice;
+  if (cashPrice != null && Number(cashPrice) > total) {
+    cashPrice = total.toFixed(2);
+  }
+
   await db
     .update(estimates)
     .set({
       subtotal: subtotal.toFixed(2),
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
+      cashPrice,
       updatedAt: new Date(),
     })
     .where(eq(estimates.id, estimateId));
@@ -109,6 +115,23 @@ export async function updateEstimate(formData: FormData) {
   const { orgId } = await requireAccess("estimates");
   const id = Number(formData.get("id"));
 
+  const [current] = await db
+    .select()
+    .from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!current) return;
+
+  let cashPriceVal: string | null =
+    formData.get("cashPrice") === "" || formData.get("cashPrice") == null
+      ? null
+      : num(formData.get("cashPrice")).toString();
+  if (cashPriceVal != null) {
+    const cap = Number(current.total) || 0;
+    if (Number(cashPriceVal) > cap && cap > 0) cashPriceVal = cap.toFixed(2);
+    if (Number(cashPriceVal) <= 0) cashPriceVal = null;
+  }
+
   await db
     .update(estimates)
     .set({
@@ -119,9 +142,7 @@ export async function updateEstimate(formData: FormData) {
       terms: str(formData.get("terms")),
       validUntil: toDate(formData.get("validUntil")),
       cashDiscountPercent: num(formData.get("cashDiscountPercent")).toString(),
-      cashPrice: formData.get("cashPrice") === "" || formData.get("cashPrice") == null
-        ? null
-        : num(formData.get("cashPrice")).toString(),
+      cashPrice: cashPriceVal,
       updatedAt: new Date(),
     })
     .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));

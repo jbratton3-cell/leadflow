@@ -161,18 +161,28 @@ export function money(value: number | string | null | undefined): string {
   });
 }
 
-/** Cash contract: explicit dollar amount from the rep, else list minus % . */
+/** Cash contract: explicit dollar amount from the rep, else list minus %. Never above list. */
 export function cashPrice(
   listTotal: number | string,
   percent: number | string | null | undefined,
   explicit?: number | string | null
 ): number {
+  const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
   const listed = typeof explicit === "string" ? parseFloat(explicit) : explicit ?? 0;
-  if (listed && listed > 0) return +listed.toFixed(2);
-  const list = typeof listTotal === "string" ? parseFloat(listTotal) : listTotal;
+  if (listed && listed > 0) return +Math.min(listed, list).toFixed(2);
   const p = typeof percent === "string" ? parseFloat(percent) : percent ?? 0;
-  if (!list || !p || p <= 0) return +(list || 0).toFixed(2);
+  if (!list || !p || p <= 0) return list;
   return +(list * (1 - p / 100)).toFixed(2);
+}
+
+export function cashSavings(
+  listTotal: number | string,
+  percent: number | string | null | undefined,
+  explicit?: number | string | null
+): number {
+  const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
+  const cash = cashPrice(list, percent, explicit);
+  return +Math.max(list - cash, 0).toFixed(2);
 }
 
 export function contractPrice(

@@ -9,7 +9,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import SignatureStep from "@/components/SignatureStep";
 import PrintButton from "@/components/PrintButton";
-import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, hasCashOffer } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -202,7 +202,7 @@ export default async function PublicEstimatePage({
                     <span className="text-xl font-bold text-emerald-800">{money(cashTotal)}</span>
                   </div>
                   <p className="mt-1 text-xs text-emerald-700">
-                    50% deposit now, 50% when the job is complete.
+                    Save {money(cashSavings(est.total, cashPct, est.cashPrice))} by putting 50% down now, remainder when the job is complete.
                   </p>
                 </div>
               )}
@@ -265,8 +265,9 @@ export default async function PublicEstimatePage({
                       Pay cash — {showCash ? money(cashTotal) : money(est.total)}
                     </span>
                     <span className="block text-sm text-slate-500">
-                      {showCash ? "Discounted cash price. " : ""}
-                      50% deposit now, remaining balance when the job is complete.
+                      {showCash
+                        ? `Save ${money(cashSavings(est.total, cashPct, est.cashPrice))} — 50% deposit now, remainder when the job is complete.`
+                        : "50% deposit now, remaining balance when the job is complete."}
                     </span>
                   </span>
                 </label>
