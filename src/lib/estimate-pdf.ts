@@ -2,7 +2,7 @@ import "server-only";
 import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import type { Estimate, EstimateItem, Lead } from "@/db/schema";
+import type { Estimate, EstimateItem, EstimatePhoto, Lead } from "@/db/schema";
 import { money } from "@/lib/constants";
 
 // Builds a clean, print-quality PDF of a (signed) estimate for emailing
@@ -42,8 +42,9 @@ export async function buildSignedEstimatePdf(opts: {
   items: EstimateItem[];
   lead: Lead | null;
   orgName: string;
+  photos?: EstimatePhoto[];
 }): Promise<Uint8Array> {
-  const { est, items, lead, orgName } = opts;
+  const { est, items, lead, orgName, photos = [] } = opts;
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -139,6 +140,41 @@ export async function buildSignedEstimatePdf(opts: {
     text(money(it.amount), W - M - 80, y, 10, bold);
     y -= rowH;
     page.drawLine({ start: { x: M, y: y + 6 }, end: { x: W - M, y: y + 6 }, thickness: 0.5, color: LINE });
+  }
+
+  // Site photos
+  if (photos.length > 0) {
+    ensureSpace(40);
+    y -= 18;
+    text("Site photos", M, y, 10, bold, MUTED);
+    y -= 10;
+    for (const ph of photos) {
+      try {
+        const res = await fetch(ph.url);
+        if (!res.ok) continue;
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const mime = (ph.mimeType || "").toLowerCase();
+        const img =
+          mime.includes("png") || ph.url.toLowerCase().includes(".png")
+            ? await pdf.embedPng(bytes)
+            : await pdf.embedJpg(bytes);
+        const maxW = W - 2 * M;
+        const maxH = 220;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ensureSpace(h + 28);
+        y -= h;
+        page.drawImage(img, { x: M, y, width: w, height: h });
+        if (ph.caption) {
+          y -= 12;
+          text(ph.caption, M, y, 8, font, MUTED);
+        }
+        y -= 12;
+      } catch {
+        // skip unreadable / heic
+      }
+    }
   }
 
   // Totals

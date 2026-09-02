@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { estimates, estimateItems, leads, invoices, pricebookItems } from "@/db/schema";
+import { estimates, estimateItems, leads, invoices, pricebookItems, estimatePhotos } from "@/db/schema";
 import AddEstimateItemForm from "@/components/AddEstimateItemForm";
+import UploadEstimatePhoto from "@/components/UploadEstimatePhoto";
 import { and, eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -20,6 +21,7 @@ import {
   deleteEstimate,
   markEstimateStatus,
 } from "@/lib/estimate-actions";
+import { deleteEstimatePhoto } from "@/lib/estimate-photo-actions";
 import { recordDepositPaid } from "@/lib/invoice-actions";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +52,7 @@ export default async function EstimateDetailPage({
     .limit(1);
   if (!est) notFound();
 
-  const [items, [lead], book] = await Promise.all([
+  const [items, [lead], book, photos] = await Promise.all([
     db.select().from(estimateItems).where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, estId))).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId))).limit(1),
     db.select({
@@ -61,6 +63,7 @@ export default async function EstimateDetailPage({
       unit: pricebookItems.unit,
       category: pricebookItems.category,
     }).from(pricebookItems).where(and(eq(pricebookItems.orgId, orgId), eq(pricebookItems.active, true))).orderBy(asc(pricebookItems.category), asc(pricebookItems.name)),
+    db.select().from(estimatePhotos).where(and(eq(estimatePhotos.orgId, orgId), eq(estimatePhotos.estimateId, estId))).orderBy(asc(estimatePhotos.createdAt)),
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
@@ -122,7 +125,7 @@ export default async function EstimateDetailPage({
                   <tbody className="divide-y divide-slate-100">
                     {items.map((it) => (
                       <tr key={it.id}>
-                        <td className="px-2 py-2 text-slate-700">{it.description}</td>
+                        <td className="max-w-[420px] whitespace-pre-wrap px-2 py-2 text-slate-700">{it.description}</td>
                         <td className="px-2 py-2 text-right text-slate-600">{Number(it.quantity)}</td>
                         <td className="px-2 py-2 text-right text-slate-600">{money(it.unitPrice)}</td>
                         <td className="px-2 py-2 text-right font-medium text-slate-700">{money(it.amount)}</td>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/db";
-import { estimates, estimateItems, leads } from "@/db/schema";
+import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import {
   markEstimateViewed,
@@ -45,9 +45,10 @@ export default async function PublicEstimatePage({
   // CRM users previewing get a way back; customers see nothing.
   const internalUser = await getSessionUser();
 
-  const [items, [lead]] = await Promise.all([
+  const [items, [lead], photos] = await Promise.all([
     db.select().from(estimateItems).where(eq(estimateItems.estimateId, est.id)).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(eq(leads.id, est.leadId)).limit(1),
+    db.select().from(estimatePhotos).where(eq(estimatePhotos.estimateId, est.id)).orderBy(asc(estimatePhotos.createdAt)),
   ]);
 
   const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
@@ -149,6 +150,25 @@ export default async function PublicEstimatePage({
                 ))}
               </tbody>
             </table>
+
+            {photos.length > 0 && (
+              <div className="mt-6">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Site photos
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {photos.map((ph) => (
+                    <figure key={ph.id} className="overflow-hidden rounded-xl border border-slate-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ph.url} alt={ph.caption || "Job photo"} className="w-full object-cover" />
+                      {ph.caption && (
+                        <figcaption className="px-3 py-2 text-xs text-slate-500">{ph.caption}</figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Totals */}
             <div className="mt-4 ml-auto max-w-xs space-y-1.5 text-sm">

@@ -397,6 +397,21 @@ export const pricebookItems = pgTable("pricebook_items", {
 
 export type PricebookItem = typeof pricebookItems.$inferSelect;
 
+// Photos attached to an estimate (damage / site pics the customer sees)
+export const estimatePhotos = pgTable("estimate_photos", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  estimateId: integer("estimate_id").notNull(),
+  url: text("url").notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 120 }),
+  caption: varchar("caption", { length: 200 }),
+  uploadedById: integer("uploaded_by_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("estimate_photos_est_idx").on(t.estimateId)]);
+
+export type EstimatePhoto = typeof estimatePhotos.$inferSelect;
+
 export type Supplier = typeof suppliers.$inferSelect;
 export type Material = typeof materials.$inferSelect;
 export type MaterialOrder = typeof materialOrders.$inferSelect;

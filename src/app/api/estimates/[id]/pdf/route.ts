@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { estimates, estimateItems, leads } from "@/db/schema";
+import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
 import { and, eq, asc } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
@@ -28,13 +28,14 @@ export async function GET(
     .limit(1);
   if (!est) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [items, leadRows] = await Promise.all([
+  const [items, leadRows, photos] = await Promise.all([
     db
       .select()
       .from(estimateItems)
       .where(eq(estimateItems.estimateId, id))
       .orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(eq(leads.id, est.leadId)).limit(1),
+    db.select().from(estimatePhotos).where(eq(estimatePhotos.estimateId, id)).orderBy(asc(estimatePhotos.createdAt)),
   ]);
 
   const pdfBytes = await buildSignedEstimatePdf({
@@ -42,6 +43,7 @@ export async function GET(
     items,
     lead: leadRows[0] ?? null,
     orgName: process.env.CRM_ORGANIZATION_NAME || "LeadFlow",
+    photos,
   });
 
   const fileName = `${est.number}${est.signatureData ? "-signed" : ""}.pdf`;

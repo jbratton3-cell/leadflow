@@ -28,6 +28,7 @@ export async function POST(req: Request) {
             "image/jpeg",
             "image/webp",
             "image/heic",
+            "image/heif",
           ],
           maximumSizeInBytes: 20 * 1024 * 1024, // 20 MB per file
         };

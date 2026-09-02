@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, jobs, sales, products } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -130,6 +130,9 @@ export async function deleteEstimate(formData: FormData) {
   await db
     .delete(estimateItems)
     .where(and(eq(estimateItems.estimateId, id), eq(estimateItems.orgId, orgId)));
+  await db
+    .delete(estimatePhotos)
+    .where(and(eq(estimatePhotos.estimateId, id), eq(estimatePhotos.orgId, orgId)));
   await db.delete(estimates).where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
   revalidatePath("/estimates");
   revalidatePath(`/leads/${leadId}`);
@@ -348,11 +351,17 @@ export async function saveSignature(input: {
         .from(estimateItems)
         .where(eq(estimateItems.estimateId, est.id))
         .orderBy(asc(estimateItems.sortOrder));
+      const photos = await db
+        .select()
+        .from(estimatePhotos)
+        .where(eq(estimatePhotos.estimateId, est.id))
+        .orderBy(asc(estimatePhotos.createdAt));
       const pdfBytes = await buildSignedEstimatePdf({
         est: fresh,
         items,
         lead,
         orgName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
+        photos,
       });
       await sendEmail({
         to: lead.email,
