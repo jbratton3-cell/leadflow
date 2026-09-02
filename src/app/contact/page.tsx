@@ -12,9 +12,9 @@ export default function ContactPage() {
         <div>
           <h1 className="text-3xl font-bold sm:text-4xl">Bring a real job. We&apos;ll quote it live.</h1>
           <p className="mt-4 text-slate-300">
-            20 minutes on a screen share. You show one recent estimate (even a PDF).
+            A few minutes on a screen share. You show one recent estimate (even a PDF).
             We build it in LeadFlow — photos, pricebook, cash vs finance — while you watch.
-            If it isn&apos;t faster than what you do now, you wasted 20 minutes and we both know.
+            Your job, not a slide deck. That&apos;s usually all it takes.
           </p>
           <ul className="mt-6 space-y-3 text-sm text-slate-300">
             {[

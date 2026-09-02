@@ -75,7 +75,7 @@ export default async function LandingPage() {
           </Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
-          20 minutes. You share a job. We build it in LeadFlow while you watch. Month-to-month after that.
+          A few minutes. You share a job. We build it in LeadFlow while you watch. That&apos;s usually all it takes.
         </p>
       </section>
 
@@ -128,13 +128,13 @@ export default async function LandingPage() {
         <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="text-3xl font-bold">Bring a messy job. We&apos;ll quote it live.</h2>
           <p className="mt-3 text-slate-400">
-            No slide deck. If it isn&apos;t faster than what you do now, you wasted 20 minutes and we both know.
+            No slide deck. A few minutes, one of your jobs on screen — not fake demo data. That&apos;s usually all it takes.
           </p>
           <Link
             href="/contact"
             className="mt-8 inline-block rounded-lg bg-orange-500 px-8 py-3 text-base font-semibold text-white shadow-lg hover:bg-orange-600"
           >
-            Book the 20 minutes
+            Book a live quote
           </Link>
         </div>
       </section>

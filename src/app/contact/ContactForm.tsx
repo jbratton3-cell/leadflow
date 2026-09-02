@@ -29,7 +29,7 @@ export default function ContactForm() {
         <div className="text-4xl">✅</div>
         <h2 className="mt-3 text-xl font-bold text-slate-900">Thanks — we got it!</h2>
         <p className="mt-2 text-sm text-slate-500">
-          We&apos;ll reply to book 20 minutes and quote one of your real jobs live. No deck.
+          We&apos;ll reply to set up a short screen share and quote one of your real jobs live. No deck.
         </p>
       </div>
     );
