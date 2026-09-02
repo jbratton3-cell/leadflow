@@ -20,7 +20,7 @@ export default function HousecallAlternativePage() {
           before you leave the driveway. LeadFlow is that tool.
         </p>
         <p className="mt-3 text-slate-400">
-          Built in Albany by JMB Business Solutions while consulting for a roofing company. JMB owns and sells LeadFlow. The contractor runs jobs — they don&apos;t sell the software.
+          Built in Albany by JMB Business Solutions.
         </p>
 
         <h2 className="mt-12 text-2xl font-bold">What&apos;s different</h2>
