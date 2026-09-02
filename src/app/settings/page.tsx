@@ -27,9 +27,10 @@ export default async function SettingsPage() {
   const orgId = me.orgId;
   const canManageUsers = can(me.role, "users");
 
-  const [supplierRows, materialRows] = await Promise.all([
+  const [supplierRows, materialRows, pricebookRows] = await Promise.all([
     db.select().from(suppliers).where(eq(suppliers.orgId, orgId)).orderBy(asc(suppliers.name)),
     db.select().from(materials).where(and(eq(materials.orgId, orgId), eq(materials.active, true))).orderBy(asc(materials.name)),
+    db.select().from(pricebookItems).where(and(eq(pricebookItems.orgId, orgId), eq(pricebookItems.active, true))).orderBy(asc(pricebookItems.category), asc(pricebookItems.name)),
   ]);
   // Only the platform-owner org (#1) sees inbound sales leads from the marketing site.
   const isPlatformOwner = orgId === 1 && me.role === "admin";
