@@ -179,6 +179,7 @@ export default async function EstimateDetailPage({
                 <div>
                   <label className={label}>Tax Rate (%)</label>
                   <input name="taxRate" type="number" step="0.001" defaultValue={est.taxRate} className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">BuildPros does not charge sales tax — leave this at 0.</p>
                 </div>
                 <div>
                   <label className={label}>Valid Until</label>
@@ -209,7 +210,9 @@ export default async function EstimateDetailPage({
             <dl className="space-y-1.5 text-sm">
               <Row label="Subtotal" value={money(est.subtotal)} />
               {Number(est.discount) > 0 && <Row label="Discount" value={`- ${money(est.discount)}`} />}
-              <Row label={`Tax (${Number(est.taxRate)}%)`} value={money(est.taxAmount)} />
+              {Number(est.taxRate) > 0 && (
+                <Row label={`Tax (${Number(est.taxRate)}%)`} value={money(est.taxAmount)} />
+              )}
               <div className="mt-2 flex justify-between border-t border-slate-200 pt-2">
                 <dt className="font-semibold text-slate-700">Total</dt>
                 <dd className="text-xl font-bold text-slate-900">{money(est.total)}</dd>

@@ -187,7 +187,7 @@ export async function buildSignedEstimatePdf(opts: {
   };
   totalRow("Subtotal", money(est.subtotal));
   if (Number(est.discount) > 0) totalRow("Discount", `- ${money(est.discount)}`);
-  totalRow(`Tax (${Number(est.taxRate)}%)`, money(est.taxAmount));
+  if (Number(est.taxRate) > 0) totalRow(`Tax (${Number(est.taxRate)}%)`, money(est.taxAmount));
   page.drawLine({ start: { x: W - M - 250, y: y + 8 }, end: { x: W - M, y: y + 8 }, thickness: 1, color: INK });
   totalRow("Total", money(est.total), true);
 
