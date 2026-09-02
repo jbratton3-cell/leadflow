@@ -1,5 +1,6 @@
 import { db } from "@/db";
-import { estimates, estimateItems, leads, invoices } from "@/db/schema";
+import { estimates, estimateItems, leads, invoices, pricebookItems } from "@/db/schema";
+import AddEstimateItemForm from "@/components/AddEstimateItemForm";
 import { and, eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -15,7 +16,6 @@ import {
   fmtDateTime, personName } from "@/lib/constants";
 import {
   updateEstimate,
-  addEstimateItem,
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
@@ -50,9 +50,17 @@ export default async function EstimateDetailPage({
     .limit(1);
   if (!est) notFound();
 
-  const [items, [lead]] = await Promise.all([
+  const [items, [lead], book] = await Promise.all([
     db.select().from(estimateItems).where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, estId))).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId))).limit(1),
+    db.select({
+      id: pricebookItems.id,
+      name: pricebookItems.name,
+      description: pricebookItems.description,
+      price: pricebookItems.price,
+      unit: pricebookItems.unit,
+      category: pricebookItems.category,
+    }).from(pricebookItems).where(and(eq(pricebookItems.orgId, orgId), eq(pricebookItems.active, true))).orderBy(asc(pricebookItems.category), asc(pricebookItems.name)),
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
@@ -137,26 +145,17 @@ export default async function EstimateDetailPage({
             )}
 
             {!locked && (
-              <form action={addEstimateItem} className="grid grid-cols-12 gap-2 border-t border-slate-100 pt-4">
-                <input type="hidden" name="estimateId" value={est.id} />
-                <div className="col-span-6">
-                  <label className={label}>Description</label>
-                  <input name="description" required placeholder="e.g. Vinyl replacement window" className={input} />
-                </div>
-                <div className="col-span-2">
-                  <label className={label}>Qty</label>
-                  <input name="quantity" type="number" step="0.01" defaultValue={1} className={input} />
-                </div>
-                <div className="col-span-2">
-                  <label className={label}>Unit Price</label>
-                  <input name="unitPrice" type="number" step="0.01" defaultValue={0} className={input} />
-                </div>
-                <div className="col-span-2 flex items-end">
-                  <button className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-                    Add
-                  </button>
-                </div>
-              </form>
+              <AddEstimateItemForm
+                estimateId={est.id}
+                book={book.map((b) => ({
+                  id: b.id,
+                  name: b.name,
+                  description: b.description,
+                  price: String(b.price),
+                  unit: b.unit,
+                  category: b.category,
+                }))}
+              />
             )}
           </Card>
 

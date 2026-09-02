@@ -141,7 +141,7 @@ export default async function PublicEstimatePage({
               <tbody className="divide-y divide-slate-100">
                 {items.map((it) => (
                   <tr key={it.id}>
-                    <td className="py-2.5 text-slate-700">{it.description}</td>
+                    <td className="whitespace-pre-wrap py-2.5 text-slate-700">{it.description}</td>
                     <td className="py-2.5 text-right text-slate-600">{Number(it.quantity)}</td>
                     <td className="py-2.5 text-right text-slate-600">{money(it.unitPrice)}</td>
                     <td className="py-2.5 text-right font-medium text-slate-700">{money(it.amount)}</td>

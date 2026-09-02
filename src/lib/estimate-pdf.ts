@@ -14,19 +14,26 @@ const ACCENT = rgb(0.96, 0.42, 0.06);
 const LINE = rgb(0.89, 0.91, 0.94);
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const words = (text ?? "").split(/\s+/).filter(Boolean);
+  const paragraphs = (text ?? "").replace(/\r\n/g, "\n").split("\n");
   const lines: string[] = [];
-  let current = "";
-  for (const w of words) {
-    const candidate = current ? `${current} ${w}` : w;
-    if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
-      lines.push(current);
-      current = w;
-    } else {
-      current = candidate;
+  for (const para of paragraphs) {
+    const words = para.split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
     }
+    let current = "";
+    for (const w of words) {
+      const candidate = current ? `${current} ${w}` : w;
+      if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
+        lines.push(current);
+        current = w;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
   }
-  if (current) lines.push(current);
   return lines.length ? lines : [""];
 }
 

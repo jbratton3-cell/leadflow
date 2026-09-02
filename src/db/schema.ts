@@ -379,6 +379,24 @@ export const materialOrderItems = pgTable("material_order_items", {
   unit: varchar("unit", { length: 20 }).notNull().default("each"),
 }, (t) => [index("material_order_items_order_idx").on(t.orderId)]);
 
+// Sell-side pricebook (Housecall Pro import + Settings)
+export const pricebookItems = pgTable("pricebook_items", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  name: varchar("name", { length: 220 }).notNull(),
+  description: text("description"),
+  price: numeric("price", { precision: 12, scale: 2 }).notNull().default("0"),
+  cost: numeric("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  unit: varchar("unit", { length: 40 }).notNull().default(""),
+  category: varchar("category", { length: 80 }).notNull().default("Uncategorized"),
+  taxable: boolean("taxable").notNull().default(false),
+  hcpUuid: varchar("hcp_uuid", { length: 80 }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("pricebook_items_org_idx").on(t.orgId)]);
+
+export type PricebookItem = typeof pricebookItems.$inferSelect;
+
 export type Supplier = typeof suppliers.$inferSelect;
 export type Material = typeof materials.$inferSelect;
 export type MaterialOrder = typeof materialOrders.$inferSelect;
