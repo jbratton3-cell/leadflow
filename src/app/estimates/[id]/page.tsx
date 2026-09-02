@@ -162,6 +162,34 @@ export default async function EstimateDetailPage({
             )}
           </Card>
 
+          <Card className="p-5">
+            <h2 className="mb-1 text-sm font-semibold text-slate-700">Photos</h2>
+            <p className="mb-3 text-xs text-slate-400">
+              Damage / site pictures the customer will see on this estimate. On a phone this opens the camera.
+            </p>
+            {photos.length > 0 && (
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {photos.map((ph) => (
+                  <div key={ph.id} className="overflow-hidden rounded-lg border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ph.url} alt={ph.caption || ph.fileName} className="h-36 w-full object-cover" />
+                    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                      <span className="truncate text-[11px] text-slate-500">{ph.caption || ph.fileName}</span>
+                      {!locked && (
+                        <form action={deleteEstimatePhoto}>
+                          <input type="hidden" name="id" value={ph.id} />
+                          <input type="hidden" name="estimateId" value={est.id} />
+                          <button className="text-[11px] font-medium text-rose-500">Remove</button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!locked && <UploadEstimatePhoto estimateId={est.id} />}
+          </Card>
+
           {/* Estimate details */}
           {!locked && (
             <Card className="p-5">
