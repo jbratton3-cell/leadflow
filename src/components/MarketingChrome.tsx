@@ -14,6 +14,9 @@ export function MarketingNav({ cta = "Bring a real job" }: { cta?: string }) {
         <Link href="/housecall-pro-alternative" className="hidden font-medium text-slate-300 hover:text-white sm:inline">
           For roofers
         </Link>
+        <Link href="/tour" className="font-medium text-slate-300 hover:text-white">
+          Guided tour
+        </Link>
         <Link href="/pricing" className="font-medium text-slate-300 hover:text-white">
           Pricing
         </Link>
@@ -50,6 +53,9 @@ export function MarketingFooter() {
           </Link>
           <Link href="/cash-vs-finance-roofing-quote" className="hover:text-slate-300">
             Cash vs finance
+          </Link>
+          <Link href="/tour" className="hover:text-slate-300">
+            Guided tour
           </Link>
           <Link href="/pricing" className="hover:text-slate-300">
             Pricing

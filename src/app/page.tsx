@@ -68,10 +68,10 @@ export default async function LandingPage() {
             Bring a real job — we&apos;ll quote it live
           </Link>
           <Link
-            href="/pricing"
+            href="/tour"
             className="rounded-lg border border-slate-700 px-7 py-3 text-base font-semibold text-slate-200 hover:bg-slate-800"
           >
-            Pricing — less than one missed roof
+            Take the guided tour
           </Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
