@@ -67,8 +67,8 @@ export default async function SettingsPage() {
       <Card className="mb-6 p-5">
         <h2 className="mb-1 text-sm font-semibold text-slate-700">Cash discount</h2>
         <p className="mb-4 text-xs text-slate-400">
-          Pricebook prices are the financed / list total. Cash customers (50% deposit, 50% on completion) get this percent off.
-          Shown on every estimate so they can choose. New estimates inherit this; you can override per quote.
+          Optional default percent off list for cash (50/50). Reps can also type a cash price on each estimate — that dollar amount wins.
+          Leave at 0 if you want reps to enter cash prices by hand.
         </p>
         <form action={updateCashDiscount} className="flex flex-wrap items-end gap-3">
           <div>

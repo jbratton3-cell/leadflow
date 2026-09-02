@@ -9,7 +9,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import SignatureStep from "@/components/SignatureStep";
 import PrintButton from "@/components/PrintButton";
-import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, hasCashOffer } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,8 @@ export default async function PublicEstimatePage({
   const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
   const responded = est.status === "accepted" || est.status === "declined";
   const cashPct = Number(est.cashDiscountPercent);
-  const cashTotal = cashPrice(est.total, cashPct);
+  const cashTotal = cashPrice(est.total, cashPct, est.cashPrice);
+  const showCash = hasCashOffer(est.total, cashPct, est.cashPrice);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -194,10 +195,10 @@ export default async function PublicEstimatePage({
                 <span className="font-semibold text-slate-800">List / financed total</span>
                 <span className="text-xl font-bold text-slate-900">{money(est.total)}</span>
               </div>
-              {cashPct > 0 && (
+              {showCash && (
                 <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5">
                   <div className="flex justify-between">
-                    <span className="font-semibold text-emerald-800">Cash price ({cashPct}% off)</span>
+                    <span className="font-semibold text-emerald-800">Cash price</span>
                     <span className="text-xl font-bold text-emerald-800">{money(cashTotal)}</span>
                   </div>
                   <p className="mt-1 text-xs text-emerald-700">
@@ -261,10 +262,10 @@ export default async function PublicEstimatePage({
                   />
                   <span>
                     <span className="block text-sm font-semibold text-slate-800">
-                      Pay cash — {cashPct > 0 ? money(cashTotal) : money(est.total)}
+                      Pay cash — {showCash ? money(cashTotal) : money(est.total)}
                     </span>
                     <span className="block text-sm text-slate-500">
-                      {cashPct > 0 ? `${cashPct}% off. ` : ""}
+                      {showCash ? "Discounted cash price. " : ""}
                       50% deposit now, remaining balance when the job is complete.
                     </span>
                   </span>

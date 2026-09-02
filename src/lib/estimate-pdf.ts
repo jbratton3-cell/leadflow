@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Estimate, EstimateItem, EstimatePhoto, Lead } from "@/db/schema";
-import { money, cashPrice } from "@/lib/constants";
+import { money, cashPrice, hasCashOffer } from "@/lib/constants";
 
 // Builds a clean, print-quality PDF of a (signed) estimate for emailing
 // and downloading. Pure pdf-lib — no headless browser needed.
@@ -189,7 +189,10 @@ export async function buildSignedEstimatePdf(opts: {
   if (Number(est.discount) > 0) totalRow("Discount", `- ${money(est.discount)}`);
   if (Number(est.taxRate) > 0) totalRow(`Tax (${Number(est.taxRate)}%)`, money(est.taxAmount));
   page.drawLine({ start: { x: W - M - 250, y: y + 8 }, end: { x: W - M, y: y + 8 }, thickness: 1, color: INK });
-  totalRow("Total", money(est.total), true);
+  totalRow("List / financed", money(est.total), true);
+  if (hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice)) {
+    totalRow("Cash (50/50)", money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice)), true);
+  }
 
   // Terms / notes
   const blocks: [string, string][] = [];

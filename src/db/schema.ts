@@ -298,6 +298,8 @@ export const estimates = pgTable(
     cashDiscountPercent: numeric("cash_discount_percent", { precision: 6, scale: 2 })
       .notNull()
       .default("0"),
+    // Rep-entered cash contract amount (50/50). When set, this is the cash price shown.
+    cashPrice: numeric("cash_price", { precision: 12, scale: 2 }),
     // cash | financed — set when accepted
     paymentChoice: varchar("payment_choice", { length: 20 }),
   },

@@ -119,6 +119,9 @@ export async function updateEstimate(formData: FormData) {
       terms: str(formData.get("terms")),
       validUntil: toDate(formData.get("validUntil")),
       cashDiscountPercent: num(formData.get("cashDiscountPercent")).toString(),
+      cashPrice: formData.get("cashPrice") === "" || formData.get("cashPrice") == null
+        ? null
+        : num(formData.get("cashPrice")).toString(),
       updatedAt: new Date(),
     })
     .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
@@ -424,7 +427,7 @@ async function applyAcceptanceBookkeeping(
         .limit(1);
 
       let saleId = existingSale?.id ?? null;
-      const amount = contractPrice(est.total, est.cashDiscountPercent, financing);
+      const amount = contractPrice(est.total, est.cashDiscountPercent, financing, est.cashPrice);
       if (!existingSale) {
         const inserted = await db
           .insert(sales)

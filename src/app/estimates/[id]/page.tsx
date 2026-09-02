@@ -14,7 +14,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime, personName, cashPrice } from "@/lib/constants";
+  fmtDateTime, personName, cashPrice, hasCashOffer } from "@/lib/constants";
 import {
   updateEstimate,
   deleteEstimateItem,
@@ -205,10 +205,11 @@ export default async function EstimateDetailPage({
                   <input name="discount" type="number" step="0.01" defaultValue={est.discount} className={input} />
                 </div>
                 <div>
-                  <label className={label}>Cash discount (%)</label>
-                  <input name="cashDiscountPercent" type="number" step="0.1" defaultValue={est.cashDiscountPercent} className={input} />
-                  <p className="mt-1 text-[11px] text-slate-400">Off the list total if they pay 50/50 cash. Shown on every quote.</p>
+                  <label className={label}>Cash price ($)</label>
+                  <input name="cashPrice" type="number" step="0.01" defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash. Leave blank for no cash offer. Save details after you type it.</p>
                 </div>
+                <input type="hidden" name="cashDiscountPercent" value={est.cashDiscountPercent} />
                 <div>
                   <label className={label}>Tax Rate (%)</label>
                   <input name="taxRate" type="number" step="0.001" defaultValue={est.taxRate} className={input} />
@@ -250,14 +251,12 @@ export default async function EstimateDetailPage({
                 <dt className="font-semibold text-slate-700">List / financed</dt>
                 <dd className="text-xl font-bold text-slate-900">{money(est.total)}</dd>
               </div>
-              {Number(est.cashDiscountPercent) > 0 && (
+              {hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice) && (
                 <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2">
                   <div className="flex justify-between text-sm">
-                    <dt className="font-semibold text-emerald-800">
-                      Cash ({Number(est.cashDiscountPercent)}% off)
-                    </dt>
+                    <dt className="font-semibold text-emerald-800">Cash (50/50)</dt>
                     <dd className="text-lg font-bold text-emerald-800">
-                      {money(cashPrice(est.total, est.cashDiscountPercent))}
+                      {money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice))}
                     </dd>
                   </div>
                   <p className="mt-1 text-[11px] text-emerald-700">
@@ -265,9 +264,9 @@ export default async function EstimateDetailPage({
                   </p>
                 </div>
               )}
-              {Number(est.cashDiscountPercent) <= 0 && (
-                <p className="mt-2 text-[11px] text-amber-600">
-                  Set a cash discount % in Settings (or on this estimate) so customers see a cash price.
+              {!hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice) && (
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Enter a cash price under Details (then Save) to offer 50/50 cash on this quote.
                 </p>
               )}
             </dl>
@@ -372,7 +371,7 @@ export default async function EstimateDetailPage({
                 estimateId={est.id}
                 listTotal={money(est.total)}
                 cashTotal={money(cashPrice(est.total, est.cashDiscountPercent))}
-                cashPct={Number(est.cashDiscountPercent)}
+                cashPct={hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice) ? 1 : 0}
               />
               <form action={markEstimateStatus} className="mt-3">
                 <input type="hidden" name="id" value={est.id} />

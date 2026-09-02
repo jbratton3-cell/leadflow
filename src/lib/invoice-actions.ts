@@ -113,7 +113,7 @@ export async function handleEstimateAccepted(
     await notifyOfficeOfFinancing({
       customerName: personName(lead.firstName, lead.lastName, "there"),
       number: est.number,
-      amount: money(contractPrice(est.total, est.cashDiscountPercent, true)),
+      amount: money(contractPrice(est.total, est.cashDiscountPercent, true, est.cashPrice)),
       kind: "estimate accepted — customer chose financing",
     });
     revalidatePath("/invoices");
@@ -133,7 +133,7 @@ export async function handleEstimateAccepted(
     .limit(1);
   if (existing) return; // already invoiced for this estimate
 
-  const total = contractPrice(est.total, est.cashDiscountPercent, false);
+  const total = contractPrice(est.total, est.cashDiscountPercent, false, est.cashPrice);
   if (total <= 0) return;
 
   const deposit = +(total * 0.5).toFixed(2);
@@ -231,7 +231,7 @@ export async function recordDepositPaid(formData: FormData) {
     .limit(1);
   if (!est || est.status !== "accepted") return;
 
-  const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed");
+  const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed", est.cashPrice);
   if (total <= 0) return;
 
   const [existing] = await db

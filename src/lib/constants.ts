@@ -161,8 +161,14 @@ export function money(value: number | string | null | undefined): string {
   });
 }
 
-/** List/financed total minus cash discount %. */
-export function cashPrice(listTotal: number | string, percent: number | string | null | undefined): number {
+/** Cash contract: explicit dollar amount from the rep, else list minus % . */
+export function cashPrice(
+  listTotal: number | string,
+  percent: number | string | null | undefined,
+  explicit?: number | string | null
+): number {
+  const listed = typeof explicit === "string" ? parseFloat(explicit) : explicit ?? 0;
+  if (listed && listed > 0) return +listed.toFixed(2);
   const list = typeof listTotal === "string" ? parseFloat(listTotal) : listTotal;
   const p = typeof percent === "string" ? parseFloat(percent) : percent ?? 0;
   if (!list || !p || p <= 0) return +(list || 0).toFixed(2);
@@ -172,10 +178,23 @@ export function cashPrice(listTotal: number | string, percent: number | string |
 export function contractPrice(
   listTotal: number | string,
   percent: number | string | null | undefined,
-  financing: boolean
+  financing: boolean,
+  explicitCash?: number | string | null
 ): number {
   const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
-  return financing ? list : cashPrice(list, percent);
+  return financing ? list : cashPrice(list, percent, explicitCash);
+}
+
+export function hasCashOffer(
+  listTotal: number | string,
+  percent: number | string | null | undefined,
+  explicit?: number | string | null
+): boolean {
+  const cash = cashPrice(listTotal, percent, explicit);
+  const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
+  const explicitN = typeof explicit === "string" ? parseFloat(explicit) : explicit ?? 0;
+  const p = typeof percent === "string" ? parseFloat(percent) : percent ?? 0;
+  return (explicitN > 0 || p > 0) && cash > 0 && cash !== list;
 }
 
 export function fmtDate(d: Date | string | null | undefined): string {
