@@ -3,9 +3,17 @@
 import { useState } from "react";
 import { markEstimateStatus } from "@/lib/estimate-actions";
 
-// Office-side "record a signed paper estimate" form. Checking financing hides
-// the deposit-invoice option, since financed deals don't get deposit invoices.
-export default function OfficeAcceptForm({ estimateId }: { estimateId: number }) {
+export default function OfficeAcceptForm({
+  estimateId,
+  listTotal,
+  cashTotal,
+  cashPct,
+}: {
+  estimateId: number;
+  listTotal: string;
+  cashTotal: string;
+  cashPct: number;
+}) {
   const [financing, setFinancing] = useState(false);
 
   return (
@@ -25,9 +33,9 @@ export default function OfficeAcceptForm({ estimateId }: { estimateId: number })
           className="mt-0.5 h-4 w-4 accent-amber-600"
         />
         <span>
-          Customer chose financing
+          Customer chose financing ({listTotal})
           <span className="block text-slate-400">
-            The sale will be recorded as a financed deal
+            Leave unchecked for cash {cashPct > 0 ? `(${cashTotal}, 50/50)` : ""}
           </span>
         </span>
       </label>

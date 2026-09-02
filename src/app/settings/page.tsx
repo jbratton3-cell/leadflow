@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { reps, leadSources, products, users, invitations, demoRequests, pricebookItems } from "@/db/schema";
+import { reps, leadSources, products, users, invitations, demoRequests, pricebookItems, organizations } from "@/db/schema";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { createRep, createSource, createProduct } from "@/lib/actions";
@@ -10,6 +10,7 @@ import { can, ROLES, roleLabel as userRoleLabel } from "@/lib/permissions";
 import { deleteUser } from "@/lib/auth-actions";
 import { createSupplier, deleteSupplier, createMaterial, deleteMaterial } from "@/lib/material-actions";
 import { createPricebookItem, deletePricebookItem } from "@/lib/pricebook-actions";
+import { updateCashDiscount } from "@/lib/org-actions";
 import DeleteButton from "@/components/DeleteButton";
 import RoleSelect from "@/components/RoleSelect";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
@@ -26,6 +27,8 @@ export default async function SettingsPage() {
   const me = await requireAccess("settings");
   const orgId = me.orgId;
   const canManageUsers = can(me.role, "users");
+
+  const [orgRow] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
 
   const [supplierRows, materialRows, pricebookRows] = await Promise.all([
     db.select().from(suppliers).where(eq(suppliers.orgId, orgId)).orderBy(asc(suppliers.name)),
@@ -60,6 +63,31 @@ export default async function SettingsPage() {
         title="Settings"
         subtitle="Configure your team, lead sources, product lines, and user access."
       />
+
+      <Card className="mb-6 p-5">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Cash discount</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Pricebook prices are the financed / list total. Cash customers (50% deposit, 50% on completion) get this percent off.
+          Shown on every estimate so they can choose. New estimates inherit this; you can override per quote.
+        </p>
+        <form action={updateCashDiscount} className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className={label}>Discount %</label>
+            <input
+              name="cashDiscountPercent"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              defaultValue={orgRow?.cashDiscountPercent ?? "0"}
+              className={`${input} w-32`}
+            />
+          </div>
+          <button className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            Save
+          </button>
+        </form>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Team */}

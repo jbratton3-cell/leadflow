@@ -14,7 +14,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime, personName } from "@/lib/constants";
+  fmtDateTime, personName, cashPrice } from "@/lib/constants";
 import {
   updateEstimate,
   deleteEstimateItem,
@@ -205,6 +205,11 @@ export default async function EstimateDetailPage({
                   <input name="discount" type="number" step="0.01" defaultValue={est.discount} className={input} />
                 </div>
                 <div>
+                  <label className={label}>Cash discount (%)</label>
+                  <input name="cashDiscountPercent" type="number" step="0.1" defaultValue={est.cashDiscountPercent} className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">Off the list total if they pay 50/50 cash. Shown on every quote.</p>
+                </div>
+                <div>
                   <label className={label}>Tax Rate (%)</label>
                   <input name="taxRate" type="number" step="0.001" defaultValue={est.taxRate} className={input} />
                   <p className="mt-1 text-[11px] text-slate-400">BuildPros does not charge sales tax — leave this at 0.</p>
@@ -242,9 +247,29 @@ export default async function EstimateDetailPage({
                 <Row label={`Tax (${Number(est.taxRate)}%)`} value={money(est.taxAmount)} />
               )}
               <div className="mt-2 flex justify-between border-t border-slate-200 pt-2">
-                <dt className="font-semibold text-slate-700">Total</dt>
+                <dt className="font-semibold text-slate-700">List / financed</dt>
                 <dd className="text-xl font-bold text-slate-900">{money(est.total)}</dd>
               </div>
+              {Number(est.cashDiscountPercent) > 0 && (
+                <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2">
+                  <div className="flex justify-between text-sm">
+                    <dt className="font-semibold text-emerald-800">
+                      Cash ({Number(est.cashDiscountPercent)}% off)
+                    </dt>
+                    <dd className="text-lg font-bold text-emerald-800">
+                      {money(cashPrice(est.total, est.cashDiscountPercent))}
+                    </dd>
+                  </div>
+                  <p className="mt-1 text-[11px] text-emerald-700">
+                    50% deposit, 50% when the job is complete.
+                  </p>
+                </div>
+              )}
+              {Number(est.cashDiscountPercent) <= 0 && (
+                <p className="mt-2 text-[11px] text-amber-600">
+                  Set a cash discount % in Settings (or on this estimate) so customers see a cash price.
+                </p>
+              )}
             </dl>
           </Card>
 
@@ -343,7 +368,12 @@ export default async function EstimateDetailPage({
                 For paper estimates signed in the field — record the outcome here instead
                 of waiting for the customer to respond online.
               </p>
-              <OfficeAcceptForm estimateId={est.id} />
+              <OfficeAcceptForm
+                estimateId={est.id}
+                listTotal={money(est.total)}
+                cashTotal={money(cashPrice(est.total, est.cashDiscountPercent))}
+                cashPct={Number(est.cashDiscountPercent)}
+              />
               <form action={markEstimateStatus} className="mt-3">
                 <input type="hidden" name="id" value={est.id} />
                 <input type="hidden" name="status" value="declined" />

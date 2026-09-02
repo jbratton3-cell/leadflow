@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos, organizations } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -18,7 +18,7 @@ import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 import { signedEstimateEmailHtml } from "@/lib/notify";
 
 const APP_NAME_FALLBACK = "LeadFlow";
-import { BUSINESS_NAME, personName } from "@/lib/constants";
+import { BUSINESS_NAME, personName, contractPrice } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = (v ?? "").toString().trim();
@@ -79,6 +79,8 @@ export async function createEstimate(formData: FormData) {
     .where(eq(estimates.orgId, orgId));
   const number = `EST-${String((count ?? 0) + 1001).padStart(4, "0")}`;
 
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
+
   const inserted = await db
     .insert(estimates)
     .values({
@@ -93,6 +95,7 @@ export async function createEstimate(formData: FormData) {
       validUntil: toDate(formData.get("validUntil")),
       publicToken: randomBytes(24).toString("hex"),
       status: "draft",
+      cashDiscountPercent: org?.cashDiscountPercent ?? "0",
     })
     .returning();
 
@@ -115,6 +118,7 @@ export async function updateEstimate(formData: FormData) {
       notes: str(formData.get("notes")),
       terms: str(formData.get("terms")),
       validUntil: toDate(formData.get("validUntil")),
+      cashDiscountPercent: num(formData.get("cashDiscountPercent")).toString(),
       updatedAt: new Date(),
     })
     .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
@@ -283,9 +287,10 @@ export async function markEstimateStatus(formData: FormData) {
   if (!est) return;
   if (est.status === "accepted" || est.status === "declined") return;
 
+  const paymentChoice = financing ? "financed" : "cash";
   await db
     .update(estimates)
-    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
+    .set({ status, paymentChoice, respondedAt: new Date(), updatedAt: new Date() })
     .where(eq(estimates.id, id));
 
   if (status === "accepted") {
@@ -419,6 +424,7 @@ async function applyAcceptanceBookkeeping(
         .limit(1);
 
       let saleId = existingSale?.id ?? null;
+      const amount = contractPrice(est.total, est.cashDiscountPercent, financing);
       if (!existingSale) {
         const inserted = await db
           .insert(sales)
@@ -427,7 +433,7 @@ async function applyAcceptanceBookkeeping(
             leadId: est.leadId,
             salesRepId: null,
             productId: lead.productId,
-            amount: String(est.total),
+            amount: String(amount),
             financeType: financing ? "financed" : "cash",
             soldAt: new Date(),
             notes: `Auto-created from accepted estimate ${est.number}.`,
@@ -461,7 +467,7 @@ async function applyAcceptanceBookkeeping(
           customerAddress: lead.address,
           customerCity: lead.city,
           customerPhone: lead.phone,
-          contractAmount: String(est.total),
+          contractAmount: String(amount),
           productName,
           status: "pending",
           milestones: "{}",
@@ -473,7 +479,7 @@ async function applyAcceptanceBookkeeping(
         .update(leads)
         .set({
           stage: "sold",
-          estimatedValue: String(est.total),
+          estimatedValue: String(amount),
           updatedAt: new Date(),
         })
         .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));

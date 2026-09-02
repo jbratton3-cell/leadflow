@@ -13,7 +13,7 @@ import {
   financingRequestedEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
-import { money, personName } from "@/lib/constants";
+import { money, personName, contractPrice } from "@/lib/constants";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
 
@@ -113,7 +113,7 @@ export async function handleEstimateAccepted(
     await notifyOfficeOfFinancing({
       customerName: personName(lead.firstName, lead.lastName, "there"),
       number: est.number,
-      amount: money(est.total),
+      amount: money(contractPrice(est.total, est.cashDiscountPercent, true)),
       kind: "estimate accepted — customer chose financing",
     });
     revalidatePath("/invoices");
@@ -133,7 +133,7 @@ export async function handleEstimateAccepted(
     .limit(1);
   if (existing) return; // already invoiced for this estimate
 
-  const total = Number(est.total);
+  const total = contractPrice(est.total, est.cashDiscountPercent, false);
   if (total <= 0) return;
 
   const deposit = +(total * 0.5).toFixed(2);
@@ -231,7 +231,7 @@ export async function recordDepositPaid(formData: FormData) {
     .limit(1);
   if (!est || est.status !== "accepted") return;
 
-  const total = Number(est.total);
+  const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed");
   if (total <= 0) return;
 
   const [existing] = await db

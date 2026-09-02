@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Estimate, EstimateItem, EstimatePhoto, Lead } from "@/db/schema";
-import { money } from "@/lib/constants";
+import { money, cashPrice } from "@/lib/constants";
 
 // Builds a clean, print-quality PDF of a (signed) estimate for emailing
 // and downloading. Pure pdf-lib — no headless browser needed.

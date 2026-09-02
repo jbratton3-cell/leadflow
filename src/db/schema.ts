@@ -33,6 +33,10 @@ export const organizations = pgTable("organizations", {
   maxUsers: integer("max_users"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Percent off list/financed total when customer pays cash (50/50).
+  cashDiscountPercent: numeric("cash_discount_percent", { precision: 6, scale: 2 })
+    .notNull()
+    .default("0"),
 });
 
 // Login users (authentication) — scoped to an organization.
@@ -290,6 +294,12 @@ export const estimates = pgTable(
     signatureAt: timestamp("signature_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    // Snapshot of org cash-discount % at create (editable per estimate)
+    cashDiscountPercent: numeric("cash_discount_percent", { precision: 6, scale: 2 })
+      .notNull()
+      .default("0"),
+    // cash | financed — set when accepted
+    paymentChoice: varchar("payment_choice", { length: 20 }),
   },
   (t) => [index("estimates_org_idx").on(t.orgId)]
 );

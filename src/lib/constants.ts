@@ -161,6 +161,23 @@ export function money(value: number | string | null | undefined): string {
   });
 }
 
+/** List/financed total minus cash discount %. */
+export function cashPrice(listTotal: number | string, percent: number | string | null | undefined): number {
+  const list = typeof listTotal === "string" ? parseFloat(listTotal) : listTotal;
+  const p = typeof percent === "string" ? parseFloat(percent) : percent ?? 0;
+  if (!list || !p || p <= 0) return +(list || 0).toFixed(2);
+  return +(list * (1 - p / 100)).toFixed(2);
+}
+
+export function contractPrice(
+  listTotal: number | string,
+  percent: number | string | null | undefined,
+  financing: boolean
+): number {
+  const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
+  return financing ? list : cashPrice(list, percent);
+}
+
 export function fmtDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;
