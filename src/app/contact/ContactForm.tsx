@@ -15,7 +15,7 @@ function SubmitButton() {
       disabled={pending}
       className="w-full rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
     >
-      {pending ? "Sending…" : "Request Pricing & Info"}
+      {pending ? "Sending…" : "Book a live quote"}
     </button>
   );
 }
@@ -29,7 +29,7 @@ export default function ContactForm() {
         <div className="text-4xl">✅</div>
         <h2 className="mt-3 text-xl font-bold text-slate-900">Thanks — we got it!</h2>
         <p className="mt-2 text-sm text-slate-500">
-          We&apos;ll be in touch shortly with pricing and next steps to get your team set up.
+          We&apos;ll reply to book 20 minutes and quote one of your real jobs live. No deck.
         </p>
       </div>
     );

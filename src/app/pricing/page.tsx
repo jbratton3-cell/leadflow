@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { APP_NAME, BUSINESS_NAME, copyright } from "@/lib/constants";
+import { APP_NAME } from "@/lib/constants";
+import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 
 export const dynamic = "force-dynamic";
 
@@ -53,26 +54,7 @@ const TIERS = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Nav */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-orange-500 text-lg font-bold text-white">
-            {APP_NAME.slice(0, 1)}
-          </div>
-          <span className="text-lg font-bold">{APP_NAME}</span>
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/login" className="font-medium text-slate-300 hover:text-white">
-            Sign In
-          </Link>
-          <Link
-            href="/contact"
-            className="rounded-lg bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600"
-          >
-            Get Started
-          </Link>
-        </nav>
-      </header>
+      <MarketingNav />
 
       {/* Heading */}
       <section className="mx-auto max-w-3xl px-6 pb-8 pt-12 text-center sm:pt-16">
@@ -81,8 +63,8 @@ export default function PricingPage() {
         </div>
         <h1 className="mt-5 text-4xl font-bold sm:text-5xl">Plans for every size team</h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-          Pick the plan that fits your business — then we do the rest. Every plan
-          includes done-for-you setup and live team training.
+          Less than one missed roof job for most shops. Month-to-month. We set it up;
+          you don&apos;t hire an IT person.
         </p>
       </section>
 
@@ -127,7 +109,7 @@ export default function PricingPage() {
                     : "border border-slate-700 text-slate-200 hover:bg-slate-800"
                 }`}
               >
-                Book a Setup Call
+                Bring a real job
               </Link>
               <ul className="mt-6 space-y-2.5 text-sm">
                 {tier.features.map((f) => (
@@ -248,7 +230,7 @@ export default function PricingPage() {
             {[
               {
                 q: "How much does LeadFlow cost?",
-                a: "Pricing depends on your plan and team size. Reach out and we'll walk you through current pricing and get you set up with the right fit for your business.",
+                a: "It's on this page: $149 / $399 / $749 a month depending on seats — month-to-month. For most roofing shops that's less than one missed job. Setup is a one-time fee; founding customers get it waived.",
               },
               {
                 q: "What's included in setup?",
@@ -281,11 +263,7 @@ export default function PricingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 py-8">
-        <p className="text-center text-xs text-slate-600">
-          {copyright()} · A product of {BUSINESS_NAME}
-        </p>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }
