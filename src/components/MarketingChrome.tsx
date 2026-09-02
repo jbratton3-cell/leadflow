@@ -63,7 +63,10 @@ export function MarketingFooter() {
         </div>
       </div>
       <p className="mt-4 text-center text-xs text-slate-600">
-        {copyright()} · {APP_NAME} is a product of {BUSINESS_NAME} — not sold by the contractors who use it.
+        {copyright()} · A product of{" "}
+        <a href="https://jmbcreative.org" className="text-slate-400 hover:text-slate-300 underline-offset-2 hover:underline">
+          {BUSINESS_NAME}
+        </a>
       </p>
     </footer>
   );

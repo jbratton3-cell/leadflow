@@ -58,7 +58,7 @@ export default async function LandingPage() {
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
           {APP_NAME} is the CRM for the kitchen-table close — photos of the damage, cash vs finance, sign on the phone.
-          Built by {APP_NAME === "LeadFlow" ? "JMB Business Solutions" : "JMB"} in Albany. Used in the field with a roofing client. Sold by JMB — not by that contractor.
+          Built in Albany by JMB Business Solutions — for contractors who still sell in the home.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link

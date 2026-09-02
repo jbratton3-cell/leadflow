@@ -35,7 +35,7 @@ export default function CashVsFinancePage() {
           Software doesn&apos;t one-call close. The rep does. Hiding the cash break is how you accidentally train them to email a PDF and hope.
         </p>
         <p className="mt-3 text-slate-400">
-          LeadFlow is built by JMB Business Solutions. Used in the field with a roofing client. Sold by JMB — not by that contractor.
+          LeadFlow is built by JMB Business Solutions in Albany.
         </p>
 
         <div className="mt-10 flex flex-wrap gap-3">
