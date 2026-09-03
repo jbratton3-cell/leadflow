@@ -249,7 +249,7 @@ export const jobs = pgTable(
     customerPhone: varchar("customer_phone", { length: 40 }),
     contractAmount: numeric("contract_amount", { precision: 12, scale: 2 }),
     productName: varchar("product_name", { length: 120 }),
-    // status: pending | measure | permits | materials_ordered | scheduled | in_progress | completed | on_hold
+    // status: pending | measure | permits | materials_ordered | materials_delivered | scheduled | in_progress | completed | on_hold
     status: varchar("status", { length: 40 }).notNull().default("pending"),
     crew: varchar("crew", { length: 120 }),
     startDate: timestamp("start_date"),

@@ -4,7 +4,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import AutoRefresh from "@/components/AutoRefresh";
 import { requireAccess } from "@/lib/auth";
-import { APP_NAME, jobStatusLabel, money } from "@/lib/constants";
+import { APP_NAME, JOB_MILESTONES, jobStatusLabel, money } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ const ACTIVE_STATUSES = [
   "measure",
   "permits",
   "materials_ordered",
+  "materials_delivered",
   "scheduled",
   "in_progress",
   "on_hold",
@@ -23,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
   measure: "bg-amber-500",
   permits: "bg-yellow-500",
   materials_ordered: "bg-blue-500",
+  materials_delivered: "bg-teal-500",
   scheduled: "bg-indigo-500",
   in_progress: "bg-cyan-500",
   on_hold: "bg-rose-500",
@@ -55,6 +57,22 @@ function timeValue(value: Date | string | null | undefined): number {
   return asDate(value)?.getTime() ?? 0;
 }
 
+function selectedMilestoneLabels(value: string | null): string[] {
+  if (!value) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object") return [];
+
+    const selected = parsed as Record<string, unknown>;
+    return JOB_MILESTONES.filter((milestone) => Boolean(selected[milestone.key])).map(
+      (milestone) => milestone.label,
+    );
+  } catch {
+    return [];
+  }
+}
+
 export default async function BoardPage() {
   const { orgId } = await requireAccess("production");
 
@@ -82,6 +100,7 @@ export default async function BoardPage() {
       const displayCity = r.city ?? r.job.customerCity ?? null;
       const displayAmount = r.amount ?? r.job.contractAmount ?? 0;
       const boardDate = r.job.startDate ?? r.job.createdAt;
+      const milestones = selectedMilestoneLabels(r.job.milestones);
 
       return {
         ...r,
@@ -90,6 +109,7 @@ export default async function BoardPage() {
         displayCity,
         displayAmount,
         boardDate,
+        milestones,
       };
     })
     .sort((a, b) => timeValue(b.boardDate) - timeValue(a.boardDate));
@@ -156,6 +176,17 @@ export default async function BoardPage() {
                           {jobStatusLabel(r.job.status)}
                         </span>
                       </div>
+                      {r.milestones.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                          <span className="text-slate-500">Milestones:</span>
+                          {r.milestones.map((milestone, index) => (
+                            <span key={milestone} className="text-teal-300">
+                              {index > 0 && <span className="mr-2 text-slate-600">·</span>}
+                              {milestone}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {r.job.crew && <div className="text-sm text-cyan-300">Crew: {r.job.crew}</div>}
                     </div>
 

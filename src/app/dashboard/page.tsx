@@ -64,7 +64,7 @@ export default async function DashboardPage({
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
-      .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "scheduled", "in_progress", "on_hold"]))),
+      .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "materials_delivered", "scheduled", "in_progress", "on_hold"]))),
     db.select().from(callLogs).where(eq(callLogs.orgId, orgId)).orderBy(desc(callLogs.createdAt)).limit(6),
     db.select().from(sales).where(eq(sales.orgId, orgId)).orderBy(desc(sales.soldAt)).limit(5),
     db

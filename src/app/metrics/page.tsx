@@ -63,6 +63,7 @@ export default async function MetricsPage() {
     measure: "#f59e0b",
     permits: "#eab308",
     materials_ordered: "#3b82f6",
+    materials_delivered: "#14b8a6",
     scheduled: "#6366f1",
     in_progress: "#06b6d4",
     completed: "#22c55e",

@@ -30,7 +30,7 @@ export default async function NewMaterialOrderPage({
       .select({ id: jobs.id, customerName: jobs.customerName, status: jobs.status, firstName: leads.firstName, lastName: leads.lastName, address: leads.address })
       .from(jobs)
       .leftJoin(leads, eq(jobs.leadId, leads.id))
-      .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "scheduled", "in_progress", "on_hold"])))
+      .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "materials_delivered", "scheduled", "in_progress", "on_hold"])))
       .orderBy(desc(jobs.createdAt))
       .limit(30),
   ]);
