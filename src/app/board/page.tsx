@@ -178,7 +178,6 @@ export default async function BoardPage() {
                       </div>
                       {r.milestones.length > 0 && (
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                          <span className="text-slate-500">Milestones:</span>
                           {r.milestones.map((milestone, index) => (
                             <span key={milestone} className="text-teal-300">
                               {index > 0 && <span className="mr-2 text-slate-600">·</span>}
