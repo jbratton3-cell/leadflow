@@ -5,7 +5,7 @@ import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 export const metadata: Metadata = {
   title: "Housecall Pro alternative for roofers | LeadFlow",
   description:
-    "LeadFlow is a CRM built for roofing and exterior contractors who sell in the home — estimates with photos, cash vs finance, sign on the phone. A Housecall Pro alternative from JMB Business Solutions.",
+    "LeadFlow connects leads, appointments, estimates, signatures, payments, and production in one workflow for roofing and exterior contractors.",
 };
 
 export default function HousecallAlternativePage() {
@@ -14,10 +14,10 @@ export default function HousecallAlternativePage() {
       <MarketingNav />
       <article className="mx-auto max-w-3xl px-6 py-16">
         <p className="text-xs font-semibold uppercase tracking-wide text-orange-400">For roofers & exterior crews</p>
-        <h1 className="mt-3 text-4xl font-bold leading-tight">A Housecall Pro alternative built around the close — not the calendar</h1>
+        <h1 className="mt-3 text-4xl font-bold leading-tight">A Housecall Pro alternative built around the entire job</h1>
         <p className="mt-4 text-lg text-slate-300">
-          Housecall Pro is fine if the job is dispatch and invoicing. If you sell roofs in the kitchen, you need the estimate to happen
-          before you leave the driveway. LeadFlow is that tool.
+          LeadFlow gives home improvement companies one connected workflow for the work before, during, and after the appointment —
+          without making owners and reps update the same job in multiple places.
         </p>
         <p className="mt-3 text-slate-400">
           Built in Albany by JMB Business Solutions.
@@ -27,8 +27,9 @@ export default function HousecallAlternativePage() {
         <ul className="mt-4 space-y-3 text-slate-300">
           <li><span className="font-semibold text-white">Pricebook on the phone.</span> Pick the work. Description and price fill in. No typing a novel on the hood of the truck.</li>
           <li><span className="font-semibold text-white">Photos on the estimate.</span> Hail, soft deck, missing shingles — the homeowner sees it without climbing.</li>
-          <li><span className="font-semibold text-white">Cash vs finance on the same quote.</span> List price and cash price, plus what they save with 50/50. The fork is the close.</li>
+          <li><span className="font-semibold text-white">Cash vs finance on the same quote.</span> The customer&apos;s choice carries into the signed estimate, deposit, and job record.</li>
           <li><span className="font-semibold text-white">Sign at the table.</span> Or email the link if the spouse isn&apos;t home. Same estimate.</li>
+          <li><span className="font-semibold text-white">Production stays connected.</span> The signed work becomes the job your team tracks through materials, installation, and completion.</li>
         </ul>
 
         <h2 className="mt-12 text-2xl font-bold">Who it&apos;s for</h2>
@@ -43,7 +44,7 @@ export default function HousecallAlternativePage() {
 
         <div className="mt-10 flex flex-wrap gap-3">
           <Link href="/contact" className="rounded-lg bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">
-            Bring a real job — we&apos;ll quote it live
+            Book a personalized demo
           </Link>
           <Link href="/pricing" className="rounded-lg border border-slate-700 px-6 py-3 font-semibold text-slate-200 hover:bg-slate-800">
             See pricing

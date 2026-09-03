@@ -21,7 +21,7 @@ const TIERS = [
   },
   {
     name: "Pro",
-    tagline: "For growing sales teams",
+    tagline: "For growing teams and busy offices",
     price: 399,
     highlight: true,
     features: [
@@ -63,8 +63,8 @@ export default function PricingPage() {
         </div>
         <h1 className="mt-5 text-4xl font-bold sm:text-5xl">Plans for every size team</h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-          Less than one missed roof job for most shops. Month-to-month. We set it up;
-          you don&apos;t hire an IT person.
+          One connected system for the work your team handles every day. Month-to-month.
+          We set it up so you don&apos;t have to become the IT department.
         </p>
       </section>
 
@@ -109,7 +109,7 @@ export default function PricingPage() {
                     : "border border-slate-700 text-slate-200 hover:bg-slate-800"
                 }`}
               >
-                Bring a real job
+                Book a personalized demo
               </Link>
               <ul className="mt-6 space-y-2.5 text-sm">
                 {tier.features.map((f) => (
@@ -153,7 +153,7 @@ export default function PricingPage() {
                   We&apos;ll get you up and running — tailored to your business
                 </h2>
                 <p className="mt-2 max-w-xl text-sm text-slate-400">
-                  {`Skip the setup work. Our team configures ${APP_NAME} around your exact sales process, migrates your data, and trains your team so you're ready to sell from day one.`}
+                   {`Skip the setup work. Our team configures ${APP_NAME} around your complete workflow, migrates your data, and trains your team so everyone can work from one system on day one.`}
                 </p>
               </div>
               <div className="text-right">
@@ -165,7 +165,7 @@ export default function PricingPage() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 "Personalized account & workspace setup",
-                "Your sales pipeline & call-center queues configured",
+                "Your lead pipeline & call-center queues configured",
                 "Lead sources & products loaded for your business",
                 "Full migration of your existing leads & jobs",
                 "User accounts & roles set up for your team",
@@ -182,7 +182,7 @@ export default function PricingPage() {
 
             <p className="mt-6 text-sm text-slate-400">
               Every new customer is fully set up by our team — you log in to a finished,
-              configured account, ready to sell from day one — no setup work on your end.
+              configured account with your workflow ready to use and no setup work on your end.
             </p>
           </div>
         </div>
@@ -202,12 +202,12 @@ export default function PricingPage() {
               {
                 n: "2",
                 t: "We set you up",
-                d: "Our team configures LeadFlow for your sales process and migrates your data.",
+                d: "Our team configures LeadFlow for your workflow and migrates your data.",
               },
               {
                 n: "3",
-                t: "Start selling",
-                d: "Log in to a ready-to-go account, your team trained and good to go.",
+                t: "Start working",
+                d: "Log in to a ready-to-go account with your team trained and your workflow in place.",
               },
             ].map((s) => (
               <div key={s.n} className="rounded-2xl bg-slate-900 p-6 ring-1 ring-slate-800">
@@ -234,7 +234,7 @@ export default function PricingPage() {
               },
               {
                 q: "What's included in setup?",
-                a: "Our team configures LeadFlow around your sales process, loads your lead sources and products, migrates your existing leads and jobs, sets up your users, and trains your team — so you start on a finished, ready-to-use account.",
+                a: "Our team configures LeadFlow around your complete workflow, loads your lead sources and products, migrates your existing leads and jobs, sets up your users, and trains your team — so you start on a finished, ready-to-use account.",
               },
               {
                 q: "What's your cancellation policy?",

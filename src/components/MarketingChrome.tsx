@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { APP_NAME, BUSINESS_NAME, copyright } from "@/lib/constants";
 
-export function MarketingNav({ cta = "Bring a real job" }: { cta?: string }) {
+export function MarketingNav({ cta = "Book a demo" }: { cta?: string }) {
   return (
     <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
       <Link href="/" className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function MarketingFooter() {
             Pricing
           </Link>
           <Link href="/contact" className="hover:text-slate-300">
-            Bring a real job
+            Book a demo
           </Link>
           <Link href="/login" className="hover:text-slate-300">
             Sign In

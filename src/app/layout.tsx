@@ -9,9 +9,9 @@ import Sidebar from "@/components/Sidebar";
 import { getSessionUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "LeadFlow — Home Improvement Sales & Production CRM",
+  title: "LeadFlow — Workflow CRM for Home Improvement Companies",
   description:
-    "Full-lifecycle CRM for home improvement companies: leads, call center, appointments, sales, production, and marketing ROI.",
+    "Reduce administrative work and keep every job moving with one workflow for leads, appointments, estimates, signatures, payments, materials, and production.",
   manifest: "/manifest.webmanifest",
   applicationName: "LeadFlow",
   appleWebApp: {
