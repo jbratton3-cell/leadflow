@@ -8,24 +8,24 @@ export const dynamic = "force-dynamic";
 
 const FEATURES = [
   {
-    icon: "📸",
-    title: "Photos on the estimate",
-    body: "Shoot the damage on the roof. The homeowner sees it from the kitchen. Nobody climbs a ladder at 7 p.m. to “just look.”",
+    icon: "🧱",
+    title: "Material orders, sent automatically",
+    body: "Choose the job, supplier, and materials. LeadFlow emails the order automatically and keeps it connected to the job.",
   },
   {
-    icon: "💰",
-    title: "Cash vs finance, same quote",
-    body: "Keep both payment options on one estimate. The customer chooses once, and the selected terms carry into the job and deposit.",
+    icon: "📊",
+    title: "Reporting across the operation",
+    body: "Track leads, appointments, estimates, team activity, production, and marketing performance without rebuilding reports by hand.",
   },
   {
-    icon: "📋",
-    title: "Pricebook in the driveway",
-    body: "Pick the work. Description and price fill in. Stop typing a novel on the hood of the truck.",
+    icon: "🔄",
+    title: "Automatic production handoff",
+    body: "When a sale is recorded, the production job is created automatically. Nobody has to re-enter the same customer and job details.",
   },
   {
-    icon: "✍️",
-    title: "Sign at the table",
-    body: "They accept and sign on the phone in the house. Email the link only if the spouse isn't home.",
+    icon: "📺",
+    title: "Milestones & TV job board",
+    body: "Track job status and completed milestones at a glance, then share the production board on a screen so the whole team stays aligned.",
   },
   {
     icon: "📞",
