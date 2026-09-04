@@ -56,6 +56,9 @@ export default async function SettingsPage() {
           .orderBy(asc(invitations.createdAt))
       : Promise.resolve([]),
   ]);
+  const loginRoleByEmail = new Map(
+    userRows.map((user) => [user.email.trim().toLowerCase(), userRoleLabel(user.role)])
+  );
 
   return (
     <div>
@@ -115,7 +118,10 @@ export default async function SettingsPage() {
                   <div className="font-medium text-slate-700">{r.name}</div>
                   <div className="text-xs text-slate-400">{r.email ?? "—"}</div>
                 </div>
-                <Badge>{roleLabel(r.role)}</Badge>
+                <Badge>
+                  {(r.email && loginRoleByEmail.get(r.email.trim().toLowerCase())) ??
+                    roleLabel(r.role)}
+                </Badge>
               </li>
             ))}
             {repRows.length === 0 && <li className="py-2 text-sm text-slate-400">No members yet.</li>}
