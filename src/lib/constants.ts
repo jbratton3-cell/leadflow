@@ -66,13 +66,13 @@ export const APPT_RESULTS = [
 ] as const;
 
 export const JOB_STATUSES = [
-  { key: "pending", label: "Pending", color: "bg-slate-100 text-slate-700" },
-  { key: "measure", label: "Measure", color: "bg-amber-100 text-amber-800" },
-  { key: "permits", label: "Permits", color: "bg-yellow-100 text-yellow-800" },
+  { key: "pending", label: "Production Review", color: "bg-slate-100 text-slate-700" },
+  { key: "measure", label: "Awaiting Final Measure", color: "bg-amber-100 text-amber-800" },
+  { key: "permits", label: "Awaiting Permit", color: "bg-yellow-100 text-yellow-800" },
   { key: "materials_ordered", label: "Materials Ordered", color: "bg-blue-100 text-blue-800" },
   { key: "materials_delivered", label: "Materials Delivered", color: "bg-teal-100 text-teal-800" },
-  { key: "scheduled", label: "Scheduled", color: "bg-indigo-100 text-indigo-800" },
-  { key: "in_progress", label: "In Progress", color: "bg-cyan-100 text-cyan-800" },
+  { key: "scheduled", label: "Installation Scheduled", color: "bg-indigo-100 text-indigo-800" },
+  { key: "in_progress", label: "Installation in Progress", color: "bg-cyan-100 text-cyan-800" },
   { key: "completed", label: "Completed", color: "bg-green-100 text-green-800" },
   { key: "on_hold", label: "On Hold", color: "bg-rose-100 text-rose-700" },
 ] as const;
@@ -91,6 +91,10 @@ export const JOB_MILESTONES = [
   { key: "installed", label: "Installed" },
   { key: "inspected", label: "Inspected" },
   { key: "paid", label: "Final Payment" },
+] as const;
+
+export const JOB_REQUIREMENTS = [
+  { key: "permit_required", label: "Permit Required" },
 ] as const;
 
 export const SOURCE_CATEGORIES = [

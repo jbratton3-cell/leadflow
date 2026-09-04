@@ -11,6 +11,7 @@ import { updateJob, createJob, markJobCompleted } from "@/lib/actions";
 import {
   JOB_STATUSES,
   JOB_MILESTONES,
+  JOB_REQUIREMENTS,
   jobStatusLabel,
   jobStatusColor,
   money,
@@ -190,6 +191,11 @@ export default async function ProductionPage() {
                       <Badge className={jobStatusColor(r.job.status)}>
                         {jobStatusLabel(r.job.status)}
                       </Badge>
+                      {ms.permit_required && !ms.permits_pulled && (
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          Permit Needed
+                        </Badge>
+                      )}
                       {!r.job.leadId && (
                         <span className="text-[10px] font-medium uppercase text-slate-400">
                           Manual
@@ -251,6 +257,28 @@ export default async function ProductionPage() {
                         defaultValue={toDateInput(r.job.completionDate)}
                         className={input}
                       />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={label}>Job Requirements</label>
+                      <p className="mb-2 text-xs text-slate-400">
+                        Mark requirements that still apply even when the job moves to another stage.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {JOB_REQUIREMENTS.map((requirement) => (
+                          <label
+                            key={requirement.key}
+                            className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800"
+                          >
+                            <input
+                              type="checkbox"
+                              name={`ms_${requirement.key}`}
+                              defaultChecked={!!ms[requirement.key]}
+                              className="h-4 w-4 rounded"
+                            />
+                            {requirement.label}
+                          </label>
+                        ))}
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                       <label className={label}>Milestones</label>
