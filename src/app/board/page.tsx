@@ -73,6 +73,22 @@ function selectedMilestoneLabels(value: string | null): string[] {
   }
 }
 
+function permitIsNeeded(value: string | null): boolean {
+  if (!value) return false;
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Boolean(
+      parsed &&
+        typeof parsed === "object" &&
+        (parsed as Record<string, unknown>).permit_required &&
+        !(parsed as Record<string, unknown>).permits_pulled,
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default async function BoardPage() {
   const { orgId } = await requireAccess("production");
 
@@ -101,6 +117,7 @@ export default async function BoardPage() {
       const displayAmount = r.amount ?? r.job.contractAmount ?? 0;
       const boardDate = r.job.startDate ?? r.job.createdAt;
       const milestones = selectedMilestoneLabels(r.job.milestones);
+       const permitNeeded = permitIsNeeded(r.job.milestones);
 
       return {
         ...r,
@@ -110,6 +127,7 @@ export default async function BoardPage() {
         displayAmount,
         boardDate,
         milestones,
+         permitNeeded,
       };
     })
     .sort((a, b) => timeValue(b.boardDate) - timeValue(a.boardDate));
@@ -175,6 +193,11 @@ export default async function BoardPage() {
                         >
                           {jobStatusLabel(r.job.status)}
                         </span>
+                        {r.permitNeeded && (
+                          <span className="inline-flex rounded-full bg-yellow-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">
+                            Permit Needed
+                          </span>
+                        )}
                       </div>
                       {r.milestones.length > 0 && (
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
