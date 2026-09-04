@@ -37,6 +37,19 @@ export default function ContactForm() {
 
   return (
     <form action={formAction} className="rounded-2xl bg-white p-6 shadow-xl">
+      <div
+        aria-hidden="true"
+        className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+      >
+        <label htmlFor="contact-website">Your Website</label>
+        <input
+          id="contact-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       {state?.error && (
         <div className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {state.error}

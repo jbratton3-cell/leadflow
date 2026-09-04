@@ -18,6 +18,11 @@ export async function submitDemoRequest(
   const phone = str(formData.get("phone"));
   const trade = str(formData.get("trade"));
   const message = str(formData.get("message"));
+  const website = str(formData.get("website"));
+
+  if (website) {
+    return { success: true };
+  }
 
   if (!name || !email) {
     return { error: "Please provide your name and email." };
