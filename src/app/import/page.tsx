@@ -1,11 +1,12 @@
 import { PageHeader, Card } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import ImportWizard from "@/components/ImportWizard";
+import DuplicateCleanup from "@/components/DuplicateCleanup";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  await requireAccess("import");
+  const user = await requireAccess("import");
 
   return (
     <div>
@@ -47,6 +48,11 @@ export default async function ImportPage() {
           </div>
         </Card>
       </div>
+      {(user.role === "admin" || user.role === "manager") && (
+        <Card className="mt-6 p-6">
+          <DuplicateCleanup />
+        </Card>
+      )}
     </div>
   );
 }
