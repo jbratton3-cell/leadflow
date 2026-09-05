@@ -180,6 +180,79 @@ export async function createInvite(
   return { link, message };
 }
 
+export async function createWorkspaceInvite(
+  _prev: { link?: string; message?: string; error?: string } | undefined,
+  formData: FormData
+): Promise<{ link?: string; message?: string; error?: string }> {
+  const owner = await requireAccess("users");
+  if (owner.orgId !== 1 || owner.role !== "admin") {
+    return { error: "Only the platform owner can create a new workspace." };
+  }
+
+  const company = str(formData.get("company"));
+  const name = str(formData.get("name"));
+  const email = str(formData.get("email")).toLowerCase();
+
+  if (!company || !name || !email) {
+    return { error: "Company, name, and email are required." };
+  }
+
+  const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  if (existing[0]) {
+    return { error: "A user with that email already exists." };
+  }
+
+  const pending = await db
+    .select()
+    .from(invitations)
+    .where(and(eq(invitations.email, email), isNull(invitations.acceptedAt)))
+    .limit(1);
+  if (pending[0]) {
+    return { error: "A pending invitation already exists for that email." };
+  }
+
+  const token = randomBytes(24).toString("hex");
+  const expiresAt = new Date(Date.now() + INVITE_DAYS * 86400000);
+  const link = `${getBaseUrl()}/invite/${token}`;
+
+  const [org] = await db
+    .insert(organizations)
+    .values({ name: company, plan: "trial" })
+    .returning();
+
+  await db.insert(invitations).values({
+    token,
+    orgId: org.id,
+    name,
+    email,
+    role: "admin",
+    invitedById: owner.id,
+    deliveredVia: "link",
+    expiresAt,
+  });
+
+  const emailed = await sendEmail({
+    to: email,
+    subject: `Your ${company} LeadFlow workspace invitation`,
+    html: inviteEmailHtml(name, link),
+  });
+
+  if (emailed) {
+    await db
+      .update(invitations)
+      .set({ deliveredVia: "email" })
+      .where(eq(invitations.token, token));
+  }
+
+  revalidatePath("/settings");
+  return {
+    link,
+    message: emailed
+      ? "Workspace created and invitation sent by email. You can also share the link below."
+      : "Workspace created. Email is not configured, so share the link below directly.",
+  };
+}
+
 export async function resendInvite(formData: FormData) {
   await requireAccess("users");
   const token = str(formData.get("token"));

@@ -16,6 +16,7 @@ import RoleSelect from "@/components/RoleSelect";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
 import InvitePanel from "@/components/InvitePanel";
 import CopyInviteLink from "@/components/CopyInviteLink";
+import WorkspaceInvitePanel from "@/components/WorkspaceInvitePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -200,6 +201,15 @@ export default async function SettingsPage() {
         <div className="mt-6 space-y-6">
           {/* Invite + role reference */}
           <div className="grid gap-6 lg:grid-cols-3">
+            {isPlatformOwner && (
+              <Card className="p-5 lg:col-span-3">
+                <h2 className="mb-1 text-sm font-semibold text-slate-700">Create a Separate Workspace</h2>
+                <p className="mb-4 text-xs text-slate-400">
+                  Create an isolated LeadFlow organization for another business and generate its first administrator invite.
+                </p>
+                <WorkspaceInvitePanel />
+              </Card>
+            )}
             <Card className="p-5 lg:col-span-2">
               <h2 className="mb-1 text-sm font-semibold text-slate-700">Invite a User</h2>
               <p className="mb-4 text-xs text-slate-400">
