@@ -37,6 +37,11 @@ export const organizations = pgTable("organizations", {
   cashDiscountPercent: numeric("cash_discount_percent", { precision: 6, scale: 2 })
     .notNull()
     .default("0"),
+  qbRealmId: varchar("qb_realm_id", { length: 40 }),
+  qbRefreshToken: text("qb_refresh_token"),
+  qbAccessToken: text("qb_access_token"),
+  qbTokenExpiresAt: timestamp("qb_token_expires_at"),
+  qbConnectedAt: timestamp("qb_connected_at"),
 });
 
 // Login users (authentication) — scoped to an organization.

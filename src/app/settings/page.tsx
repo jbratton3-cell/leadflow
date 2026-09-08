@@ -11,6 +11,8 @@ import { deleteUser } from "@/lib/auth-actions";
 import { createSupplier, deleteSupplier, createMaterial, deleteMaterial } from "@/lib/material-actions";
 import { createPricebookItem, deletePricebookItem } from "@/lib/pricebook-actions";
 import { updateCashDiscount } from "@/lib/org-actions";
+import { ensureQbColumns, qbConfigured } from "@/lib/quickbooks";
+import { disconnectQbAction } from "@/lib/qb-actions";
 import DeleteButton from "@/components/DeleteButton";
 import RoleSelect from "@/components/RoleSelect";
 import { REP_ROLES, SOURCE_CATEGORIES, roleLabel, money, fmtDate } from "@/lib/constants";
@@ -29,6 +31,7 @@ export default async function SettingsPage() {
   const orgId = me.orgId;
   const canManageUsers = can(me.role, "users");
 
+  await ensureQbColumns();
   const [orgRow] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
 
   const [supplierRows, materialRows, pricebookRows] = await Promise.all([
