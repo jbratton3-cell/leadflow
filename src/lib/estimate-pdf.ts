@@ -204,7 +204,9 @@ export async function buildSignedEstimatePdf(opts: {
   totalRow("Subtotal", money(est.subtotal));
   if (Number(est.discount) > 0) totalRow("Discount", `- ${money(est.discount)}`);
   if (Number(est.taxRate) > 0) totalRow(`Tax (${Number(est.taxRate)}%)`, money(est.taxAmount));
-  page.drawLine({ start: { x: W - M - 250, y: y + 8 }, end: { x: W - M, y: y + 8 }, thickness: 1, color: INK });
+  y -= 4;
+  page.drawLine({ start: { x: W - M - 250, y }, end: { x: W - M, y }, thickness: 1, color: INK });
+  y -= 16;
   totalRow("List / financed", money(est.total), true);
   if (hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice)) {
     totalRow("Cash (50/50)", money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice)), true);
