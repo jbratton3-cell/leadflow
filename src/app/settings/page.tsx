@@ -72,6 +72,36 @@ export default async function SettingsPage() {
       />
 
       <Card className="mb-6 p-5">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">QuickBooks Online</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Connect BP&apos;s books so LeadFlow can send invoices later. Development keys only talk to Intuit&apos;s
+          test company until we switch to production keys.
+        </p>
+        {!qbConfigured() ? (
+          <p className="text-sm text-amber-700">
+            Client ID / Secret are not on the server yet. Add them in Vercel, then this button will work.
+          </p>
+        ) : orgRow?.qbRealmId ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge className="bg-emerald-100 text-emerald-800">Connected</Badge>
+            <span className="text-xs text-slate-500">Company ID {orgRow.qbRealmId}</span>
+            <form action={disconnectQbAction}>
+              <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                Disconnect
+              </button>
+            </form>
+          </div>
+        ) : (
+          <a
+            href="/api/quickbooks/connect"
+            className="inline-block rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Connect QuickBooks
+          </a>
+        )}
+      </Card>
+
+      <Card className="mb-6 p-5">
         <h2 className="mb-1 text-sm font-semibold text-slate-700">Cash discount</h2>
         <p className="mb-4 text-xs text-slate-400">
           Optional default percent off list for cash (50/50). Reps can also type a cash price on each estimate — that dollar amount wins.
