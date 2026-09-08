@@ -67,7 +67,14 @@ export default async function LeadDetailPage({
     .limit(1);
   if (!lead) notFound();
 
-  await ensureOutreachTable();
+  const [orgRow] = await db
+    .select({ name: organizations.name })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  const showOutreach = orgHasEmailOutreach(orgRow?.name, orgId);
+
+  if (showOutreach) await ensureOutreachTable();
 
   const docs = await db
     .select()
