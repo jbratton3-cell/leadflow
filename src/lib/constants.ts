@@ -4,6 +4,16 @@
 export const APP_NAME = "LeadFlow";
 export const BUSINESS_NAME = "JMB Business Solutions";
 
+/** Email/Messenger logging is a JMB workspace tool, not BuildPros call-center. */
+export function orgHasEmailOutreach(orgName: string | null | undefined, orgId?: number): boolean {
+  const envId = process.env.JMB_ORG_ID;
+  if (envId && orgId && Number(envId) === orgId) return true;
+  const n = (orgName ?? "").toLowerCase();
+  if (!n) return false;
+  if (n.includes("buildpros") || n.includes("build pros")) return false;
+  return n.includes("jmb") || n.includes("leadflow");
+}
+
 // Copyright line, e.g. "© 2026 JMB Business Solutions. All rights reserved."
 export function copyright(): string {
   return `© ${new Date().getFullYear()} ${BUSINESS_NAME}. All rights reserved.`;

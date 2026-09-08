@@ -11,7 +11,9 @@ import {
   reps,
   leadSources,
   products,
+  organizations,
 } from "@/db/schema";
+import { orgHasEmailOutreach } from "@/lib/constants";
 import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -199,6 +201,12 @@ export async function ensureOutreachTable() {
 
 export async function logOutreach(formData: FormData) {
   const { orgId } = await requireUser();
+  const [org] = await db
+    .select({ name: organizations.name })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  if (!orgHasEmailOutreach(org?.name, orgId)) return;
   await ensureOutreachTable();
   const leadId = Number(formData.get("leadId"));
   const channel = req(formData.get("channel"));

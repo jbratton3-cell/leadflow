@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { leads, callLogs, outreachLogs, appointments, sales, jobs, estimates } from "@/db/schema";
+import { leads, callLogs, outreachLogs, appointments, sales, jobs, estimates, organizations } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -25,7 +25,7 @@ import {
   APPT_RESULTS,
   FINANCE_TYPES,
   estimateStatusLabel,
-  estimateStatusColor, personName } from "@/lib/constants";
+  estimateStatusColor, personName, orgHasEmailOutreach } from "@/lib/constants";
 import {
   createAppointment,
   updateAppointmentStatus,
@@ -78,7 +78,9 @@ export default async function LeadDetailPage({
   const [calls, outreach, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
     await Promise.all([
       db.select().from(callLogs).where(and(eq(callLogs.orgId, orgId), eq(callLogs.leadId, leadId))).orderBy(desc(callLogs.createdAt)),
-      db.select().from(outreachLogs).where(and(eq(outreachLogs.orgId, orgId), eq(outreachLogs.leadId, leadId))).orderBy(desc(outreachLogs.createdAt)),
+      showOutreach
+        ? db.select().from(outreachLogs).where(and(eq(outreachLogs.orgId, orgId), eq(outreachLogs.leadId, leadId))).orderBy(desc(outreachLogs.createdAt))
+        : Promise.resolve([]),
       db.select().from(appointments).where(and(eq(appointments.orgId, orgId), eq(appointments.leadId, leadId))).orderBy(desc(appointments.scheduledAt)),
       db.select().from(sales).where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId))).orderBy(desc(sales.soldAt)),
       db.select().from(jobs).where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId))).orderBy(desc(jobs.createdAt)),
@@ -165,6 +167,7 @@ export default async function LeadDetailPage({
             </details>
           </Card>
 
+          {showOutreach && (
           <Card className="p-5">
             <details open={lead.stage === "new" || lead.stage === "contacting"}>
               <summary className="cursor-pointer text-sm font-semibold text-slate-700">
@@ -179,6 +182,7 @@ export default async function LeadDetailPage({
               </div>
             </details>
           </Card>
+          )}
 
           {/* Action: Set Appointment */}
           <Card className="p-5">
@@ -454,9 +458,13 @@ export default async function LeadDetailPage({
           )}
 
           <Card className="p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Contact History</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">
+              {showOutreach ? "Contact History" : "Call History"}
+            </h2>
             {calls.length === 0 && outreach.length === 0 ? (
-              <p className="text-sm text-slate-400">No calls or messages logged.</p>
+              <p className="text-sm text-slate-400">
+                {showOutreach ? "No calls or messages logged." : "No calls logged."}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {[
