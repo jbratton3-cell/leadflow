@@ -39,7 +39,7 @@ function toDate(v: FormDataEntryValue | null): Date | null {
 }
 
 // Recalculate subtotal/tax/total from line items and save onto the estimate.
-async function recalcTotals(estimateId: number) {
+export async function recalcTotals(estimateId: number) {
   const items = await db
     .select()
     .from(estimateItems)
@@ -49,13 +49,17 @@ async function recalcTotals(estimateId: number) {
   const [est] = await db.select().from(estimates).where(eq(estimates.id, estimateId)).limit(1);
   if (!est) return;
 
-  const discount = Number(est.discount);
   const taxRate = Number(est.taxRate);
-  const taxable = Math.max(subtotal - discount, 0);
-  const taxAmount = +(taxable * (taxRate / 100)).toFixed(2);
-  const total = +(taxable + taxAmount).toFixed(2);
+  const taxAmount = +(subtotal * (taxRate / 100)).toFixed(2);
+  const total = +(subtotal + taxAmount).toFixed(2);
 
+  // List/financed is the pricebook total. Never subtract "discount" from it —
+  // reps were putting the cash number there and list collapsed to cash.
   let cashPrice = est.cashPrice;
+  const leftoverDiscount = Number(est.discount) || 0;
+  if ((cashPrice == null || Number(cashPrice) <= 0) && leftoverDiscount > 0 && leftoverDiscount < total) {
+    cashPrice = (total - leftoverDiscount).toFixed(2);
+  }
   if (cashPrice != null && Number(cashPrice) > total) {
     cashPrice = total.toFixed(2);
   }
@@ -67,6 +71,7 @@ async function recalcTotals(estimateId: number) {
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
       cashPrice,
+      discount: "0",
       updatedAt: new Date(),
     })
     .where(eq(estimates.id, estimateId));
@@ -126,9 +131,9 @@ export async function updateEstimate(formData: FormData) {
     formData.get("cashPrice") === "" || formData.get("cashPrice") == null
       ? null
       : num(formData.get("cashPrice")).toString();
+  const listCap = Number(current.subtotal) || Number(current.total) || 0;
   if (cashPriceVal != null) {
-    const cap = Number(current.total) || 0;
-    if (Number(cashPriceVal) > cap && cap > 0) cashPriceVal = cap.toFixed(2);
+    if (Number(cashPriceVal) > listCap && listCap > 0) cashPriceVal = listCap.toFixed(2);
     if (Number(cashPriceVal) <= 0) cashPriceVal = null;
   }
 
@@ -137,7 +142,7 @@ export async function updateEstimate(formData: FormData) {
     .set({
       title: req(formData.get("title")) || "Project Estimate",
       taxRate: num(formData.get("taxRate")).toString(),
-      discount: num(formData.get("discount")).toString(),
+      discount: "0",
       notes: str(formData.get("notes")),
       terms: str(formData.get("terms")),
       validUntil: toDate(formData.get("validUntil")),

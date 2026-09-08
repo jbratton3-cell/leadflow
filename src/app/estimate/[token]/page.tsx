@@ -179,12 +179,6 @@ export default async function PublicEstimatePage({
                 <span className="text-slate-500">Subtotal</span>
                 <span className="font-medium text-slate-700">{money(est.subtotal)}</span>
               </div>
-              {Number(est.discount) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Discount</span>
-                  <span className="font-medium text-slate-700">- {money(est.discount)}</span>
-                </div>
-              )}
               {Number(est.taxRate) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">Tax ({Number(est.taxRate)}%)</span>

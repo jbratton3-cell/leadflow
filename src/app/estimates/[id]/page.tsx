@@ -20,6 +20,7 @@ import {
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
+  recalcTotals,
 } from "@/lib/estimate-actions";
 import { deleteEstimatePhoto } from "@/lib/estimate-photo-actions";
 import { recordDepositPaid } from "@/lib/invoice-actions";
@@ -51,6 +52,16 @@ export default async function EstimateDetailPage({
     .where(and(eq(estimates.id, estId), eq(estimates.orgId, orgId)))
     .limit(1);
   if (!est) notFound();
+
+  if (Number(est.discount) > 0) {
+    await recalcTotals(estId);
+    const [fresh] = await db
+      .select()
+      .from(estimates)
+      .where(and(eq(estimates.id, estId), eq(estimates.orgId, orgId)))
+      .limit(1);
+    if (fresh) Object.assign(est, fresh);
+  }
 
   const [items, [lead], book, photos] = await Promise.all([
     db.select().from(estimateItems).where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, estId))).orderBy(asc(estimateItems.sortOrder)),
@@ -201,13 +212,9 @@ export default async function EstimateDetailPage({
                   <input name="title" defaultValue={est.title} className={input} />
                 </div>
                 <div>
-                  <label className={label}>Discount ($)</label>
-                  <input name="discount" type="number" step="0.01" defaultValue={est.discount} className={input} />
-                </div>
-                <div>
                   <label className={label}>Cash price ($)</label>
-                  <input name="cashPrice" type="number" step="0.01" min="0" max={Number(est.total) || undefined} defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
-                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash — cannot be higher than the list total. Leave blank for no cash offer.</p>
+                  <input name="cashPrice" type="number" step="0.01" min="0" max={Number(est.subtotal) || Number(est.total) || undefined} defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash — cannot be higher than list/financed. Leave blank for no cash offer.</p>
                 </div>
                 <input type="hidden" name="cashDiscountPercent" value={est.cashDiscountPercent} />
                 <div>
@@ -243,7 +250,6 @@ export default async function EstimateDetailPage({
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Summary</h2>
             <dl className="space-y-1.5 text-sm">
               <Row label="Subtotal" value={money(est.subtotal)} />
-              {Number(est.discount) > 0 && <Row label="Discount" value={`- ${money(est.discount)}`} />}
               {Number(est.taxRate) > 0 && (
                 <Row label={`Tax (${Number(est.taxRate)}%)`} value={money(est.taxAmount)} />
               )}
@@ -370,7 +376,7 @@ export default async function EstimateDetailPage({
               <OfficeAcceptForm
                 estimateId={est.id}
                 listTotal={money(est.total)}
-                cashTotal={money(cashPrice(est.total, est.cashDiscountPercent))}
+                cashTotal={money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice))}
                 cashPct={hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice) ? 1 : 0}
               />
               <form action={markEstimateStatus} className="mt-3">
