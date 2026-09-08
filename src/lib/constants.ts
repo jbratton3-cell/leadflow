@@ -44,6 +44,30 @@ export const DISPOSITIONS = [
 export const dispositionLabel = (key?: string | null) =>
   DISPOSITIONS.find((d) => d.key === key)?.label ?? (key ?? "—");
 
+export const OUTREACH_CHANNELS = [
+  { key: "email", label: "Email" },
+  { key: "messenger", label: "Facebook / Messenger" },
+  { key: "instagram", label: "Instagram" },
+  { key: "sms", label: "Text / SMS" },
+  { key: "other", label: "Other" },
+] as const;
+
+export const OUTREACH_OUTCOMES = [
+  { key: "sent", label: "Sent" },
+  { key: "replied", label: "Replied" },
+  { key: "interested", label: "Interested" },
+  { key: "follow_up", label: "Follow-up needed" },
+  { key: "no_reply", label: "No reply" },
+  { key: "bounced", label: "Bounced / failed" },
+  { key: "not_interested", label: "Not interested" },
+] as const;
+
+export const outreachChannelLabel = (key?: string | null) =>
+  OUTREACH_CHANNELS.find((c) => c.key === key)?.label ?? (key ?? "—");
+
+export const outreachOutcomeLabel = (key?: string | null) =>
+  OUTREACH_OUTCOMES.find((o) => o.key === key)?.label ?? (key ?? "—");
+
 export const APPT_STATUSES = [
   { key: "set", label: "Set", color: "bg-blue-100 text-blue-800" },
   { key: "confirmed", label: "Confirmed", color: "bg-indigo-100 text-indigo-800" },

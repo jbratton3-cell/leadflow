@@ -1,17 +1,20 @@
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { leads, callLogs, appointments, sales, jobs, estimates } from "@/db/schema";
+import { leads, callLogs, outreachLogs, appointments, sales, jobs, estimates } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import DispositionForm from "@/components/DispositionForm";
+import OutreachForm from "@/components/OutreachForm";
 import { getSources, getProducts, getReps, getSalesReps, getCallReps, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import {
   stageLabel,
   stageColor,
   dispositionLabel,
+  outreachChannelLabel,
+  outreachOutcomeLabel,
   apptStatusLabel,
   apptStatusColor,
   jobStatusLabel,
@@ -27,6 +30,7 @@ import {
   createAppointment,
   updateAppointmentStatus,
   createSale,
+  ensureOutreachTable,
 } from "@/lib/actions";
 import { createEstimate } from "@/lib/estimate-actions";
 import { deleteLead } from "@/lib/delete-actions";
@@ -69,9 +73,10 @@ export default async function LeadDetailPage({
     .where(and(eq(documents.orgId, orgId), eq(documents.leadId, leadId)))
     .orderBy(desc(documents.createdAt));
 
-  const [calls, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
+  const [calls, outreach, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
     await Promise.all([
       db.select().from(callLogs).where(and(eq(callLogs.orgId, orgId), eq(callLogs.leadId, leadId))).orderBy(desc(callLogs.createdAt)),
+      db.select().from(outreachLogs).where(and(eq(outreachLogs.orgId, orgId), eq(outreachLogs.leadId, leadId))).orderBy(desc(outreachLogs.createdAt)).catch(() => [] as typeof outreachLogs.$inferSelect[]),
       db.select().from(appointments).where(and(eq(appointments.orgId, orgId), eq(appointments.leadId, leadId))).orderBy(desc(appointments.scheduledAt)),
       db.select().from(sales).where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId))).orderBy(desc(sales.soldAt)),
       db.select().from(jobs).where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId))).orderBy(desc(jobs.createdAt)),
@@ -432,24 +437,46 @@ export default async function LeadDetailPage({
           )}
 
           <Card className="p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Call History</h2>
-            {calls.length === 0 ? (
-              <p className="text-sm text-slate-400">No calls logged.</p>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Contact History</h2>
+            {calls.length === 0 && outreach.length === 0 ? (
+              <p className="text-sm text-slate-400">No calls or messages logged.</p>
             ) : (
               <ul className="space-y-3">
-                {calls.map((c) => (
-                  <li key={c.id} className="border-l-2 border-slate-200 pl-3 text-sm">
-                    <div className="font-medium text-slate-700">{dispositionLabel(c.disposition)}</div>
-                    {c.notes && <div className="text-slate-500">{c.notes}</div>}
-                    {c.callbackAt && (
-                      <div className="text-xs text-amber-600">Callback: {fmtDateTime(c.callbackAt)}</div>
-                    )}
-                    <div className="text-xs text-slate-400">
-                      {fmtDateTime(c.createdAt)}
-                      {c.repId && ` · ${repMap.get(c.repId)?.name ?? ""}`}
-                    </div>
-                  </li>
-                ))}
+                {[
+                  ...calls.map((c) => ({
+                    kind: "call" as const,
+                    at: c.createdAt,
+                    id: `c${c.id}`,
+                    title: `Call · ${dispositionLabel(c.disposition)}`,
+                    notes: c.notes,
+                    extra: c.callbackAt ? `Callback: ${fmtDateTime(c.callbackAt)}` : null,
+                    repId: c.repId,
+                  })),
+                  ...outreach.map((o) => ({
+                    kind: "msg" as const,
+                    at: o.createdAt,
+                    id: `o${o.id}`,
+                    title: `${outreachChannelLabel(o.channel)} · ${outreachOutcomeLabel(o.outcome)}`,
+                    notes: o.notes,
+                    extra: o.followUpAt ? `Follow up: ${fmtDateTime(o.followUpAt)}` : null,
+                    repId: o.repId,
+                  })),
+                ]
+                  .sort((a, b) => +new Date(b.at) - +new Date(a.at))
+                  .map((row) => (
+                    <li
+                      key={row.id}
+                      className={`border-l-2 pl-3 text-sm ${row.kind === "call" ? "border-slate-200" : "border-orange-200"}`}
+                    >
+                      <div className="font-medium text-slate-700">{row.title}</div>
+                      {row.notes && <div className="text-slate-500">{row.notes}</div>}
+                      {row.extra && <div className="text-xs text-amber-600">{row.extra}</div>}
+                      <div className="text-xs text-slate-400">
+                        {fmtDateTime(row.at)}
+                        {row.repId && ` · ${repMap.get(row.repId)?.name ?? ""}`}
+                      </div>
+                    </li>
+                  ))}
               </ul>
             )}
           </Card>

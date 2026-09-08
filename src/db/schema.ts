@@ -457,6 +457,27 @@ export type LeadSource = typeof leadSources.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
 export type CallLog = typeof callLogs.$inferSelect;
+
+// Email / Messenger / SMS — not counted as phone calls
+export const outreachLogs = pgTable(
+  "outreach_logs",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    leadId: integer("lead_id").notNull(),
+    repId: integer("rep_id"),
+    // email | messenger | instagram | sms | other
+    channel: varchar("channel", { length: 40 }).notNull(),
+    // sent | replied | interested | follow_up | no_reply | bounced | not_interested
+    outcome: varchar("outcome", { length: 40 }).notNull(),
+    notes: text("notes"),
+    followUpAt: timestamp("follow_up_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("outreach_org_idx").on(t.orgId), index("outreach_lead_idx").on(t.leadId)]
+);
+
+export type OutreachLog = typeof outreachLogs.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type Job = typeof jobs.$inferSelect;

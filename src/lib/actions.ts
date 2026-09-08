@@ -175,6 +175,61 @@ export async function logCall(formData: FormData) {
   revalidatePath("/leads");
 }
 
+let outreachTableReady = false;
+export async function ensureOutreachTable() {
+  if (outreachTableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS outreach_logs (
+      id serial PRIMARY KEY,
+      org_id integer NOT NULL,
+      lead_id integer NOT NULL,
+      rep_id integer,
+      channel varchar(40) NOT NULL,
+      outcome varchar(40) NOT NULL,
+      notes text,
+      follow_up_at timestamp,
+      created_at timestamp NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS outreach_org_idx ON outreach_logs (org_id);
+    CREATE INDEX IF NOT EXISTS outreach_lead_idx ON outreach_logs (lead_id);
+  `);
+  outreachTableReady = true;
+}
+
+export async function logOutreach(formData: FormData) {
+  const { orgId } = await requireUser();
+  await ensureOutreachTable();
+  const leadId = Number(formData.get("leadId"));
+  const channel = req(formData.get("channel"));
+  const outcome = req(formData.get("outcome"));
+  const notes = str(formData.get("notes"));
+  const followUpAt = toDate(formData.get("followUpAt"));
+  const repId = num(formData.get("repId"));
+
+  await db.insert(outreachLogs).values({
+    orgId,
+    leadId,
+    repId,
+    channel,
+    outcome,
+    notes,
+    followUpAt,
+  });
+
+  const patch: Partial<typeof leads.$inferInsert> = { updatedAt: new Date() };
+  if (outcome === "not_interested") {
+    patch.stage = "dead";
+    patch.deadReason = "not_interested";
+  } else if (["sent", "replied", "interested", "follow_up", "no_reply", "bounced"].includes(outcome)) {
+    patch.stage = "contacting";
+    patch.deadReason = null;
+  }
+
+  await db.update(leads).set(patch).where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+}
+
 /* --------------------------- APPOINTMENTS --------------------------- */
 
 export async function createAppointment(formData: FormData) {
