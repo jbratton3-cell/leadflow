@@ -4,6 +4,7 @@ import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
 import { and, eq, asc } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
+import { getEstimateRepContact } from "@/lib/queries";
 
 // Streams a PDF of a (signed) estimate. CRM users only, org-scoped.
 export const dynamic = "force-dynamic";

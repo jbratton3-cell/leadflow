@@ -10,6 +10,7 @@ import { getSessionUser } from "@/lib/auth";
 import SignatureStep from "@/components/SignatureStep";
 import PrintButton from "@/components/PrintButton";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
+import { getEstimateRepContact } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,11 @@ export default async function PublicEstimatePage({
   const cashPct = Number(est.cashDiscountPercent);
   const cashTotal = cashPrice(est.total, cashPct, est.cashPrice);
   const showCash = hasCashOffer(est.total, cashPct, est.cashPrice);
+  const rep = await getEstimateRepContact({
+    orgId: est.orgId,
+    assignedRepId: lead?.assignedRepId,
+    createdById: est.createdById,
+  });
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -95,6 +101,28 @@ export default async function PublicEstimatePage({
               {lead?.city && (
                 <div>
                   {lead.city}, {lead.state ?? ""} {lead.zip ?? ""}
+                </div>
+              )}
+              {rep && (
+                <div className="mt-3 border-t border-slate-100 pt-2 text-left sm:text-right">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Your representative
+                  </div>
+                  <div className="font-medium text-slate-800">{rep.name}</div>
+                  {rep.phone && (
+                    <div>
+                      <a href={`tel:${rep.phone}`} className="text-orange-600 hover:underline">
+                        {rep.phone}
+                      </a>
+                    </div>
+                  )}
+                  {rep.email && (
+                    <div>
+                      <a href={`mailto:${rep.email}`} className="text-orange-600 hover:underline">
+                        {rep.email}
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

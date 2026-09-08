@@ -16,6 +16,7 @@ import {
 import { handleEstimateAccepted } from "@/lib/invoice-actions";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 import { signedEstimateEmailHtml } from "@/lib/notify";
+import { getEstimateRepContact } from "@/lib/queries";
 
 const APP_NAME_FALLBACK = "LeadFlow";
 import { BUSINESS_NAME, personName, contractPrice } from "@/lib/constants";
@@ -80,7 +81,8 @@ export async function recalcTotals(estimateId: number) {
 /* ------------------------------ estimates ------------------------------ */
 
 export async function createEstimate(formData: FormData) {
-  const { orgId } = await requireAccess("estimates");
+  const user = await requireAccess("estimates");
+  const { orgId } = user;
   const leadId = Number(formData.get("leadId"));
 
   // Generate a sequential-ish estimate number (per organization)
@@ -107,6 +109,7 @@ export async function createEstimate(formData: FormData) {
       publicToken: randomBytes(24).toString("hex"),
       status: "draft",
       cashDiscountPercent: org?.cashDiscountPercent ?? "0",
+      createdById: user.id,
     })
     .returning();
 
@@ -225,7 +228,8 @@ export async function sendEstimate(
   _prev: { message?: string; link?: string; error?: string } | undefined,
   formData: FormData
 ): Promise<{ message?: string; link?: string; error?: string }> {
-  const { orgId } = await requireAccess("estimates");
+  const user = await requireAccess("estimates");
+  const { orgId } = user;
   const id = Number(formData.get("id"));
 
   const [est] = await db
@@ -274,7 +278,12 @@ export async function sendEstimate(
 
   await db
     .update(estimates)
-    .set({ status: "sent", sentAt: new Date(), updatedAt: new Date() })
+    .set({
+      status: "sent",
+      sentAt: new Date(),
+      updatedAt: new Date(),
+      createdById: est.createdById ?? user.id,
+    })
     .where(eq(estimates.id, id));
 
   revalidatePath(`/estimates/${id}`);
@@ -396,6 +405,11 @@ export async function saveSignature(input: {
         lead,
         orgName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
         photos,
+        rep: await getEstimateRepContact({
+          orgId: est.orgId,
+          assignedRepId: lead.assignedRepId,
+          createdById: fresh?.createdById ?? est.createdById,
+        }),
       });
       await sendEmail({
         to: lead.email,

@@ -43,8 +43,9 @@ export async function buildSignedEstimatePdf(opts: {
   lead: Lead | null;
   orgName: string;
   photos?: EstimatePhoto[];
+  rep?: { name: string; phone: string | null; email: string | null } | null;
 }): Promise<Uint8Array> {
-  const { est, items, lead, orgName, photos = [] } = opts;
+  const { est, items, lead, orgName, photos = [], rep } = opts;
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -118,6 +119,21 @@ export async function buildSignedEstimatePdf(opts: {
     y = Math.min(by, y - 60);
   } else {
     y -= 30;
+  }
+
+  if (rep?.name) {
+    text("Your representative:", M, y, 9, bold, MUTED);
+    text(rep.name, M, y - 13, 11, bold);
+    let ry = y - 26;
+    if (rep.phone) {
+      text(rep.phone, M, ry, 9, font, MUTED);
+      ry -= 12;
+    }
+    if (rep.email) {
+      text(rep.email, M, ry, 9, font, MUTED);
+      ry -= 12;
+    }
+    y = ry - 8;
   }
 
   // Items table header
