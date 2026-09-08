@@ -67,6 +67,8 @@ export default async function LeadDetailPage({
     .limit(1);
   if (!lead) notFound();
 
+  await ensureOutreachTable();
+
   const docs = await db
     .select()
     .from(documents)
@@ -76,7 +78,7 @@ export default async function LeadDetailPage({
   const [calls, outreach, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
     await Promise.all([
       db.select().from(callLogs).where(and(eq(callLogs.orgId, orgId), eq(callLogs.leadId, leadId))).orderBy(desc(callLogs.createdAt)),
-      db.select().from(outreachLogs).where(and(eq(outreachLogs.orgId, orgId), eq(outreachLogs.leadId, leadId))).orderBy(desc(outreachLogs.createdAt)).catch(() => [] as typeof outreachLogs.$inferSelect[]),
+      db.select().from(outreachLogs).where(and(eq(outreachLogs.orgId, orgId), eq(outreachLogs.leadId, leadId))).orderBy(desc(outreachLogs.createdAt)),
       db.select().from(appointments).where(and(eq(appointments.orgId, orgId), eq(appointments.leadId, leadId))).orderBy(desc(appointments.scheduledAt)),
       db.select().from(sales).where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId))).orderBy(desc(sales.soldAt)),
       db.select().from(jobs).where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId))).orderBy(desc(jobs.createdAt)),
@@ -158,6 +160,21 @@ export default async function LeadDetailPage({
                   salesReps={salesReps}
                   defaultRepId={lead.assignedRepId}
                   defaultSalesRepId={lead.assignedRepId}
+                />
+              </div>
+            </details>
+          </Card>
+
+          <Card className="p-5">
+            <details open={lead.stage === "new" || lead.stage === "contacting"}>
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                ✉️ Log Email / Message
+              </summary>
+              <div className="mt-4">
+                <OutreachForm
+                  leadId={lead.id}
+                  reps={[...callReps, ...salesReps.filter((s) => !callReps.some((c) => c.id === s.id))]}
+                  defaultRepId={lead.assignedRepId}
                 />
               </div>
             </details>

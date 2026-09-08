@@ -1,9 +1,10 @@
 "use server";
 
-import { db } from "@/db";
+import { db, pool } from "@/db";
 import {
   leads,
   callLogs,
+  outreachLogs,
   appointments,
   sales,
   jobs,
