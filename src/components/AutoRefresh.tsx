@@ -10,16 +10,47 @@ export default function AutoRefresh({ seconds = 60 }: { seconds?: number }) {
   const [remaining, setRemaining] = useState(seconds);
 
   useEffect(() => {
-    const tick = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          router.refresh();
-          return seconds;
+    let nextAt = Date.now() + seconds * 1000;
+    setRemaining(seconds);
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+      if (left <= 0) {
+        router.refresh();
+        nextAt = Date.now() + seconds * 1000;
+        setRemaining(seconds);
+      } else {
+        setRemaining(left);
+      }
+    };
+
+    const id = setInterval(tick, 1000);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    let lock: WakeLockSentinel | null = null;
+    const grabLock = async () => {
+      try {
+        if ("wakeLock" in navigator) {
+          lock = await navigator.wakeLock.request("screen");
         }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(tick);
+      } catch {
+        // Cast / permissions — ignore
+      }
+    };
+    void grabLock();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void grabLock();
+    });
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      void lock?.release();
+    };
   }, [router, seconds]);
 
   return (
