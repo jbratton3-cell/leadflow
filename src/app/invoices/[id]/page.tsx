@@ -7,6 +7,7 @@ import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
+import { pushInvoiceToQuickBooks } from "@/lib/qb-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,14 @@ function kindLabel(kind: string): string {
 
 export default async function InvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ qb?: string }>;
 }) {
   const { orgId } = await requireAccess("invoices");
   const { id: raw } = await params;
+  const q = await searchParams;
   const id = Number(raw);
   if (!id) notFound();
 
