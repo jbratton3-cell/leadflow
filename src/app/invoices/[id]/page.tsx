@@ -164,6 +164,9 @@ export default async function InvoiceDetailPage({
             {q.qb === "ok" && (
               <p className="mt-2 text-sm text-emerald-700">Sent to the sandbox company.</p>
             )}
+            {q.qb === "paid" && (
+              <p className="mt-2 text-sm text-emerald-700">Payment recorded in QuickBooks.</p>
+            )}
             {q.qb === "exists" && (
               <p className="mt-2 text-sm text-slate-600">Already in QuickBooks.</p>
             )}
@@ -174,9 +177,20 @@ export default async function InvoiceDetailPage({
               <p className="mt-2 text-sm text-rose-600">Couldn&apos;t create the customer in QuickBooks.</p>
             )}
             {inv.qbInvoiceId ? (
-              <p className="mt-2 text-sm text-slate-600">
-                QB invoice ID {inv.qbInvoiceId}
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-sm text-slate-600">
+                  QB invoice ID {inv.qbInvoiceId}
+                  {inv.qbPaymentId ? " · paid in QuickBooks" : ""}
+                </p>
+                {!inv.qbPaymentId && (
+                  <form action={recordQbPayment}>
+                    <input type="hidden" name="id" value={inv.id} />
+                    <button className="w-full rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+                      Record payment in QuickBooks
+                    </button>
+                  </form>
+                )}
+              </div>
             ) : (
               <form action={pushInvoiceToQuickBooks} className="mt-3">
                 <input type="hidden" name="id" value={inv.id} />
