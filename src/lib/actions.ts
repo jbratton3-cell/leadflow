@@ -520,6 +520,22 @@ export async function createSource(formData: FormData) {
   revalidatePath("/marketing");
 }
 
+export async function updateSource(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db
+    .update(leadSources)
+    .set({
+      name: req(formData.get("name")),
+      category: req(formData.get("category")) || "internet",
+      monthlyCost: (num(formData.get("monthlyCost")) ?? 0).toString(),
+    })
+    .where(and(eq(leadSources.id, id), eq(leadSources.orgId, orgId)));
+  revalidatePath("/settings");
+  revalidatePath("/marketing");
+}
+
 export async function createProduct(formData: FormData) {
   const { orgId } = await requireUser();
   await db.insert(products).values({
