@@ -7,6 +7,7 @@ import { requireAccess } from "@/lib/auth";
 import { money, fmtDate } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import DeleteButton from "@/components/DeleteButton";
+import { ensureQbColumns } from "@/lib/quickbooks";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ function kindLabel(kind: string): string {
 
 export default async function InvoicesPage() {
   const { orgId } = await requireAccess("invoices");
+  await ensureQbColumns();
 
   const rows = await db
     .select({ inv: invoices, firstName: leads.firstName, lastName: leads.lastName })

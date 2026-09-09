@@ -8,6 +8,7 @@ import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import { pushInvoiceToQuickBooks } from "@/lib/qb-actions";
+import { ensureQbColumns } from "@/lib/quickbooks";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function InvoiceDetailPage({
   searchParams: Promise<{ qb?: string }>;
 }) {
   const { orgId } = await requireAccess("invoices");
+  await ensureQbColumns();
   const { id: raw } = await params;
   const q = await searchParams;
   const id = Number(raw);
@@ -157,6 +159,34 @@ export default async function InvoiceDetailPage({
 
         {/* Right column: actions + timeline */}
         <div className="space-y-6">
+          <Card className="p-5">
+            <h2 className="font-semibold text-slate-800">QuickBooks</h2>
+            {q.qb === "ok" && (
+              <p className="mt-2 text-sm text-emerald-700">Sent to the sandbox company.</p>
+            )}
+            {q.qb === "exists" && (
+              <p className="mt-2 text-sm text-slate-600">Already in QuickBooks.</p>
+            )}
+            {q.qb === "fail" && (
+              <p className="mt-2 text-sm text-rose-600">QuickBooks rejected it. Check the sandbox connection and try again.</p>
+            )}
+            {q.qb === "customer" && (
+              <p className="mt-2 text-sm text-rose-600">Couldn&apos;t create the customer in QuickBooks.</p>
+            )}
+            {inv.qbInvoiceId ? (
+              <p className="mt-2 text-sm text-slate-600">
+                QB invoice ID {inv.qbInvoiceId}
+              </p>
+            ) : (
+              <form action={pushInvoiceToQuickBooks} className="mt-3">
+                <input type="hidden" name="id" value={inv.id} />
+                <button className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
+                  Send to QuickBooks (sandbox)
+                </button>
+              </form>
+            )}
+          </Card>
+
           {active && (
             <Card className="p-5">
               <h2 className="font-semibold text-slate-800">Actions</h2>
