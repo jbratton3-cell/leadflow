@@ -52,11 +52,23 @@ async function serviceItemId(orgId: number): Promise<string> {
 
 async function qbInvoiceByNumber(orgId: number, number: string): Promise<string | null> {
   const doc = number.slice(0, 21).replace(/'/g, "\\'");
-  const found = await qbQuery<QbQuery<{ Invoice?: { Id: string }[] }>>(
+  const found = await qbQuery<QbQuery<{ Invoice?: { Id: string; DocNumber?: string }[] }>>(
     orgId,
-    `select Id from Invoice where DocNumber = '${doc}'`
+    `select Id, DocNumber from Invoice where DocNumber = '${doc}'`
   );
-  return found?.QueryResponse?.Invoice?.[0]?.Id ?? null;
+  const hit = found?.QueryResponse?.Invoice?.[0]?.Id;
+  if (hit) return hit;
+  const recent = await qbQuery<QbQuery<{ Invoice?: { Id: string; DocNumber?: string; PrivateNote?: string }[] }>>(
+    orgId,
+    `select Id, DocNumber, PrivateNote from Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 25`
+  );
+  const want = number.toLowerCase();
+  const match = recent?.QueryResponse?.Invoice?.find(
+    (i) =>
+      (i.DocNumber || "").toLowerCase() === want ||
+      (i.PrivateNote || "").toLowerCase().includes(want)
+  );
+  return match?.Id ?? null;
 }
 
 export async function rememberQbInvoiceIfExists(orgId: number, inv: typeof invoices.$inferSelect) {
@@ -203,4 +215,78 @@ export async function recordQbPayment(formData: FormData) {
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
 
   redirect(`/invoices/${id}?qb=paid`);
+}
+
+/** No UI. Used when invoices are created or marked paid. */
+export async function syncInvoiceToQb(orgId: number, invoiceId: number): Promise<void> {
+  try {
+    await ensureQbColumns();
+    const [inv] = await db
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.orgId, orgId)))
+      .limit(1);
+    if (!inv || inv.status === "void" || inv.status === "financed") return;
+
+    let qbId = inv.qbInvoiceId || (await rememberQbInvoiceIfExists(orgId, inv));
+    if (!qbId) {
+      const [lead] = await db
+        .select()
+        .from(leads)
+        .where(and(eq(leads.id, inv.leadId), eq(leads.orgId, orgId)))
+        .limit(1);
+      if (!lead) return;
+      const customerId = await findOrCreateCustomer(orgId, lead);
+      if (!customerId) return;
+      const itemId = await serviceItemId(orgId);
+      const amount = Number(inv.amount) || 0;
+      const desc =
+        inv.kind === "deposit"
+          ? `Deposit ${inv.number}`
+          : inv.kind === "final"
+            ? `Final payment ${inv.number}`
+            : `Invoice ${inv.number}`;
+      const created = await qbPost<{ Invoice?: { Id: string } }>(orgId, "invoice", {
+        DocNumber: inv.number.slice(0, 21),
+        CustomerRef: { value: customerId },
+        PrivateNote: `LeadFlow ${inv.number}`,
+        Line: [
+          {
+            Amount: amount,
+            DetailType: "SalesItemLineDetail",
+            Description: desc,
+            SalesItemLineDetail: {
+              ItemRef: { value: itemId },
+              Qty: 1,
+              UnitPrice: amount,
+            },
+          },
+        ],
+      });
+      qbId = created.data?.Invoice?.Id ?? null;
+      if (!qbId) return;
+      await db
+        .update(invoices)
+        .set({ qbInvoiceId: qbId, updatedAt: new Date() })
+        .where(and(eq(invoices.id, inv.id), eq(invoices.orgId, orgId)));
+    }
+
+    if (inv.status === "paid" && !inv.qbPaymentId && qbId) {
+      const found = await qbQuery<QbQuery<{ Invoice?: { CustomerRef?: { value: string } }[] }>>(
+        orgId,
+        `select Id, CustomerRef from Invoice where Id = '${qbId}'`
+      );
+      const customerId = found?.QueryResponse?.Invoice?.[0]?.CustomerRef?.value;
+      if (!customerId) return;
+      const pay = await postQbPayment(orgId, customerId, qbId, Number(inv.amount) || 0);
+      if (pay) {
+        await db
+          .update(invoices)
+          .set({ qbPaymentId: pay, updatedAt: new Date() })
+          .where(and(eq(invoices.id, inv.id), eq(invoices.orgId, orgId)));
+      }
+    }
+  } catch {
+    // Never block billing if QuickBooks is down.
+  }
 }

@@ -14,6 +14,7 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { money, personName, contractPrice } from "@/lib/constants";
+import { syncInvoiceToQb } from "@/lib/qb-actions";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
 
@@ -71,8 +72,17 @@ async function insertAndSendInvoice(opts: {
     sentAt: new Date(),
   });
 
+  const [created] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.orgId, opts.orgId), eq(invoices.number, number)))
+    .limit(1);
+
   const email = opts.lead.email;
-  if (!email) return; // stays a draft — office can send once an email is on file
+  if (!email) {
+    if (created) await syncInvoiceToQb(opts.orgId, created.id);
+    return;
+  }
 
   const link = `${getBaseUrl()}/invoice/${token}`;
   const sent = await sendEmail({
@@ -96,6 +106,7 @@ async function insertAndSendInvoice(opts: {
       .set({ status: "sent", sentAt: new Date() })
       .where(eq(invoices.number, number));
   }
+  if (created) await syncInvoiceToQb(opts.orgId, created.id);
 }
 
 /* ------------------------- automatic triggers ------------------------- */
@@ -252,6 +263,7 @@ export async function recordDepositPaid(formData: FormData) {
         .update(invoices)
         .set({ status: "paid", paidAt: new Date(), paymentMethod: method, updatedAt: new Date() })
         .where(eq(invoices.id, existing.id));
+      await syncInvoiceToQb(orgId, existing.id);
     }
   } else {
     const number = await nextInvoiceNumber(orgId);
@@ -271,6 +283,12 @@ export async function recordDepositPaid(formData: FormData) {
       paymentMethod: method,
       notes: "Deposit collected outside the automated flow (recorded by office).",
     });
+    const [made] = await db
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.orgId, orgId), eq(invoices.number, number)))
+      .limit(1);
+    if (made) await syncInvoiceToQb(orgId, made.id);
   }
 
   revalidatePath(`/estimates/${estimateId}`);
