@@ -348,6 +348,7 @@ export const invoices = pgTable("invoices", {
   paymentMethod: varchar("payment_method", { length: 40 }),
   notes: text("notes"),
   qbInvoiceId: varchar("qb_invoice_id", { length: 40 }),
+  qbPaymentId: varchar("qb_payment_id", { length: 40 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [index("invoices_org_idx").on(t.orgId)]);

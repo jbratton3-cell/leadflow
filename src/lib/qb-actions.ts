@@ -103,10 +103,71 @@ export async function pushInvoiceToQuickBooks(formData: FormData) {
     redirect(`/invoices/${id}?qb=fail`);
   }
 
+  const qbId = created.data.Invoice.Id;
   await db
     .update(invoices)
-    .set({ qbInvoiceId: created.data.Invoice.Id, updatedAt: new Date() })
+    .set({ qbInvoiceId: qbId, updatedAt: new Date() })
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
 
+  if (inv.status === "paid") {
+    const pay = await postQbPayment(orgId, customerId, qbId, amount);
+    if (pay) {
+      await db
+        .update(invoices)
+        .set({ qbPaymentId: pay, updatedAt: new Date() })
+        .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+    }
+  }
+
   redirect(`/invoices/${id}?qb=ok`);
+}
+
+async function postQbPayment(
+  orgId: number,
+  customerId: string,
+  qbInvoiceId: string,
+  amount: number
+): Promise<string | null> {
+  const created = await qbPost<{ Payment?: { Id: string } }>(orgId, "payment", {
+    TotalAmt: amount,
+    CustomerRef: { value: customerId },
+    Line: [
+      {
+        Amount: amount,
+        LinkedTxn: [{ TxnId: qbInvoiceId, TxnType: "Invoice" }],
+      },
+    ],
+  });
+  return created.data?.Payment?.Id ?? null;
+}
+
+export async function recordQbPayment(formData: FormData) {
+  const { orgId } = await requireAccess("invoices");
+  await ensureQbColumns();
+  const id = Number(formData.get("id"));
+  const [inv] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
+    .limit(1);
+  if (!inv?.qbInvoiceId) redirect(`/invoices/${id}?qb=fail`);
+  if (inv.qbPaymentId) redirect(`/invoices/${id}?qb=paid`);
+  if (inv.status !== "paid") redirect(`/invoices/${id}?qb=unpaid`);
+
+  const found = await qbQuery<QbQuery<{ Invoice?: { Id: string; CustomerRef?: { value: string } }[] }>>(
+    orgId,
+    `select Id, CustomerRef from Invoice where Id = '${inv.qbInvoiceId}'`
+  );
+  const customerId = found?.QueryResponse?.Invoice?.[0]?.CustomerRef?.value;
+  if (!customerId) redirect(`/invoices/${id}?qb=fail`);
+
+  const pay = await postQbPayment(orgId, customerId, inv.qbInvoiceId, Number(inv.amount) || 0);
+  if (!pay) redirect(`/invoices/${id}?qb=fail`);
+
+  await db
+    .update(invoices)
+    .set({ qbPaymentId: pay, updatedAt: new Date() })
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+
+  redirect(`/invoices/${id}?qb=paid`);
 }

@@ -37,6 +37,7 @@ export async function ensureQbColumns() {
   await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS qb_token_expires_at timestamp`);
   await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS qb_connected_at timestamp`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS qb_invoice_id varchar(40)`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS qb_payment_id varchar(40)`);
   qbColsReady = true;
 }
 
