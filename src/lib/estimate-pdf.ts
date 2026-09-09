@@ -212,6 +212,19 @@ export async function buildSignedEstimatePdf(opts: {
     totalRow("Cash (50/50)", money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice)), true);
   }
 
+  y -= 6;
+  const financeLines = wrap(
+    "Prequalify for financing without impacting your credit score*: https://wisetack.us/#/kehyadc/prequalify  *All financing is subject to credit approval. Payment options through Wisetack are provided by our lending partners. See https://www.wisetack.com/faqs.",
+    font,
+    8,
+    W - 2 * M
+  );
+  ensureSpace(financeLines.length * 11 + 8);
+  for (const ln of financeLines) {
+    text(ln, M, y, 8, font, MUTED);
+    y -= 10;
+  }
+
   // Terms / notes
   const blocks: [string, string][] = [];
   if (est.terms) blocks.push(["Terms & Conditions", est.terms]);

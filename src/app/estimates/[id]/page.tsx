@@ -24,6 +24,7 @@ import {
 } from "@/lib/estimate-actions";
 import { deleteEstimatePhoto } from "@/lib/estimate-photo-actions";
 import { recordDepositPaid } from "@/lib/invoice-actions";
+import { WisetackPrequalNote } from "@/components/WisetackPrequalNote";
 
 export const dynamic = "force-dynamic";
 
@@ -275,6 +276,7 @@ export default async function EstimateDetailPage({
                   Enter a cash price under Details (then Save) to offer 50/50 cash on this quote.
                 </p>
               )}
+              <WisetackPrequalNote compact />
             </dl>
           </Card>
 

@@ -11,6 +11,7 @@ import SignatureStep from "@/components/SignatureStep";
 import PrintButton from "@/components/PrintButton";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
 import { getEstimateRepContact } from "@/lib/queries";
+import { WisetackPrequalNote } from "@/components/WisetackPrequalNote";
 
 export const dynamic = "force-dynamic";
 
@@ -228,6 +229,7 @@ export default async function PublicEstimatePage({
                   </p>
                 </div>
               )}
+              <WisetackPrequalNote />
             </div>
           </div>
 
@@ -307,6 +309,9 @@ export default async function PublicEstimatePage({
                     <span className="block text-sm text-slate-500">
                       Affordable monthly payments — we&apos;ll follow up to complete a
                       quick financing application.
+                    </span>
+                    <span className="mt-2 block">
+                      <WisetackPrequalNote compact />
                     </span>
                   </span>
                 </label>
