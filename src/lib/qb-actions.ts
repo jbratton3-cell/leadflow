@@ -70,6 +70,19 @@ export async function rememberQbInvoiceIfExists(orgId: number, inv: typeof invoi
   return existing;
 }
 
+export async function linkQbInvoice(formData: FormData) {
+  const { orgId } = await requireAccess("invoices");
+  await ensureQbColumns();
+  const id = Number(formData.get("id"));
+  const qbId = String(formData.get("qbId") || "").replace(/\D/g, "");
+  if (!id || !qbId) redirect(`/invoices/${id || ""}`);
+  await db
+    .update(invoices)
+    .set({ qbInvoiceId: qbId, updatedAt: new Date() })
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+  redirect(`/invoices/${id}?qb=exists`);
+}
+
 export async function pushInvoiceToQuickBooks(formData: FormData) {
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();

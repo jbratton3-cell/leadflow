@@ -7,7 +7,7 @@ import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
-import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists } from "@/lib/qb-actions";
+import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists, linkQbInvoice } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +62,11 @@ export default async function InvoiceDetailPage({
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
     .limit(1);
   if (!inv) notFound();
+
+  if (!inv.qbInvoiceId) {
+    const linked = await rememberQbInvoiceIfExists(orgId, inv);
+    if (linked) inv.qbInvoiceId = linked;
+  }
 
   const [lead] = await db
     .select()
@@ -192,12 +197,28 @@ export default async function InvoiceDetailPage({
                 )}
               </div>
             ) : (
-              <form action={pushInvoiceToQuickBooks} className="mt-3">
-                <input type="hidden" name="id" value={inv.id} />
-                <button className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
-                  Send to QuickBooks (sandbox)
-                </button>
-              </form>
+              <div className="mt-3 space-y-3">
+                <form action={pushInvoiceToQuickBooks}>
+                  <input type="hidden" name="id" value={inv.id} />
+                  <button className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
+                    Send to QuickBooks (sandbox)
+                  </button>
+                </form>
+                <p className="text-xs text-slate-500">
+                  Already in the sandbox? Paste the QuickBooks invoice ID (from the invoice screen / URL) so we don&apos;t send it twice.
+                </p>
+                <form action={linkQbInvoice} className="flex gap-2">
+                  <input type="hidden" name="id" value={inv.id} />
+                  <input
+                    name="qbId"
+                    placeholder="QB ID"
+                    className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                  <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    Link
+                  </button>
+                </form>
+              </div>
             )}
           </Card>
 
