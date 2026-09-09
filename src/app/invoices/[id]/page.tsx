@@ -7,7 +7,7 @@ import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
-import { pushInvoiceToQuickBooks, recordQbPayment } from "@/lib/qb-actions";
+import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
 
 export const dynamic = "force-dynamic";

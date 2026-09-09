@@ -50,6 +50,26 @@ async function serviceItemId(orgId: number): Promise<string> {
   return found?.QueryResponse?.Item?.[0]?.Id ?? "1";
 }
 
+async function qbInvoiceByNumber(orgId: number, number: string): Promise<string | null> {
+  const doc = number.slice(0, 21).replace(/'/g, "\\'");
+  const found = await qbQuery<QbQuery<{ Invoice?: { Id: string }[] }>>(
+    orgId,
+    `select Id from Invoice where DocNumber = '${doc}'`
+  );
+  return found?.QueryResponse?.Invoice?.[0]?.Id ?? null;
+}
+
+export async function rememberQbInvoiceIfExists(orgId: number, inv: typeof invoices.$inferSelect) {
+  if (inv.qbInvoiceId) return inv.qbInvoiceId;
+  const existing = await qbInvoiceByNumber(orgId, inv.number);
+  if (!existing) return null;
+  await db
+    .update(invoices)
+    .set({ qbInvoiceId: existing, updatedAt: new Date() })
+    .where(and(eq(invoices.id, inv.id), eq(invoices.orgId, orgId)));
+  return existing;
+}
+
 export async function pushInvoiceToQuickBooks(formData: FormData) {
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
@@ -60,7 +80,8 @@ export async function pushInvoiceToQuickBooks(formData: FormData) {
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
     .limit(1);
   if (!inv) redirect("/invoices");
-  if (inv.qbInvoiceId) redirect(`/invoices/${id}?qb=exists`);
+  const already = inv.qbInvoiceId || (await rememberQbInvoiceIfExists(orgId, inv));
+  if (already) redirect(`/invoices/${id}?qb=exists`);
 
   const [lead] = await db
     .select()
@@ -152,7 +173,6 @@ export async function recordQbPayment(formData: FormData) {
     .limit(1);
   if (!inv?.qbInvoiceId) redirect(`/invoices/${id}?qb=fail`);
   if (inv.qbPaymentId) redirect(`/invoices/${id}?qb=paid`);
-  if (inv.status !== "paid") redirect(`/invoices/${id}?qb=unpaid`);
 
   const found = await qbQuery<QbQuery<{ Invoice?: { Id: string; CustomerRef?: { value: string } }[] }>>(
     orgId,
