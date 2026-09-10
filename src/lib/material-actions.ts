@@ -87,13 +87,15 @@ export async function createMaterialOrder(formData: FormData) {
   }
 
   // Custom line item
-  const customName = req(formData.get("customName"));
-  if (customName) {
-    items.push({
-      name: customName,
-      quantity: req(formData.get("customQty")) || "1",
-      unit: req(formData.get("customUnit")) || "each",
-    });
+  for (const suffix of ["", "2", "3"]) {
+    const customName = req(formData.get(suffix ? `customName${suffix}` : "customName"));
+    if (customName) {
+      items.push({
+        name: customName,
+        quantity: req(formData.get(suffix ? `customQty${suffix}` : "customQty")) || "1",
+        unit: req(formData.get(suffix ? `customUnit${suffix}` : "customUnit")) || "each",
+      });
+    }
   }
 
   if (items.length === 0) return;
@@ -190,4 +192,28 @@ export async function resendMaterialOrder(formData: FormData) {
     await db.update(materialOrders).set({ status: "sent", sentAt: new Date() }).where(eq(materialOrders.id, id));
   }
   revalidatePath("/materials");
+}
+
+export async function markMaterialOrderConfirmed(formData: FormData) {
+  const { orgId } = await requireAccess("production");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db
+    .update(materialOrders)
+    .set({ status: "confirmed" })
+    .where(and(eq(materialOrders.id, id), eq(materialOrders.orgId, orgId)));
+  revalidatePath("/materials");
+  revalidatePath("/production");
+}
+
+export async function markMaterialOrderConfirmed(formData: FormData) {
+  const { orgId } = await requireAccess("production");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db
+    .update(materialOrders)
+    .set({ status: "confirmed" })
+    .where(and(eq(materialOrders.id, id), eq(materialOrders.orgId, orgId)));
+  revalidatePath("/materials");
+  revalidatePath("/production");
 }

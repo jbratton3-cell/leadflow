@@ -118,12 +118,14 @@ export default async function NewMaterialOrderPage({
             )}
 
             <div className="mt-4 border-t border-slate-100 pt-4">
-              <div className="mb-1 text-xs font-medium text-slate-600">Custom line (anything not in the list)</div>
-              <div className="grid gap-2 md:grid-cols-[2fr_80px_100px]">
-                <input name="customName" placeholder="e.g. 6ft ladder brackets" className={input} />
-                <input name="customQty" type="number" min="0" step="0.01" placeholder="qty" className={input} />
-                <input name="customUnit" placeholder="unit" className={input} />
-              </div>
+              <div className="mb-1 text-xs font-medium text-slate-600">Extra lines (measure extras, goodwill work — not on the list)</div>
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="mb-2 grid gap-2 md:grid-cols-[2fr_80px_100px]">
+                  <input name={n === 1 ? "customName" : `customName${n}`} placeholder={n === 1 ? "e.g. 6ft ladder brackets" : "Another item"} className={input} />
+                  <input name={n === 1 ? "customQty" : `customQty${n}`} type="number" min="0" step="0.01" placeholder="qty" className={input} />
+                  <input name={n === 1 ? "customUnit" : `customUnit${n}`} placeholder="unit" className={input} />
+                </div>
+              ))}
             </div>
           </Card>
 

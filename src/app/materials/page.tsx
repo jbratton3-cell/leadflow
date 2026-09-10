@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { fmtDate } from "@/lib/constants";
-import { resendMaterialOrder } from "@/lib/material-actions";
+import { resendMaterialOrder, markMaterialOrderConfirmed } from "@/lib/material-actions";
 
 export const dynamic = "force-dynamic";
 
