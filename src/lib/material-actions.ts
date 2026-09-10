@@ -117,9 +117,8 @@ export async function createMaterialOrder(formData: FormData) {
       .where(and(eq(jobs.id, jobId), eq(jobs.orgId, orgId)))
       .limit(1);
     if (row) {
-      const who = row.firstName ? `${row.firstName} ${row.lastName ?? ""}`.trim() : row.job.customerName ?? "customer";
-      const where = row.address ?? row.job.customerAddress ?? row.city ?? row.job.customerCity ?? "";
-      jobLabel = where ? `${who} — ${where}` : who;
+      const where = row.address ?? row.job.customerAddress ?? [row.city, row.job.customerCity].filter(Boolean).join(", ") ?? "";
+      jobLabel = where || "job site";
     }
   }
 

@@ -27,7 +27,7 @@ export default async function NewMaterialOrderPage({
       .where(and(eq(materials.orgId, orgId), eq(materials.active, true)))
       .orderBy(asc(materials.name)),
     db
-      .select({ id: jobs.id, customerName: jobs.customerName, status: jobs.status, firstName: leads.firstName, lastName: leads.lastName, address: leads.address })
+      .select({ id: jobs.id, customerName: jobs.customerName, status: jobs.status, address: leads.address, jobAddress: jobs.customerAddress, city: leads.city, jobCity: jobs.customerCity })
       .from(jobs)
       .leftJoin(leads, eq(jobs.leadId, leads.id))
       .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "materials_delivered", "scheduled", "in_progress", "on_hold"])))
@@ -67,7 +67,7 @@ export default async function NewMaterialOrderPage({
                   <option value="">— No specific job —</option>
                   {jobRows.map((j) => (
                     <option key={j.id} value={j.id}>
-                      {j.firstName ? `${j.firstName} ${j.lastName ?? ""}`.trim() : j.customerName ?? "Job"} {j.address ? `— ${j.address}` : ""}
+                      {j.address || j.customerName || "Job"}
                     </option>
                   ))}
                 </select>
