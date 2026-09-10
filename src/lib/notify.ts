@@ -326,7 +326,7 @@ export function materialOrderEmailHtml(opts: {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p style="color:#334155;line-height:1.5">Please reply to this email with <strong>GOT IT</strong> so we know you received the order. No link to click — just reply.</p>
+    <p style="color:#334155;line-height:1.5">Please reply to this email with <strong>RECEIVED</strong> so we know you received the order. No link to click — just reply.</p>
     <p style="color:#334155;line-height:1.5">Then confirm availability and a delivery date to the job site.</p>
     <p style="color:#334155;line-height:1.5">Thank you,<br/>${opts.companyName}<br/>
     <span style="color:#64748b;font-size:13px">Office contact: ${opts.officeEmail}</span></p>
