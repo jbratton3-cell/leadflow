@@ -51,6 +51,7 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
   fromName?: string;
+  replyTo?: string;
   attachments?: { filename: string; content: Buffer; contentType?: string; cid?: string }[];
 }): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
@@ -302,7 +303,7 @@ export function materialOrderEmailHtml(opts: {
   supplierName: string;
   jobLabel: string;
   items: { name: string; quantity: string; unit: string }[];
-  officeEmail: string;
+    officeEmail: string;
 }): string {
   const rows = opts.items
     .map(

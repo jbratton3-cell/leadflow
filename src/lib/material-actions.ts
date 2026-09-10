@@ -133,12 +133,13 @@ export async function createMaterialOrder(formData: FormData) {
 
   // Email the supplier
   const companyName = process.env.CRM_ORGANIZATION_NAME || "LeadFlow";
-  const officeEmail = process.env.CRM_ADMIN_EMAIL || process.env.GMAIL_USER || "";
+  const officeEmail = "jon@leadflowcrm.info";
   let sent = false;
   if (supplier.email) {
     sent = await sendEmail({
       to: supplier.email,
       fromName: companyName,
+      replyTo: "jon@leadflowcrm.info",
       subject: `Materials Order ${number} — ${jobLabel}`,
       html: materialOrderEmailHtml({
         companyName,
@@ -178,6 +179,7 @@ export async function resendMaterialOrder(formData: FormData) {
   const sent = await sendEmail({
     to: supplier.email,
     fromName: companyName,
+    replyTo: "jon@leadflowcrm.info",
     subject: `Materials Order ${order.number} (resend)`,
     html: materialOrderEmailHtml({
       companyName,
@@ -185,7 +187,7 @@ export async function resendMaterialOrder(formData: FormData) {
       supplierName: supplier.name,
       jobLabel: "see original order",
       items: items.map((i) => ({ name: i.name, quantity: String(i.quantity), unit: i.unit })),
-      officeEmail: process.env.CRM_ADMIN_EMAIL || process.env.GMAIL_USER || "",
+      officeEmail: "jon@leadflowcrm.info",
     }),
   });
   if (sent) {
