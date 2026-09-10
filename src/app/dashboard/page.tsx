@@ -14,6 +14,46 @@ import {
 
 export const dynamic = "force-dynamic";
 
+async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
+  try {
+    const result = await db.execute(sql`
+      select count(*)::int as count, coalesce(sum(amount), 0) as total
+      from hcp_payments
+      where org_id = ${orgId} and received_at >= ${monthStart}
+    `);
+    const row = result.rows[0] as
+      | { count?: number | string; total?: number | string }
+      | undefined;
+    return {
+      count: Number(row?.count ?? 0),
+      total: Number(row?.total ?? 0),
+    };
+  } catch (error) {
+    console.error("HCP payment reporting query failed:", error);
+    return { count: 0, total: 0 };
+  }
+}
+
+async function getImportedJobRevenueMtd(orgId: number, monthStart: Date) {
+  const result = await db.execute(sql`
+    select
+      count(*)::int as count,
+      coalesce(sum(contract_amount), 0) as total
+    from jobs
+    where org_id = ${orgId}
+      and notes like 'Imported from Housecall Pro job %'
+      and created_at >= ${monthStart}
+      and coalesce(contract_amount, 0) > 0
+  `);
+  const row = result.rows[0] as
+    | { count?: number | string; total?: number | string }
+    | undefined;
+  return {
+    count: Number(row?.count ?? 0),
+    total: Number(row?.total ?? 0),
+  };
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -33,6 +73,8 @@ export default async function DashboardPage({
     apptSat,
     salesAgg,
     activeJobs,
+    hcpPaymentMtd,
+    importedJobRevenueMtd,
     recentCalls,
     recentSales,
     upcomingAppts,
@@ -65,6 +107,8 @@ export default async function DashboardPage({
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
       .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "materials_delivered", "scheduled", "in_progress", "on_hold"]))),
+    getHcpPaymentMtd(orgId, monthStart),
+    getImportedJobRevenueMtd(orgId, monthStart),
     db.select().from(callLogs).where(eq(callLogs.orgId, orgId)).orderBy(desc(callLogs.createdAt)).limit(6),
     db.select().from(sales).where(eq(sales.orgId, orgId)).orderBy(desc(sales.soldAt)).limit(5),
     db
@@ -85,8 +129,10 @@ export default async function DashboardPage({
   const monthLeads = totalLeads[0]?.count ?? 0;
   const setCount = apptSet[0]?.count ?? 0;
   const satCount = apptSat[0]?.count ?? 0;
-  const soldCount = salesAgg[0]?.count ?? 0;
-  const revenue = Number(salesAgg[0]?.total ?? 0);
+  const soldCount =
+    (salesAgg[0]?.count ?? 0) + importedJobRevenueMtd.count;
+  const revenue =
+    Number(salesAgg[0]?.total ?? 0) + importedJobRevenueMtd.total;
 
   const setRate = monthLeads ? Math.round((setCount / monthLeads) * 100) : 0;
   const closeRate = satCount ? Math.round((soldCount / satCount) * 100) : 0;
@@ -113,7 +159,7 @@ export default async function DashboardPage({
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="New Leads (MTD)" value={monthLeads} sub="This month" />
         <StatCard
           label="Appts Set (MTD)"
@@ -130,8 +176,14 @@ export default async function DashboardPage({
         <StatCard
           label="Revenue (MTD)"
           value={money(revenue)}
-          sub={`${soldCount} sales · avg ${money(avgSale)}`}
+          sub={`${soldCount} contracts/jobs · avg ${money(avgSale)}`}
           accent="text-emerald-600"
+        />
+        <StatCard
+          label="Payments Received (MTD)"
+          value={money(hcpPaymentMtd.total)}
+          sub={`${hcpPaymentMtd.count} HCP transactions`}
+          accent="text-cyan-600"
         />
       </div>
 

@@ -195,17 +195,6 @@ export async function resendMaterialOrder(formData: FormData) {
   revalidatePath("/materials");
 }
 
-export async function markMaterialOrderConfirmed(formData: FormData) {
-  const { orgId } = await requireAccess("production");
-  const id = Number(formData.get("id"));
-  if (!id) return;
-  await db
-    .update(materialOrders)
-    .set({ status: "confirmed" })
-    .where(and(eq(materialOrders.id, id), eq(materialOrders.orgId, orgId)));
-  revalidatePath("/materials");
-  revalidatePath("/production");
-}
 
 export async function markMaterialOrderConfirmed(formData: FormData) {
   const { orgId } = await requireAccess("production");
