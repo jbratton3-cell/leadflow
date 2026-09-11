@@ -89,8 +89,17 @@ function permitIsNeeded(value: string | null): boolean {
   }
 }
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tight?: string }>;
+}) {
   const { orgId } = await requireAccess("production");
+  const { tight: tightQ } = await searchParams;
+  const tight = tightQ === "1";
+  const pad = tight ? "px-3 py-2" : "px-5 py-4";
+  const nameCls = tight ? "text-lg font-bold text-white" : "text-2xl font-bold text-white";
+  const moneyCls = tight ? "text-lg font-bold text-emerald-400" : "text-2xl font-bold text-emerald-400";
 
   const rows = await db
     .select({
@@ -170,9 +179,9 @@ export default async function BoardPage() {
         ) : (
           Array.from(groups.entries()).map(([key, group]) => (
             <section key={key} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg">
-              <div className="flex items-center justify-between gap-4 bg-slate-800 px-5 py-4">
+              <div className={`flex items-center justify-between gap-4 bg-slate-800 ${pad}`}>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">{group.label}</h2>
+                  <h2 className={`font-bold text-white ${tight ? "text-lg" : "text-2xl"}`}>{group.label}</h2>
                   <p className="text-sm text-slate-400">
                     {group.items.length} job{group.items.length === 1 ? "" : "s"}
                   </p>
@@ -184,7 +193,7 @@ export default async function BoardPage() {
                   <Link
                     key={r.job.id}
                     href={r.job.leadId ? `/leads/${r.job.leadId}` : "/production"}
-                    className="grid gap-4 rounded-xl px-5 py-4 transition hover:bg-slate-800/60 md:grid-cols-[220px_1fr_auto] md:items-center"
+                    className={`grid gap-3 rounded-xl transition hover:bg-slate-800/60 md:grid-cols-[220px_1fr_auto] md:items-center ${pad}`}
                   >
                     <div>
                       <div className="mb-2 flex items-center gap-2">
@@ -213,7 +222,7 @@ export default async function BoardPage() {
                     </div>
 
                     <div>
-                      <div className="text-2xl font-bold text-white">
+                      <div className={nameCls}>
                         {r.displayAddress ?? r.displayName}
                       </div>
                       <div className="mt-1 space-y-1 text-sm text-slate-300">
