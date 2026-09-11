@@ -15,7 +15,7 @@ import {
 } from "@/db/schema";
 import { orgHasEmailOutreach } from "@/lib/constants";
 import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 
@@ -43,6 +43,33 @@ function toDate(v: FormDataEntryValue | null): Date | null {
 
 export async function createLead(formData: FormData) {
   const { orgId } = await requireUser();
+  let productId = num(formData.get("productId"));
+  const productInterest = str(formData.get("productInterest"));
+
+  if (productInterest) {
+    const [existingProduct] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(
+        and(
+          eq(products.orgId, orgId),
+          eq(products.active, true),
+          sql`lower(${products.name}) = lower(${productInterest})`,
+        ),
+      )
+      .limit(1);
+
+    if (existingProduct) {
+      productId = existingProduct.id;
+    } else {
+      const [createdProduct] = await db
+        .insert(products)
+        .values({ orgId, name: productInterest })
+        .returning({ id: products.id });
+      productId = createdProduct.id;
+    }
+  }
+
   await db.insert(leads).values({
     orgId,
     firstName: req(formData.get("firstName")),
@@ -55,7 +82,7 @@ export async function createLead(formData: FormData) {
     state: str(formData.get("state")),
     zip: str(formData.get("zip")),
     sourceId: num(formData.get("sourceId")),
-    productId: num(formData.get("productId")),
+    productId,
     assignedRepId: num(formData.get("assignedRepId")),
     estimatedValue: (num(formData.get("estimatedValue")) ?? 0).toString(),
     notes: str(formData.get("notes")),

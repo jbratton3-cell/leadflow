@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Card } from "@/components/ui";
-import { getSources, getProducts, getCallReps } from "@/lib/queries";
+import { getSources, getProducts, getSalesReps } from "@/lib/queries";
 import { requireAccess, getSessionUser } from "@/lib/auth";
 import { getReps } from "@/lib/queries";
 import { can } from "@/lib/permissions";
@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function NewLeadPage() {
   const me = await requireAccess("leads");
 
-  const [sources, prods, callReps, allReps] = await Promise.all([
+  const [sources, prods, salesReps, allReps] = await Promise.all([
     getSources(),
     getProducts(),
-    getCallReps(),
+    getSalesReps(),
     getReps(),
   ]);
 
@@ -89,15 +89,27 @@ export default async function NewLeadPage() {
             </select>
           </div>
           <div>
-            <label className={label}>Product Interest</label>
-            <select name="productId" className={input} defaultValue="">
-              <option value="">— Select —</option>
+            <label className={label} htmlFor="product-interest">
+              Product Interest
+            </label>
+            <input
+              id="product-interest"
+              name="productInterest"
+              list="product-interest-options"
+              className={input}
+              placeholder="Type or choose a product/service"
+              autoComplete="off"
+            />
+            <datalist id="product-interest-options">
               {prods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
+                <option key={p.id} value={p.name} />
               ))}
-            </select>
+            </datalist>
+            {prods.length === 0 && (
+              <p className="mt-1 text-xs text-slate-400">
+                Type a product or service and it will be added to your product list.
+              </p>
+            )}
           </div>
           <div>
             <label className={label}>Assigned Rep</label>
@@ -115,7 +127,7 @@ export default async function NewLeadPage() {
             ) : (
               <select name="assignedRepId" className={input} defaultValue="">
                 <option value="">— Unassigned —</option>
-                {callReps.map((r) => (
+                {salesReps.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name} ({roleLabel(r.role)})
                   </option>
