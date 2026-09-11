@@ -331,6 +331,19 @@ export default async function EstimateDetailPage({
 
           <Card className="p-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Send to Customer</h2>
+            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
+              <p className="mb-2 text-xs text-indigo-700">
+                Review the customer-facing layout, descriptions, photos, totals, notes, and terms before sending.
+              </p>
+              <Link
+                href={`/estimate/${est.publicToken}?preview=1`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+              >
+                Preview Customer View
+              </Link>
+            </div>
             {locked ? (
               <p className="text-sm text-slate-500">
                 This estimate has been {est.status}. It can no longer be edited or resent.

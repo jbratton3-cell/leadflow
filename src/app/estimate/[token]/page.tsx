@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { and, eq, asc } from "drizzle-orm";
 import {
   markEstimateViewed,
   respondToEstimate,
@@ -17,18 +17,27 @@ export const dynamic = "force-dynamic";
 
 export default async function PublicEstimatePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams?: Promise<{ preview?: string }>;
 }) {
   const { token } = await params;
+  const internalUser = await getSessionUser();
+  const previewRequested = (await searchParams)?.preview === "1";
+  const previewing = previewRequested && Boolean(internalUser);
 
   const [est] = await db
     .select()
     .from(estimates)
-    .where(eq(estimates.publicToken, token))
+    .where(
+      internalUser
+        ? and(eq(estimates.publicToken, token), eq(estimates.orgId, internalUser.orgId))
+        : eq(estimates.publicToken, token),
+    )
     .limit(1);
 
-  if (!est || est.status === "draft") {
+  if (!est || (est.status === "draft" && !previewing)) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100 px-4">
         <div className="rounded-2xl bg-white p-8 text-center shadow">
@@ -41,11 +50,10 @@ export default async function PublicEstimatePage({
     );
   }
 
-  // Record the first view
-  await markEstimateViewed(token);
-
-  // CRM users previewing get a way back; customers see nothing.
-  const internalUser = await getSessionUser();
+  // Customer views count after the estimate has been sent; internal previews do not.
+  if (est.status !== "draft") {
+    await markEstimateViewed(token);
+  }
 
   const [items, [lead], photos] = await Promise.all([
     db.select().from(estimateItems).where(eq(estimateItems.estimateId, est.id)).orderBy(asc(estimateItems.sortOrder)),
