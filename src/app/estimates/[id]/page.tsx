@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
+import DeleteButton from "@/components/DeleteButton";
 import SendEstimatePanel from "@/components/SendEstimatePanel";
 import OfficeAcceptForm from "@/components/OfficeAcceptForm";
 import {
@@ -40,11 +41,15 @@ function toDateInput(d: Date | string | null): string {
 
 export default async function EstimateDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ deleteError?: string }>;
 }) {
-  const { orgId } = await requireAccess("estimates");
+  const user = await requireAccess("estimates");
+  const { orgId } = user;
   const { id } = await params;
+  const { deleteError } = await searchParams;
   const estId = Number(id);
 
   const [est] = await db
@@ -79,6 +84,7 @@ export default async function EstimateDetailPage({
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
+  const canDelete = est.status !== "accepted" || user.role === "admin";
 
   const [depositInv] = await db
     .select()
@@ -111,6 +117,11 @@ export default async function EstimateDetailPage({
           </div>
         }
       />
+      {deleteError === "admin" && (
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Only an admin can delete an accepted estimate.
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: line items + details */}
@@ -404,16 +415,29 @@ export default async function EstimateDetailPage({
             </Card>
           )}
 
-          {!locked && (
+          {canDelete && (
             <Card className="p-5">
               <h2 className="mb-2 text-sm font-semibold text-slate-700">Danger Zone</h2>
+              {est.status === "accepted" && (
+                <p className="mb-3 text-xs text-slate-400">
+                  Any linked invoice will be preserved but unlinked from this estimate.
+                </p>
+              )}
               <form action={deleteEstimate}>
                 <input type="hidden" name="id" value={est.id} />
                 <input type="hidden" name="leadId" value={est.leadId} />
-                <button className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">
-                  Delete Estimate
-                </button>
+                <DeleteButton
+                  label="Delete Estimate"
+                  confirmText={`Delete estimate ${est.number}${est.status === "accepted" ? " even though it is accepted" : ""}? This cannot be undone.`}
+                  className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                />
               </form>
+            </Card>
+          )}
+          {!canDelete && (
+            <Card className="p-5">
+              <h2 className="mb-2 text-sm font-semibold text-slate-700">Danger Zone</h2>
+              <p className="text-xs text-slate-400">Only an admin can delete an accepted estimate.</p>
             </Card>
           )}
         </div>

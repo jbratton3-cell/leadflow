@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos, organizations } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos, organizations, invoices } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -160,9 +160,25 @@ export async function updateEstimate(formData: FormData) {
 }
 
 export async function deleteEstimate(formData: FormData) {
-  const { orgId } = await requireAccess("estimates");
+  const user = await requireAccess("estimates");
+  const { orgId } = user;
   const id = Number(formData.get("id"));
   const leadId = Number(formData.get("leadId"));
+  const [estimate] = await db
+    .select({ status: estimates.status, leadId: estimates.leadId })
+    .from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!estimate) return;
+  if (estimate.status === "accepted" && user.role !== "admin") {
+    redirect(`/estimates/${id}?deleteError=admin`);
+  }
+
+  // Preserve any invoice or payment history while removing the duplicate estimate.
+  await db
+    .update(invoices)
+    .set({ estimateId: null, updatedAt: new Date() })
+    .where(and(eq(invoices.estimateId, id), eq(invoices.orgId, orgId)));
   await db
     .delete(estimateItems)
     .where(and(eq(estimateItems.estimateId, id), eq(estimateItems.orgId, orgId)));

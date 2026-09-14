@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { estimates, leads } from "@/db/schema";
-import { and, desc, eq, sql, gte } from "drizzle-orm";
+import { and, desc, eq, sql, gte, ilike, or } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
@@ -12,14 +12,33 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function EstimatesPage() {
+export default async function EstimatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { orgId } = await requireAccess("estimates");
+  const { q } = await searchParams;
 
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [rows, statusAgg, acceptedAgg] = await Promise.all([
+  const search = q?.trim();
+  const estimateFilter = search
+    ? and(
+        eq(estimates.orgId, orgId),
+        or(
+          ilike(leads.firstName, `%${search}%`),
+          ilike(leads.lastName, `%${search}%`),
+          ilike(leads.address, `%${search}%`),
+          ilike(leads.email, `%${search}%`),
+          ilike(leads.phone, `%${search}%`),
+        ),
+      )
+    : eq(estimates.orgId, orgId);
+
+  const [rows, statusAgg, acceptedAgg, totalAgg] = await Promise.all([
     db
       .select({
         est: estimates,
@@ -29,7 +48,7 @@ export default async function EstimatesPage() {
       })
       .from(estimates)
       .leftJoin(leads, eq(estimates.leadId, leads.id))
-      .where(eq(estimates.orgId, orgId))
+      .where(estimateFilter)
       .orderBy(desc(estimates.createdAt))
       .limit(200),
     db
@@ -44,6 +63,10 @@ export default async function EstimatesPage() {
       })
       .from(estimates)
       .where(and(eq(estimates.orgId, orgId), gte(estimates.createdAt, monthStart))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(estimates)
+      .where(eq(estimates.orgId, orgId)),
   ]);
 
   const statusMap = new Map(statusAgg.map((s) => [s.status, s.count]));
@@ -60,14 +83,42 @@ export default async function EstimatesPage() {
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Total Estimates" value={rows.length} />
+        <StatCard label="Total Estimates" value={totalAgg[0]?.count ?? 0} />
         <StatCard label="Outstanding (Sent)" value={sent} accent="text-blue-600" />
         <StatCard label="Accepted" value={accepted} accent="text-emerald-600" />
         <StatCard label="Value Created (MTD)" value={money(mtdValue)} sub={`${mtdCount} estimates`} />
       </div>
 
+      <Card className="mb-6 p-4">
+        <form className="flex flex-col gap-3 sm:flex-row" method="get">
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search customer name, address, email, or phone"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-400"
+          />
+          <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+            Search Estimates
+          </button>
+          {search && (
+            <Link
+              href="/estimates"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+      </Card>
+
       {rows.length === 0 ? (
-        <EmptyState message="No estimates yet. Open a prospect and click “New Estimate” to create one." />
+        <EmptyState
+          message={
+            search
+              ? "No estimates matched that customer search."
+              : "No estimates yet. Open a prospect and click “New Estimate” to create one."
+          }
+        />
       ) : (
         <Card>
           <div className="overflow-x-auto">
