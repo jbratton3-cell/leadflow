@@ -171,7 +171,7 @@ export default async function BoardPage({
         </div>
         <nav className={`flex flex-wrap gap-4 text-orange-400 ${tight ? "mt-1 text-sm" : "mt-2 text-base"}`}>
           <Link href={`/board${tight ? "?tight=1" : ""}`}>Jobs</Link>
-          <Link href={`/board/sales${tight ? "?tight=1" : ""}`}>Revenue</Link>
+          <Link href={`/board/sales${tight ? "?tight=1" : ""}`}>Sold / Collected</Link>
           <Link href={`/board/reps${tight ? "?tight=1" : ""}`}>Reps</Link>
           {tight ? (
             <Link href="/board" className="text-slate-500">Larger</Link>

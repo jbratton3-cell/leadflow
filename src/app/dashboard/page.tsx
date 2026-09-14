@@ -174,7 +174,7 @@ export default async function DashboardPage({
           accent="text-violet-600"
         />
         <StatCard
-          label="Revenue (MTD)"
+          label="Sold (MTD)"
           value={money(revenue)}
           sub={`${soldCount} contracts/jobs · avg ${money(avgSale)}`}
           accent="text-emerald-600"

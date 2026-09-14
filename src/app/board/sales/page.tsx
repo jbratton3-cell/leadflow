@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { sales } from "@/db/schema";
+import { hcpPayments, sales } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
@@ -19,14 +19,26 @@ export default async function SalesBoardPage({
   const { today, weekStart, monthStart, yearStart } = nyPeriodStarts();
 
   const rows = await db.select().from(sales).where(eq(sales.orgId, user.orgId));
+  const paymentRows = await db
+    .select()
+    .from(hcpPayments)
+    .where(eq(hcpPayments.orgId, user.orgId));
 
-  const sum = (from: string) =>
+  const sold = (from: string) =>
     rows.filter((s) => inRange(s.soldAt, from)).reduce((n, s) => n + Number(s.amount || 0), 0);
+  const collected = (from: string) =>
+    paymentRows
+      .filter((p) => inRange(p.receivedAt, from))
+      .reduce((n, p) => n + Number(p.amount || 0), 0);
 
-  const todayAmt = sum(today);
-  const weekAmt = sum(weekStart);
-  const monthAmt = sum(monthStart);
-  const yearAmt = sum(yearStart);
+  const todaySold = sold(today);
+  const weekSold = sold(weekStart);
+  const monthSold = sold(monthStart);
+  const yearSold = sold(yearStart);
+  const todayCollected = collected(today);
+  const weekCollected = collected(weekStart);
+  const monthCollected = collected(monthStart);
+  const yearCollected = collected(yearStart);
 
   const weeks = weekStamps(8);
   const weekly = weeks.map((w, i) => {
@@ -44,28 +56,41 @@ export default async function SalesBoardPage({
   const maxW = Math.max(...weekly.map((w) => w.amt), 1);
 
   const cards = [
-    { label: "Today", value: todayAmt, color: "text-cyan-400" },
-    { label: "This week", value: weekAmt, color: "text-amber-300" },
-    { label: "This month", value: monthAmt, color: "text-emerald-400" },
-    { label: "Year to date", value: yearAmt, color: "text-white" },
+    { label: "Today", sold: todaySold, collected: todayCollected, color: "text-cyan-400" },
+    { label: "This week", sold: weekSold, collected: weekCollected, color: "text-amber-300" },
+    { label: "This month", sold: monthSold, collected: monthCollected, color: "text-emerald-400" },
+    { label: "Year to date", sold: yearSold, collected: yearCollected, color: "text-white" },
   ];
 
   return (
     <TvBoardChrome
-      title="TV Revenue Board"
+      title="TV Sold / Collected Board"
       tight={tight}
       right={
         <div className="text-right">
           <div className="text-slate-400">This month</div>
-          <div className={`font-bold text-emerald-400 ${tight ? "text-2xl" : "text-4xl"}`}>{money(monthAmt)}</div>
+          <div className={`font-bold text-emerald-400 ${tight ? "text-2xl" : "text-4xl"}`}>
+            {money(monthSold)}
+          </div>
         </div>
       }
     >
       <div className={`grid gap-3 ${tight ? "grid-cols-4" : "grid-cols-2 lg:grid-cols-4"}`}>
         {cards.map((c) => (
           <div key={c.label} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-4">
-            <div className="text-slate-400">{c.label}</div>
-            <div className={`font-bold ${c.color} ${tight ? "text-2xl" : "text-4xl"}`}>{money(c.value)}</div>
+            <div className="mb-2 text-slate-400">{c.label}</div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Sold</span>
+              <span className={`font-bold ${c.color} ${tight ? "text-2xl" : "text-4xl"}`}>
+                {money(c.sold)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-slate-800 pt-2">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Collected</span>
+              <span className={`font-bold text-blue-300 ${tight ? "text-xl" : "text-3xl"}`}>
+                {money(c.collected)}
+              </span>
+            </div>
           </div>
         ))}
       </div>

@@ -167,22 +167,22 @@ export default async function SalesPage({
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label={`Sales (${periodLabel})`} value={periodCount} accent="text-emerald-600" />
-        <StatCard label={`Revenue (${periodLabel})`} value={money(periodTotal)} accent="text-emerald-600" />
+        <StatCard label={`Sold (${periodLabel})`} value={money(periodTotal)} accent="text-emerald-600" />
         <StatCard
           label={`Avg Ticket (${periodLabel})`}
           value={money(periodCount ? periodTotal / periodCount : 0)}
         />
-        <StatCard label="All-Time Revenue" value={money(allTotal)} />
+        <StatCard label="All-Time Sold" value={money(allTotal)} />
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
-          label={`HCP Payments (${periodLabel})`}
+          label={`Collected (${periodLabel})`}
           value={money(collectedTotal)}
           accent="text-blue-600"
         />
         <StatCard
-          label={`HCP Transactions (${periodLabel})`}
+          label={`Collected Transactions (${periodLabel})`}
           value={collectedCount}
           accent="text-blue-600"
         />
