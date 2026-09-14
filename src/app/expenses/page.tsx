@@ -39,6 +39,10 @@ export default async function ExpensesPage({
         job: jobs,
         firstName: leads.firstName,
         lastName: leads.lastName,
+        address: leads.address,
+        city: leads.city,
+        state: leads.state,
+        zip: leads.zip,
         saleAmount: sales.amount,
       })
       .from(jobs)
@@ -57,7 +61,13 @@ export default async function ExpensesPage({
 
   const jobOptions = jobRows.map((row) => {
     const name = jobName(row.firstName, row.lastName, row.job.customerName);
-    const address = row.job.customerAddress ?? "No address";
+    const addressParts = [
+      row.address ?? row.job.customerAddress,
+      row.city ?? row.job.customerCity,
+      row.state,
+      row.zip,
+    ].filter(Boolean);
+    const address = addressParts.join(", ") || "No address";
     return { id: row.job.id, label: `${name} — ${address}` };
   });
 
