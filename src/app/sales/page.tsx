@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { sales, leads } from "@/db/schema";
+import { hcpPayments, sales, leads } from "@/db/schema";
 import { and, desc, eq, sql, gte } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
@@ -30,7 +30,16 @@ export default async function SalesPage({
   periodStart.setHours(0, 0, 0, 0);
   const effectiveRepId = sql<number | null>`coalesce(${sales.salesRepId}, ${leads.assignedRepId})`;
 
-  const [rows, mtd, allReps, prods, byRep] = await Promise.all([
+  const [
+    rows,
+    periodSales,
+    allReps,
+    prods,
+    byRep,
+    periodPayments,
+    periodWisetack,
+    allWisetack,
+  ] = await Promise.all([
     db
       .select({
         sale: sales,
@@ -63,13 +72,48 @@ export default async function SalesPage({
       .leftJoin(leads, eq(sales.leadId, leads.id))
       .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, periodStart)))
       .groupBy(effectiveRepId),
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
+      })
+      .from(hcpPayments)
+      .where(and(eq(hcpPayments.orgId, orgId), gte(hcpPayments.receivedAt, periodStart))),
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
+      })
+      .from(hcpPayments)
+      .where(
+        and(
+          eq(hcpPayments.orgId, orgId),
+          eq(hcpPayments.paymentType, "Wisetack settlement"),
+          gte(hcpPayments.receivedAt, periodStart),
+        ),
+      ),
+    db
+      .select({
+        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
+      })
+      .from(hcpPayments)
+      .where(
+        and(
+          eq(hcpPayments.orgId, orgId),
+          eq(hcpPayments.paymentType, "Wisetack settlement"),
+        ),
+      ),
   ]);
 
   const repMap = toMap(allReps);
   const prodMap = toMap(prods);
 
-  const periodCount = mtd[0]?.count ?? 0;
-  const periodTotal = Number(mtd[0]?.total ?? 0);
+  const periodCount = periodSales[0]?.count ?? 0;
+  const periodTotal = Number(periodSales[0]?.total ?? 0);
+  const collectedCount = periodPayments[0]?.count ?? 0;
+  const collectedTotal = Number(periodPayments[0]?.total ?? 0);
+  const wisetackTotal = Number(periodWisetack[0]?.total ?? 0);
+  const allWisetackTotal = Number(allWisetack[0]?.total ?? 0);
   const allTotal = rows.reduce((sum, r) => sum + Number(r.sale.amount), 0);
 
   const leaderboard = byRep
@@ -129,6 +173,29 @@ export default async function SalesPage({
           value={money(periodCount ? periodTotal / periodCount : 0)}
         />
         <StatCard label="All-Time Revenue" value={money(allTotal)} />
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard
+          label={`HCP Payments (${periodLabel})`}
+          value={money(collectedTotal)}
+          accent="text-blue-600"
+        />
+        <StatCard
+          label={`HCP Transactions (${periodLabel})`}
+          value={collectedCount}
+          accent="text-blue-600"
+        />
+        <StatCard
+          label={`Wisetack Settled (${periodLabel})`}
+          value={money(wisetackTotal)}
+          accent="text-amber-600"
+        />
+        <StatCard
+          label="All-Time Wisetack Settled"
+          value={money(allWisetackTotal)}
+          accent="text-amber-600"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

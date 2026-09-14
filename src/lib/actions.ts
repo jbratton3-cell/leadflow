@@ -8,6 +8,7 @@ import {
   appointments,
   sales,
   jobs,
+  hcpPayments,
   properties,
   reps,
   leadSources,
@@ -526,6 +527,64 @@ export async function updateJob(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function recordFinancingSettlement(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = Number(formData.get("id"));
+  const amount = num(formData.get("amount"));
+  const settledAt = toDate(formData.get("settledAt")) ?? new Date();
+  const reference = str(formData.get("reference"));
+  if (!id || amount === null || amount <= 0) return;
+
+  const [row] = await db
+    .select({
+      job: jobs,
+      financeType: sales.financeType,
+      saleAmount: sales.amount,
+      firstName: leads.firstName,
+      lastName: leads.lastName,
+    })
+    .from(jobs)
+    .leftJoin(sales, eq(jobs.saleId, sales.id))
+    .leftJoin(leads, eq(jobs.leadId, leads.id))
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
+    .limit(1);
+  if (!row || row.financeType !== "financed" || row.job.status !== "completed") return;
+
+  const [existing] = await db
+    .select({ id: hcpPayments.id })
+    .from(hcpPayments)
+    .where(
+      and(
+        eq(hcpPayments.orgId, orgId),
+        eq(hcpPayments.jobId, id),
+        eq(hcpPayments.paymentType, "Wisetack settlement"),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+
+  await db
+    .insert(hcpPayments)
+    .values({
+      orgId,
+      leadId: row.job.leadId,
+      jobId: id,
+      receivedAt: settledAt,
+      amount: amount.toFixed(2),
+      paymentType: "Wisetack settlement",
+      customerName: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.job.customerName,
+      jobReference: `LeadFlow job ${id}`,
+      notes: reference
+        ? `Wisetack settlement recorded with reference ${reference}.`
+        : "Wisetack settlement recorded manually.",
+    })
+    .returning({ id: hcpPayments.id });
+
+  revalidatePath("/production");
+  revalidatePath("/sales");
+  revalidatePath("/reports");
+}
+
 
 // One-click completion: sets status + stamps today's date, leaves everything else.
 export async function markJobCompleted(formData: FormData) {
@@ -558,15 +617,16 @@ export async function markJobCompleted(formData: FormData) {
     revalidatePath(`/leads/${leadId}`);
   }
 
-  // Triggers the final invoice automatically (same as the manual path).
-  await createAndSendFinalInvoice(
-    await db
-      .select()
-      .from(jobs)
-      .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
-      .limit(1)
-      .then((r) => r[0])
-  );
+  // Financed jobs move into the Wisetack settlement queue when completed.
+  const [finished] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
+    .limit(1);
+  if (finished) {
+    // Triggers the final invoice automatically for non-financed jobs.
+    await createAndSendFinalInvoice(finished);
+  }
 
   revalidatePath("/production");
   revalidatePath("/board");

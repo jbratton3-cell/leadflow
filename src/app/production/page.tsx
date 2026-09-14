@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { jobs, leads, properties, sales } from "@/db/schema";
+import { hcpPayments, jobs, leads, properties, sales } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
@@ -7,7 +7,13 @@ import { deleteJob } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { requireAccess } from "@/lib/auth";
 import { organizations } from "@/db/schema";
-import { updateJob, createJob, createProperty, markJobCompleted } from "@/lib/actions";
+import {
+  updateJob,
+  createJob,
+  createProperty,
+  markJobCompleted,
+  recordFinancingSettlement,
+} from "@/lib/actions";
 import {
   JOB_STATUSES,
   JOB_MILESTONES,
@@ -29,12 +35,29 @@ function toDateInput(d: Date | string | null): string {
   return date.toISOString().slice(0, 10);
 }
 
+function financingStatusFor(
+  financeType: string | null | undefined,
+  jobStatus: string,
+  settlement: { amount: string; receivedAt: Date | null } | undefined,
+) {
+  if (financeType !== "financed") return "not_financed";
+  if (settlement) return "settled";
+  return jobStatus === "completed" ? "awaiting_settlement" : "awaiting_completion";
+}
+
+function financingStatusLabel(status: string) {
+  if (status === "awaiting_completion") return "Financed";
+  if (status === "awaiting_settlement") return "Awaiting Wisetack";
+  if (status === "settled") return "Wisetack Settled";
+  return status;
+}
+
 export default async function ProductionPage() {
   const { orgId } = await requireAccess("production");
   const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
   const isTrial = org?.plan === "trial";
 
-  const [rows, propertyRows, propertyAccounts] = await Promise.all([
+  const [rows, propertyRows, propertyAccounts, settlementRows] = await Promise.all([
     db
       .select({
         job: jobs,
@@ -43,6 +66,7 @@ export default async function ProductionPage() {
         city: leads.city,
         address: leads.address,
         amount: sales.amount,
+        financeType: sales.financeType,
         propertyName: properties.name,
       })
       .from(jobs)
@@ -67,7 +91,26 @@ export default async function ProductionPage() {
       .from(leads)
       .where(and(eq(leads.orgId, orgId), eq(leads.accountType, "property_management")))
       .orderBy(leads.lastName, leads.firstName),
+    db
+      .select({
+        jobId: hcpPayments.jobId,
+        amount: hcpPayments.amount,
+        receivedAt: hcpPayments.receivedAt,
+      })
+      .from(hcpPayments)
+      .where(
+        and(
+          eq(hcpPayments.orgId, orgId),
+          eq(hcpPayments.paymentType, "Wisetack settlement"),
+        ),
+      ),
   ]);
+
+  const settlementMap = new Map(
+    settlementRows
+      .filter((row) => row.jobId !== null)
+      .map((row) => [row.jobId as number, row]),
+  );
 
   // Resolve display fields from the linked lead/sale, or the manual job fields.
   const view = rows.map((r) => {
@@ -83,12 +126,32 @@ export default async function ProductionPage() {
       displayAddress: address,
       displayCity: city,
       displayAmount: amount,
+      financeType: r.financeType,
+      wisetackSettlement: settlementMap.get(r.job.id),
+      financeStatus: financingStatusFor(
+        r.financeType,
+        r.job.status,
+        settlementMap.get(r.job.id),
+      ),
     };
   });
 
   const active = view.filter((r) => !["completed"].includes(r.job.status));
   const completed = view.filter((r) => r.job.status === "completed");
   const backlog = active.reduce((s, r) => s + Number(r.displayAmount ?? 0), 0);
+  const financedView = view.filter((r) => r.financeType === "financed");
+  const awaitingSettlement = financedView.filter(
+    (r) => r.financeStatus === "awaiting_settlement",
+  );
+  const settledFinanced = financedView.filter((r) => r.financeStatus === "settled");
+  const receivable = awaitingSettlement.reduce(
+    (sum, r) => sum + Number(r.displayAmount ?? 0),
+    0,
+  );
+  const settledAmount = settledFinanced.reduce(
+    (sum, r) => sum + Number(r.wisetackSettlement?.amount ?? 0),
+    0,
+  );
 
   return (
     <div>
@@ -114,6 +177,106 @@ export default async function ProductionPage() {
         <StatCard label="Backlog Value" value={money(backlog)} accent="text-orange-600" />
         <StatCard label="Total Jobs" value={view.length} />
       </div>
+
+      {financedView.length > 0 && (
+        <Card className="mb-6 border-amber-200 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">
+                Wisetack settlements
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs text-slate-500">
+                Completed financed jobs become receivables from Wisetack. Record the
+                settlement when the funds arrive; do not mark the customer as paying again.
+              </p>
+            </div>
+            <div className="text-right text-xs text-slate-500">
+              <div>
+                Awaiting:{" "}
+                <strong className="text-amber-700">{money(receivable)}</strong>
+              </div>
+              <div>
+                Settled:{" "}
+                <strong className="text-emerald-700">{money(settledAmount)}</strong>
+              </div>
+            </div>
+          </div>
+
+          {awaitingSettlement.length === 0 ? (
+            <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              No completed financed jobs are waiting for a Wisetack settlement.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {awaitingSettlement.map((r) => (
+                <div
+                  key={r.job.id}
+                  className="rounded-lg border border-amber-100 bg-amber-50/60 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-slate-800">{r.displayName}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        Expected from Wisetack:{" "}
+                        <strong>
+                          {money(r.displayAmount ?? 0)}
+                        </strong>
+                        {r.displayAddress ? ` · ${r.displayAddress}` : ""}
+                      </div>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-800">
+                      Awaiting Wisetack
+                    </Badge>
+                  </div>
+                  <form
+                    action={recordFinancingSettlement}
+                    className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_1.4fr_auto]"
+                  >
+                    <input type="hidden" name="id" value={r.job.id} />
+                    <label className="sr-only" htmlFor={`settlement-amount-${r.job.id}`}>
+                      Settlement amount
+                    </label>
+                    <input
+                      id={`settlement-amount-${r.job.id}`}
+                      name="amount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      defaultValue={r.displayAmount ?? ""}
+                      placeholder="Amount received"
+                      className={input}
+                    />
+                    <label className="sr-only" htmlFor={`settlement-date-${r.job.id}`}>
+                      Settlement date
+                    </label>
+                    <input
+                      id={`settlement-date-${r.job.id}`}
+                      name="settledAt"
+                      type="date"
+                      required
+                      defaultValue={new Date().toISOString().slice(0, 10)}
+                      className={input}
+                    />
+                    <label className="sr-only" htmlFor={`settlement-reference-${r.job.id}`}>
+                      Wisetack reference
+                    </label>
+                    <input
+                      id={`settlement-reference-${r.job.id}`}
+                      name="reference"
+                      placeholder="Wisetack reference (optional)"
+                      className={input}
+                    />
+                    <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                      Record settlement
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="mb-6 p-5">
         <details>
@@ -280,6 +443,19 @@ export default async function ProductionPage() {
                       <Badge className={jobStatusColor(r.job.status)}>
                         {jobStatusLabel(r.job.status)}
                       </Badge>
+                      {r.financeType === "financed" && (
+                        <Badge
+                          className={
+                            r.financeStatus === "settled"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : r.financeStatus === "awaiting_settlement"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-sky-100 text-sky-700"
+                          }
+                        >
+                          {financingStatusLabel(r.financeStatus)}
+                        </Badge>
+                      )}
                       {ms.permit_required && !ms.permits_pulled && (
                         <Badge className="bg-yellow-100 text-yellow-800">
                           Permit Needed
