@@ -136,7 +136,6 @@ export const EXPENSE_CATEGORIES = [
   { key: "material_order", label: "Materials — Supplier Order" },
   { key: "dumpster", label: "Dumpster" },
   { key: "permit", label: "Permit / Fees" },
-  { key: "subcontractor", label: "Subcontractor" },
   { key: "labor", label: "Labor" },
   { key: "equipment", label: "Equipment Rental" },
   { key: "commission", label: "Commission" },
