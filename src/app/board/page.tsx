@@ -233,7 +233,7 @@ export default async function BoardPage({
                     </div>
 
                     <div className="text-left md:text-right">
-                      <div className="text-2xl font-bold text-emerald-400">{money(r.displayAmount)}</div>
+                      <div className={moneyCls}>{money(r.displayAmount)}</div>
                       <div className="text-xs text-slate-500">click for details</div>
                     </div>
                   </Link>
