@@ -16,7 +16,7 @@ import {
 } from "@/db/schema";
 import { orgHasEmailOutreach } from "@/lib/constants";
 import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 
@@ -98,6 +98,7 @@ export async function createLead(formData: FormData) {
 export async function updateLead(formData: FormData) {
   const { orgId } = await requireUser();
   const id = Number(formData.get("id"));
+  const assignedRepId = num(formData.get("assignedRepId"));
   await db
     .update(leads)
     .set({
@@ -114,14 +115,30 @@ export async function updateLead(formData: FormData) {
       standingContract: formData.get("standingContract") === "on",
       sourceId: num(formData.get("sourceId")),
       productId: num(formData.get("productId")),
-      assignedRepId: num(formData.get("assignedRepId")),
+      assignedRepId,
       estimatedValue: (num(formData.get("estimatedValue")) ?? 0).toString(),
       notes: str(formData.get("notes")),
       updatedAt: new Date(),
     })
     .where(and(eq(leads.id, id), eq(leads.orgId, orgId)));
+
+  // Backfill only sales that were previously unassigned. Explicitly assigned
+  // sale reps remain authoritative if the lead is reassigned later.
+  if (assignedRepId !== null) {
+    await db
+      .update(sales)
+      .set({ salesRepId: assignedRepId })
+      .where(
+        and(
+          eq(sales.orgId, orgId),
+          eq(sales.leadId, id),
+          isNull(sales.salesRepId),
+        ),
+      );
+  }
   revalidatePath(`/leads/${id}`);
   revalidatePath("/leads");
+  revalidatePath("/sales");
 }
 
 // Log a call center dial with disposition, advancing pipeline accordingly.

@@ -17,6 +17,7 @@ export default async function SalesPage() {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
+  const effectiveRepId = sql<number | null>`coalesce(${sales.salesRepId}, ${leads.assignedRepId})`;
 
   const [rows, mtd, allReps, prods, byRep] = await Promise.all([
     db
@@ -25,6 +26,7 @@ export default async function SalesPage() {
         firstName: leads.firstName,
         lastName: leads.lastName,
         city: leads.city,
+        assignedRepId: leads.assignedRepId,
       })
       .from(sales)
       .leftJoin(leads, eq(sales.leadId, leads.id))
@@ -42,13 +44,14 @@ export default async function SalesPage() {
     getProducts(),
     db
       .select({
-        repId: sales.salesRepId,
+        repId: effectiveRepId,
         count: sql<number>`count(*)::int`,
         total: sql<string>`coalesce(sum(${sales.amount}),0)`,
       })
       .from(sales)
+      .leftJoin(leads, eq(sales.leadId, leads.id))
       .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, monthStart)))
-      .groupBy(sales.salesRepId),
+      .groupBy(effectiveRepId),
   ]);
 
   const repMap = toMap(allReps);
@@ -116,7 +119,9 @@ export default async function SalesPage() {
                         {r.sale.productId ? prodMap.get(r.sale.productId)?.name ?? "—" : "—"}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {r.sale.salesRepId ? repMap.get(r.sale.salesRepId)?.name ?? "—" : "—"}
+                        {(r.sale.salesRepId ?? r.assignedRepId)
+                          ? repMap.get(r.sale.salesRepId ?? r.assignedRepId!)?.name ?? "—"
+                          : "—"}
                       </td>
                       <td className="px-4 py-3 capitalize text-slate-600">{r.sale.financeType}</td>
                       <td className="px-4 py-3 text-right font-semibold text-emerald-600">

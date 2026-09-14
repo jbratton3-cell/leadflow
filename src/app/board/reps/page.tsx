@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { reps, sales } from "@/db/schema";
+import { reps, sales, leads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
@@ -19,7 +19,11 @@ export default async function RepsBoardPage({
   const { today, weekStart, monthStart } = nyPeriodStarts();
 
   const [saleRows, repRows] = await Promise.all([
-    db.select().from(sales).where(eq(sales.orgId, user.orgId)),
+    db
+      .select({ sale: sales, assignedRepId: leads.assignedRepId })
+      .from(sales)
+      .leftJoin(leads, eq(sales.leadId, leads.id))
+      .where(eq(sales.orgId, user.orgId)),
     db.select().from(reps).where(eq(reps.orgId, user.orgId)),
   ]);
 
@@ -46,7 +50,11 @@ export default async function RepsBoardPage({
   };
 
   for (const s of saleRows) {
-    bump(s.salesRepId ?? "none", Number(s.amount || 0), s.soldAt);
+    bump(
+      s.sale.salesRepId ?? s.assignedRepId ?? "none",
+      Number(s.sale.amount || 0),
+      s.sale.soldAt,
+    );
   }
 
   const ranked = [...byRep.values()].filter((r) => r.month > 0 || r.week > 0 || r.today > 0);

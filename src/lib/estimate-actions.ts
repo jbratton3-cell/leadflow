@@ -490,7 +490,7 @@ async function applyAcceptanceBookkeeping(
           .values({
             orgId: est.orgId,
             leadId: est.leadId,
-            salesRepId: null,
+            salesRepId: lead.assignedRepId,
             productId: lead.productId,
             amount: String(amount),
             financeType: financing ? "financed" : "cash",
@@ -499,6 +499,14 @@ async function applyAcceptanceBookkeeping(
           })
           .returning();
         saleId = inserted[0]?.id ?? null;
+      } else if (!existingSale.salesRepId && lead.assignedRepId) {
+        // Preserve an explicitly chosen rep, but repair older auto-created
+        // sales that were created before accepted estimates copied the lead
+        // assignment.
+        await db
+          .update(sales)
+          .set({ salesRepId: lead.assignedRepId })
+          .where(and(eq(sales.id, existingSale.id), eq(sales.orgId, est.orgId)));
       }
 
       const [existingJob] = await db
