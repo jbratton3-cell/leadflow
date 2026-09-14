@@ -11,12 +11,23 @@ import { money, fmtDate, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-export default async function SalesPage() {
+export default async function SalesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   const { orgId } = await requireAccess("sales");
+  const { period: periodParam } = await searchParams;
+  const period = periodParam === "ytd" ? "ytd" : "mtd";
+  const periodLabel = period.toUpperCase();
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const periodStart = new Date(
+    now.getFullYear(),
+    period === "ytd" ? 0 : now.getMonth(),
+    1,
+  );
+  periodStart.setHours(0, 0, 0, 0);
   const effectiveRepId = sql<number | null>`coalesce(${sales.salesRepId}, ${leads.assignedRepId})`;
 
   const [rows, mtd, allReps, prods, byRep] = await Promise.all([
@@ -39,7 +50,7 @@ export default async function SalesPage() {
         total: sql<string>`coalesce(sum(${sales.amount}),0)`,
       })
       .from(sales)
-      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, monthStart))),
+      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, periodStart))),
     getReps(),
     getProducts(),
     db
@@ -50,15 +61,15 @@ export default async function SalesPage() {
       })
       .from(sales)
       .leftJoin(leads, eq(sales.leadId, leads.id))
-      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, monthStart)))
+      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, periodStart)))
       .groupBy(effectiveRepId),
   ]);
 
   const repMap = toMap(allReps);
   const prodMap = toMap(prods);
 
-  const mtdCount = mtd[0]?.count ?? 0;
-  const mtdTotal = Number(mtd[0]?.total ?? 0);
+  const periodCount = mtd[0]?.count ?? 0;
+  const periodTotal = Number(mtd[0]?.total ?? 0);
   const allTotal = rows.reduce((sum, r) => sum + Number(r.sale.amount), 0);
 
   const leaderboard = byRep
@@ -71,14 +82,51 @@ export default async function SalesPage() {
 
   return (
     <div>
-      <PageHeader title="Sales" subtitle="Signed contracts and sales performance." />
+      <PageHeader
+        title="Sales"
+        subtitle="Signed contracts and sales performance."
+        action={
+          <div
+            className="flex items-center gap-2"
+            aria-label="Sales performance period"
+          >
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              View
+            </span>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <Link
+                href="/sales?period=mtd"
+                aria-current={period === "mtd" ? "page" : undefined}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  period === "mtd"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                MTD
+              </Link>
+              <Link
+                href="/sales?period=ytd"
+                aria-current={period === "ytd" ? "page" : undefined}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  period === "ytd"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                YTD
+              </Link>
+            </div>
+          </div>
+        }
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Sales (MTD)" value={mtdCount} accent="text-emerald-600" />
-        <StatCard label="Revenue (MTD)" value={money(mtdTotal)} accent="text-emerald-600" />
+        <StatCard label={`Sales (${periodLabel})`} value={periodCount} accent="text-emerald-600" />
+        <StatCard label={`Revenue (${periodLabel})`} value={money(periodTotal)} accent="text-emerald-600" />
         <StatCard
-          label="Avg Ticket (MTD)"
-          value={money(mtdCount ? mtdTotal / mtdCount : 0)}
+          label={`Avg Ticket (${periodLabel})`}
+          value={money(periodCount ? periodTotal / periodCount : 0)}
         />
         <StatCard label="All-Time Revenue" value={money(allTotal)} />
       </div>
@@ -146,9 +194,11 @@ export default async function SalesPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Rep Leaderboard (MTD)</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">
+            Rep Leaderboard ({periodLabel})
+          </h2>
           {leaderboard.length === 0 ? (
-            <p className="text-sm text-slate-400">No sales this month.</p>
+            <p className="text-sm text-slate-400">No sales in this period.</p>
           ) : (
             <ol className="space-y-3">
               {leaderboard.map((r, i) => (
