@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { expenses, jobs, leads, sales } from "@/db/schema";
+import { expenses, jobs, leads, properties, sales } from "@/db/schema";
 import { requireAccess } from "@/lib/auth";
 import {
   expenseCategoryLabel,
@@ -44,9 +44,11 @@ export default async function ExpensesPage({
         state: leads.state,
         zip: leads.zip,
         saleAmount: sales.amount,
+         propertyName: properties.name,
       })
       .from(jobs)
       .leftJoin(leads, eq(jobs.leadId, leads.id))
+      .leftJoin(properties, eq(jobs.propertyId, properties.id))
       .leftJoin(sales, eq(jobs.saleId, sales.id))
       .where(eq(jobs.orgId, user.orgId))
       .orderBy(desc(jobs.createdAt)),
@@ -68,7 +70,10 @@ export default async function ExpensesPage({
       row.zip,
     ].filter(Boolean);
     const address = addressParts.join(", ") || "No address";
-    return { id: row.job.id, label: `${name} — ${address}` };
+    const property = row.propertyName
+      ? `${row.propertyName}${row.job.unitNumber ? ` · Unit ${row.job.unitNumber}` : ""}`
+      : null;
+    return { id: row.job.id, label: `${name}${property ? ` — ${property}` : ""} — ${address}` };
   });
 
   const costsByJob = new Map<number, number>();

@@ -1,13 +1,13 @@
 import { db } from "@/db";
-import { jobs, leads, sales } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { jobs, leads, properties, sales } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
 import { deleteJob } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { requireAccess } from "@/lib/auth";
 import { organizations } from "@/db/schema";
-import { updateJob, createJob, markJobCompleted } from "@/lib/actions";
+import { updateJob, createJob, createProperty, markJobCompleted } from "@/lib/actions";
 import {
   JOB_STATUSES,
   JOB_MILESTONES,
@@ -34,21 +34,40 @@ export default async function ProductionPage() {
   const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
   const isTrial = org?.plan === "trial";
 
-  const rows = await db
-    .select({
-      job: jobs,
-      firstName: leads.firstName,
-      lastName: leads.lastName,
-      city: leads.city,
-      address: leads.address,
-      amount: sales.amount,
-    })
-    .from(jobs)
-    .leftJoin(leads, eq(jobs.leadId, leads.id))
-    .leftJoin(sales, eq(jobs.saleId, sales.id))
-    .where(eq(jobs.orgId, orgId))
-    .orderBy(desc(jobs.createdAt))
-    .limit(200);
+  const [rows, propertyRows, propertyAccounts] = await Promise.all([
+    db
+      .select({
+        job: jobs,
+        firstName: leads.firstName,
+        lastName: leads.lastName,
+        city: leads.city,
+        address: leads.address,
+        amount: sales.amount,
+        propertyName: properties.name,
+      })
+      .from(jobs)
+      .leftJoin(leads, eq(jobs.leadId, leads.id))
+      .leftJoin(properties, eq(jobs.propertyId, properties.id))
+      .leftJoin(sales, eq(jobs.saleId, sales.id))
+      .where(eq(jobs.orgId, orgId))
+      .orderBy(desc(jobs.createdAt))
+      .limit(200),
+    db
+      .select({
+        property: properties,
+        accountFirstName: leads.firstName,
+        accountLastName: leads.lastName,
+      })
+      .from(properties)
+      .leftJoin(leads, eq(properties.leadId, leads.id))
+      .where(and(eq(properties.orgId, orgId), eq(properties.active, true)))
+      .orderBy(properties.name),
+    db
+      .select({ id: leads.id, firstName: leads.firstName, lastName: leads.lastName })
+      .from(leads)
+      .where(and(eq(leads.orgId, orgId), eq(leads.accountType, "property_management")))
+      .orderBy(leads.lastName, leads.firstName),
+  ]);
 
   // Resolve display fields from the linked lead/sale, or the manual job fields.
   const view = rows.map((r) => {
@@ -58,7 +77,13 @@ export default async function ProductionPage() {
     const address = r.address ?? r.job.customerAddress ?? null;
     const city = r.city ?? r.job.customerCity ?? null;
     const amount = r.amount ?? r.job.contractAmount ?? 0;
-    return { ...r, displayName: name, displayAddress: address, displayCity: city, displayAmount: amount };
+    return {
+      ...r,
+      displayName: name,
+      displayAddress: address,
+      displayCity: city,
+      displayAmount: amount,
+    };
   });
 
   const active = view.filter((r) => !["completed"].includes(r.job.status));
@@ -90,6 +115,55 @@ export default async function ProductionPage() {
         <StatCard label="Total Jobs" value={view.length} />
       </div>
 
+      <Card className="mb-6 p-5">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+            🏢 Add Property / Community
+          </summary>
+          <p className="mt-2 text-xs text-slate-400">
+            Create a reusable community under a property-management account, such as Dutch Village under Albany Management.
+          </p>
+          <form action={createProperty} className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className={label}>Property-management account *</label>
+              <select name="leadId" required className={input} defaultValue="">
+                <option value="" disabled>Select an account</option>
+                {propertyAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.firstName} {account.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label}>Property / Community Name *</label>
+              <input name="name" required placeholder="Dutch Village" className={input} />
+            </div>
+            <div>
+              <label className={label}>Address</label>
+              <input name="address" className={input} />
+            </div>
+            <div>
+              <label className={label}>City</label>
+              <input name="city" className={input} />
+            </div>
+            <div>
+              <label className={label}>State</label>
+              <input name="state" className={input} />
+            </div>
+            <div>
+              <label className={label}>ZIP</label>
+              <input name="zip" className={input} />
+            </div>
+            <div className="md:col-span-2">
+              <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+                Add Property
+              </button>
+            </div>
+          </form>
+        </details>
+      </Card>
+
       {/* Add a job manually (for existing/scheduled jobs, no sale required) */}
       <Card className="mb-6 p-5">
         <details>
@@ -119,6 +193,21 @@ export default async function ProductionPage() {
             <div>
               <label className={label}>Product / Job Type</label>
               <input name="productName" placeholder="e.g. Windows, Roofing" className={input} />
+            </div>
+            <div>
+              <label className={label}>Property / Community</label>
+              <select name="propertyId" className={input} defaultValue="">
+                <option value="">No property selected</option>
+                {propertyRows.map(({ property, accountFirstName, accountLastName }) => (
+                  <option key={property.id} value={property.id}>
+                    {property.name} — {accountFirstName} {accountLastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label}>Unit Number</label>
+              <input name="unitNumber" placeholder="e.g. 2B" className={input} />
             </div>
             <div>
               <label className={label}>Contract Amount ($)</label>
@@ -206,6 +295,8 @@ export default async function ProductionPage() {
                       {r.displayAddress ? `${r.displayAddress}, ` : ""}
                       {r.displayCity ?? "—"} · Contract {money(r.displayAmount ?? 0)}
                       {r.job.productName ? ` · ${r.job.productName}` : ""}
+                       {r.propertyName ? ` · ${r.propertyName}` : ""}
+                       {r.job.unitNumber ? ` · Unit ${r.job.unitNumber}` : ""}
                     </div>
                   </div>
                   <div className="w-40">
@@ -239,6 +330,21 @@ export default async function ProductionPage() {
                     <div>
                       <label className={label}>Crew</label>
                       <input name="crew" defaultValue={r.job.crew ?? ""} className={input} />
+                    </div>
+                    <div>
+                      <label className={label}>Property / Community</label>
+                      <select name="propertyId" className={input} defaultValue={r.job.propertyId ?? ""}>
+                        <option value="">No property selected</option>
+                        {propertyRows.map(({ property, accountFirstName, accountLastName }) => (
+                          <option key={property.id} value={property.id}>
+                            {property.name} — {accountFirstName} {accountLastName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={label}>Unit Number</label>
+                      <input name="unitNumber" defaultValue={r.job.unitNumber ?? ""} placeholder="e.g. 2B" className={input} />
                     </div>
                     <div>
                       <label className={label}>Start Date</label>

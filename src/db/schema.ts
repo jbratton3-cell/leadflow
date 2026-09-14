@@ -180,6 +180,29 @@ export const leads = pgTable(
   ]
 );
 
+// Properties / apartment communities belonging to a customer account.
+export const properties = pgTable(
+  "properties",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    leadId: integer("lead_id").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    address: varchar("address", { length: 200 }),
+    city: varchar("city", { length: 100 }),
+    state: varchar("state", { length: 20 }),
+    zip: varchar("zip", { length: 20 }),
+    notes: text("notes"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("properties_org_idx").on(t.orgId),
+    index("properties_lead_idx").on(t.leadId),
+  ],
+);
+
 // Call center dial log with dispositions
 export const callLogs = pgTable(
   "call_logs",
@@ -254,6 +277,8 @@ export const jobs = pgTable(
     customerAddress: varchar("customer_address", { length: 200 }),
     customerCity: varchar("customer_city", { length: 100 }),
     customerPhone: varchar("customer_phone", { length: 40 }),
+    propertyId: integer("property_id"),
+    unitNumber: varchar("unit_number", { length: 40 }),
     contractAmount: numeric("contract_amount", { precision: 12, scale: 2 }),
     productName: varchar("product_name", { length: 120 }),
     // status: pending | measure | permits | materials_ordered | materials_delivered | scheduled | in_progress | completed | on_hold

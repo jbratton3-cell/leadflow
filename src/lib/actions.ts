@@ -8,6 +8,7 @@ import {
   appointments,
   sales,
   jobs,
+  properties,
   reps,
   leadSources,
   products,
@@ -410,6 +411,8 @@ export async function createJob(formData: FormData) {
     customerAddress: str(formData.get("customerAddress")),
     customerCity: str(formData.get("customerCity")),
     customerPhone: str(formData.get("customerPhone")),
+    propertyId: num(formData.get("propertyId")),
+    unitNumber: str(formData.get("unitNumber")),
     contractAmount: (num(formData.get("contractAmount")) ?? 0).toString(),
     productName: str(formData.get("productName")),
     status: req(formData.get("status")) || "pending",
@@ -422,6 +425,33 @@ export async function createJob(formData: FormData) {
 
   revalidatePath("/production");
   revalidatePath("/");
+}
+
+export async function createProperty(formData: FormData) {
+  const { orgId } = await requireUser();
+  const leadId = num(formData.get("leadId"));
+  const name = req(formData.get("name"));
+  if (!leadId || !name) return;
+
+  const [account] = await db
+    .select({ id: leads.id })
+    .from(leads)
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (!account) return;
+
+  await db.insert(properties).values({
+    orgId,
+    leadId,
+    name,
+    address: str(formData.get("address")),
+    city: str(formData.get("city")),
+    state: str(formData.get("state")),
+    zip: str(formData.get("zip")),
+    notes: str(formData.get("notes")),
+  });
+
+  revalidatePath("/production");
 }
 
 export async function updateJob(formData: FormData) {
@@ -441,6 +471,8 @@ export async function updateJob(formData: FormData) {
     .set({
       status,
       crew: str(formData.get("crew")),
+      propertyId: num(formData.get("propertyId")),
+      unitNumber: str(formData.get("unitNumber")),
       startDate: toDate(formData.get("startDate")),
       completionDate: toDate(formData.get("completionDate")),
       milestones: JSON.stringify(milestones),
