@@ -6,7 +6,7 @@ import { requireAccess, getSessionUser } from "@/lib/auth";
 import { getReps } from "@/lib/queries";
 import { can } from "@/lib/permissions";
 import { createLead } from "@/lib/actions";
-import { roleLabel } from "@/lib/constants";
+import { ACCOUNT_TYPES, roleLabel } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +77,20 @@ export default async function NewLeadPage() {
               <input name="zip" className={input} />
             </div>
           </div>
+          <div>
+            <label className={label}>Account Type</label>
+            <select name="accountType" className={input} defaultValue="unclassified">
+              {ACCOUNT_TYPES.map((type) => (
+                <option key={type.key} value={type.key}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600">
+            <input type="checkbox" name="standingContract" className="h-4 w-4 rounded" />
+            Standing / recurring contract
+          </label>
           <div>
             <label className={label}>Lead Source</label>
             <select name="sourceId" className={input} defaultValue="">

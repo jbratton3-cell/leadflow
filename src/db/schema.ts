@@ -153,6 +153,8 @@ export const leads = pgTable(
     city: varchar("city", { length: 100 }),
     state: varchar("state", { length: 20 }),
     zip: varchar("zip", { length: 20 }),
+    accountType: varchar("account_type", { length: 30 }).notNull().default("unclassified"),
+    standingContract: boolean("standing_contract").notNull().default(false),
     sourceId: integer("source_id"),
     productId: integer("product_id"),
     // pipeline stage: new | contacting | appt_set | confirmed | sat | sold | production | completed | dead

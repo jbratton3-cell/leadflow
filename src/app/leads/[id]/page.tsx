@@ -25,7 +25,7 @@ import {
   APPT_RESULTS,
   FINANCE_TYPES,
   estimateStatusLabel,
-  estimateStatusColor, personName, orgHasEmailOutreach } from "@/lib/constants";
+  estimateStatusColor, personName, accountTypeLabel, orgHasEmailOutreach } from "@/lib/constants";
 import {
   createAppointment,
   updateAppointmentStatus,
@@ -116,6 +116,10 @@ export default async function LeadDetailPage({
         action={
           <div className="flex items-center gap-2">
             <Badge className={stageColor(lead.stage)}>{stageLabel(lead.stage)}</Badge>
+            <Badge className="bg-slate-100 text-slate-700">{accountTypeLabel(lead.accountType)}</Badge>
+            {lead.standingContract && (
+              <Badge className="bg-cyan-100 text-cyan-700">Standing Contract</Badge>
+            )}
             {lead.doNotCall && <Badge className="bg-rose-100 text-rose-700">Do Not Call</Badge>}
             <Link
               href={`/leads/${lead.id}/edit`}
@@ -148,6 +152,8 @@ export default async function LeadDetailPage({
               <Info label="Product" value={lead.productId ? prodMap.get(lead.productId)?.name : null} />
               <Info label="Source" value={lead.sourceId ? srcMap.get(lead.sourceId)?.name : null} />
               <Info label="Assigned Rep" value={lead.assignedRepId ? repMap.get(lead.assignedRepId)?.name : null} />
+              <Info label="Account Type" value={accountTypeLabel(lead.accountType)} />
+              <Info label="Contract Pattern" value={lead.standingContract ? "Standing / recurring" : "Project / one-time"} />
               <Info label="Est. Value" value={money(lead.estimatedValue)} />
               <Info label="Created" value={fmtDate(lead.createdAt)} />
             </dl>

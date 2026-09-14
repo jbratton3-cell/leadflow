@@ -39,6 +39,17 @@ export const stageLabel = (key: string) =>
 export const stageColor = (key: string) =>
   STAGES.find((s) => s.key === key)?.color ?? "bg-slate-100 text-slate-700";
 
+export const ACCOUNT_TYPES = [
+  { key: "unclassified", label: "Unclassified" },
+  { key: "homeowner", label: "Homeowner" },
+  { key: "property_management", label: "Property Management" },
+  { key: "commercial", label: "Commercial" },
+  { key: "other", label: "Other" },
+] as const;
+
+export const accountTypeLabel = (key?: string | null) =>
+  ACCOUNT_TYPES.find((type) => type.key === key)?.label ?? key ?? "Unclassified";
+
 export const DISPOSITIONS = [
   { key: "no_answer", label: "No Answer" },
   { key: "left_message", label: "Left Message" },

@@ -7,7 +7,7 @@ import { PageHeader, Card } from "@/components/ui";
 import { getSources, getProducts, getReps } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { updateLead } from "@/lib/actions";
-import { personName } from "@/lib/constants";
+import { ACCOUNT_TYPES, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +86,25 @@ export default async function EditLeadPage({
               <input name="zip" defaultValue={lead.zip ?? ""} className={input} />
             </div>
           </div>
+          <div>
+            <label className={label}>Account Type</label>
+            <select name="accountType" className={input} defaultValue={lead.accountType}>
+              {ACCOUNT_TYPES.map((type) => (
+                <option key={type.key} value={type.key}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              name="standingContract"
+              defaultChecked={lead.standingContract}
+              className="h-4 w-4 rounded"
+            />
+            Standing / recurring contract
+          </label>
           <div>
             <label className={label}>Lead Source</label>
             <select name="sourceId" className={input} defaultValue={lead.sourceId ?? ""}>

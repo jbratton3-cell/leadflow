@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import { getSources, getProducts, getReps, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
-import { STAGES, stageLabel, stageColor, money, fmtDate, personName } from "@/lib/constants";
+import { accountTypeLabel, STAGES, stageLabel, stageColor, money, fmtDate, personName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -193,6 +193,10 @@ export default async function LeadsPage({
                       {l.doNotCall && (
                         <span className="ml-2 text-[10px] font-bold uppercase text-rose-600">DNC</span>
                       )}
+                      <div className="text-xs text-cyan-700">
+                        {accountTypeLabel(l.accountType)}
+                        {l.standingContract ? " · Standing contract" : ""}
+                      </div>
                       <div className="text-xs text-slate-400">{l.phone ?? "—"}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">

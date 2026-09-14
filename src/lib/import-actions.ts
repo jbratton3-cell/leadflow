@@ -16,6 +16,26 @@ export type ImportResult = {
 
 const clean = (v: unknown) => (v ?? "").toString().trim();
 
+function parseAccountType(value: string): string {
+  const key = value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const aliases: Record<string, string> = {
+    homeowner: "homeowner",
+    home_owner: "homeowner",
+    property_management: "property_management",
+    property_manager: "property_management",
+    propertymanagement: "property_management",
+    commercial: "commercial",
+    other: "other",
+  };
+  return aliases[key] ?? "unclassified";
+}
+
+function parseBoolean(value: string): boolean {
+  return ["true", "yes", "y", "1", "on", "standing", "recurring"].includes(
+    value.toLowerCase(),
+  );
+}
+
 function parseMoney(v: string): string {
   if (!v) return "0";
   const n = Number(v.replace(/[$,\s]/g, ""));
@@ -102,6 +122,8 @@ export async function importLeads(payload: {
         city: clean(row.city) || null,
         state: clean(row.state) || null,
         zip: clean(row.zip) || null,
+        accountType: parseAccountType(clean(row.accountType)),
+        standingContract: parseBoolean(clean(row.standingContract)),
         sourceId,
         productId,
         estimatedValue: parseMoney(clean(row.estimatedValue)),

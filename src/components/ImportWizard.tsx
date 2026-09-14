@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { importLeads, type ImportResult } from "@/lib/import-actions";
 
 const input =
@@ -19,6 +20,8 @@ const TARGETS: { key: string; label: string }[] = [
   { key: "city", label: "City" },
   { key: "state", label: "State" },
   { key: "zip", label: "Zip" },
+  { key: "accountType", label: "Account Type" },
+  { key: "standingContract", label: "Standing / Recurring Contract" },
   { key: "source", label: "Lead Source" },
   { key: "product", label: "Product" },
   { key: "estimatedValue", label: "Estimated Value" },
@@ -63,6 +66,12 @@ const SYNONYMS: Record<string, string> = {
   zipcode: "zip",
   postalcode: "zip",
   postal: "zip",
+  accounttype: "accountType",
+  customertype: "accountType",
+  accountcategory: "accountType",
+  standingcontract: "standingContract",
+  recurringcontract: "standingContract",
+  recurring: "standingContract",
   source: "source",
   leadsource: "source",
   campaign: "source",
@@ -212,13 +221,15 @@ export default function ImportWizard() {
       "City",
       "State",
       "Zip",
+      "Account Type",
+      "Standing Contract",
       "Lead Source",
       "Product",
       "Estimated Value",
       "Notes",
     ];
     const sample = [
-      "Jane,Doe,jane@example.com,(555) 123-4567,12 Oak St,Springfield,IL,62701,Google PPC,Roofing,18000,Wants a quote next week",
+      "Jane,Doe,jane@example.com,(555) 123-4567,12 Oak St,Springfield,IL,62701,Homeowner,false,Google PPC,Roofing,18000,Wants a quote next week",
     ];
     const csv = [cols.join(","), ...sample].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -408,12 +419,12 @@ export default function ImportWizard() {
       )}
 
       <div className="flex gap-3">
-        <a
+        <Link
           href="/leads"
           className="rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600"
         >
           View Imported Leads
-        </a>
+        </Link>
         <button
           onClick={reset}
           className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
