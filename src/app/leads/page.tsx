@@ -28,6 +28,7 @@ export default async function LeadsPage({
       or(
         ilike(leads.firstName, like),
         ilike(leads.lastName, like),
+        ilike(leads.address, like),
         ilike(leads.phone, like),
         ilike(leads.city, like),
         ilike(leads.zip, like)
@@ -96,7 +97,7 @@ export default async function LeadsPage({
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="Search name, phone, city, zip…"
+            placeholder="Search name, address, phone, city, zip…"
             className="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-orange-400"
           />
           <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
