@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { leads } from "@/db/schema";
-import { desc, ilike, or, eq, and, type SQL } from "drizzle-orm";
+import { count, desc, ilike, or, eq, and, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import { getSources, getProducts, getReps, toMap } from "@/lib/queries";
@@ -12,10 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ stage?: string; q?: string }>;
+  searchParams: Promise<{ stage?: string; q?: string; page?: string }>;
 }) {
   const { orgId } = await requireAccess("leads");
-  const { stage, q } = await searchParams;
+  const { stage, q, page: pageParam } = await searchParams;
+  const pageSize = 50;
+  const parsedPage = Number.parseInt(pageParam ?? "1", 10);
+  const requestedPage = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
 
   const conds: SQL[] = [eq(leads.orgId, orgId)];
   if (stage) conds.push(eq(leads.stage, stage));
@@ -32,21 +35,44 @@ export default async function LeadsPage({
     );
   }
 
-  const [rows, sources, prods, allReps] = await Promise.all([
+  const [{ total }, sources, prods, allReps] = await Promise.all([
     db
-      .select()
+      .select({ total: count() })
       .from(leads)
       .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(leads.updatedAt))
-      .limit(200),
+      .then(([result]) => ({ total: Number(result?.total ?? 0) })),
     getSources(),
     getProducts(),
     getReps(),
   ]);
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const offset = (currentPage - 1) * pageSize;
+
+  const [rows] = await Promise.all([
+    db
+      .select()
+      .from(leads)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(leads.updatedAt))
+      .limit(pageSize)
+      .offset(offset),
+  ]);
+
   const srcMap = toMap(sources);
   const prodMap = toMap(prods);
   const repMap = toMap(allReps);
+  const firstResult = total === 0 ? 0 : offset + 1;
+  const lastResult = Math.min(offset + rows.length, total);
+  const pageHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (stage) params.set("stage", stage);
+    if (q) params.set("q", q);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const query = params.toString();
+    return query ? `/leads?${query}` : "/leads";
+  };
 
   return (
     <div>
@@ -100,6 +126,41 @@ export default async function LeadsPage({
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+        <span>
+          Showing {firstResult.toLocaleString()}–{lastResult.toLocaleString()} of {total.toLocaleString()} prospects
+        </span>
+        {totalPages > 1 && (
+          <nav className="flex items-center gap-1" aria-label="Prospects pages">
+            <Link
+              href={pageHref(currentPage - 1)}
+              aria-disabled={currentPage === 1}
+              className={`rounded-lg border px-3 py-1.5 font-medium ${
+                currentPage === 1
+                  ? "pointer-events-none border-slate-200 text-slate-300"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Previous
+            </Link>
+            <span className="px-2 text-xs font-medium text-slate-500">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Link
+              href={pageHref(currentPage + 1)}
+              aria-disabled={currentPage === totalPages}
+              className={`rounded-lg border px-3 py-1.5 font-medium ${
+                currentPage === totalPages
+                  ? "pointer-events-none border-slate-200 text-slate-300"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Next
+            </Link>
+          </nav>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -166,6 +227,38 @@ export default async function LeadsPage({
             </table>
           </div>
         </Card>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-end">
+          <nav className="flex items-center gap-1" aria-label="Prospects pages">
+            <Link
+              href={pageHref(currentPage - 1)}
+              aria-disabled={currentPage === 1}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                currentPage === 1
+                  ? "pointer-events-none border-slate-200 text-slate-300"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Previous
+            </Link>
+            <span className="px-2 text-xs font-medium text-slate-500">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Link
+              href={pageHref(currentPage + 1)}
+              aria-disabled={currentPage === totalPages}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                currentPage === totalPages
+                  ? "pointer-events-none border-slate-200 text-slate-300"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Next
+            </Link>
+          </nav>
+        </div>
       )}
     </div>
   );
