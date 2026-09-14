@@ -268,6 +268,37 @@ export const jobs = pgTable(
   (t) => [index("jobs_org_idx").on(t.orgId)]
 );
 
+// Job costs entered by the office. Receipt fields are intentionally generic so
+// future receipt extraction can populate the same record without changing the
+// profitability model.
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    jobId: integer("job_id").notNull(),
+    category: varchar("category", { length: 50 }).notNull(),
+    vendor: varchar("vendor", { length: 160 }),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    purchaseDate: timestamp("purchase_date").notNull().defaultNow(),
+    paidBy: varchar("paid_by", { length: 120 }),
+    notes: text("notes"),
+    receiptUrl: text("receipt_url"),
+    receiptFileName: varchar("receipt_file_name", { length: 255 }),
+    receiptMimeType: varchar("receipt_mime_type", { length: 120 }),
+    receiptSizeBytes: integer("receipt_size_bytes"),
+    // Future receipt readers can store the address they detect here.
+    receiptAddress: varchar("receipt_address", { length: 240 }),
+    enteredById: integer("entered_by_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("expenses_org_idx").on(t.orgId),
+    index("expenses_job_idx").on(t.jobId),
+  ],
+);
+
 // Estimates / quotes sent to customers
 export const estimates = pgTable(
   "estimates",
@@ -488,3 +519,4 @@ export type OutreachLog = typeof outreachLogs.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;

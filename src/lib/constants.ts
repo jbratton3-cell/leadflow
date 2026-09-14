@@ -131,6 +131,21 @@ export const JOB_REQUIREMENTS = [
   { key: "permit_required", label: "Permit Required" },
 ] as const;
 
+export const EXPENSE_CATEGORIES = [
+  { key: "materials_purchase", label: "Materials — Store Purchase" },
+  { key: "material_order", label: "Materials — Supplier Order" },
+  { key: "dumpster", label: "Dumpster" },
+  { key: "permit", label: "Permit / Fees" },
+  { key: "subcontractor", label: "Subcontractor" },
+  { key: "labor", label: "Labor" },
+  { key: "equipment", label: "Equipment Rental" },
+  { key: "commission", label: "Commission" },
+  { key: "other", label: "Other Job Cost" },
+] as const;
+
+export const expenseCategoryLabel = (key: string) =>
+  EXPENSE_CATEGORIES.find((category) => category.key === key)?.label ?? key;
+
 export const SOURCE_CATEGORIES = [
   { key: "internet", label: "Internet / Web" },
   { key: "direct_mail", label: "Direct Mail" },

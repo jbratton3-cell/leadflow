@@ -11,6 +11,7 @@ import {
   callLogs,
   appointments,
   documents,
+  expenses,
 } from "@/db/schema";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -156,6 +157,7 @@ export async function deleteJob(formData: FormData) {
   if (!id) return;
 
   await db.delete(invoices).where(and(eq(invoices.orgId, orgId), eq(invoices.jobId, id)));
+  await db.delete(expenses).where(and(eq(expenses.orgId, orgId), eq(expenses.jobId, id)));
   await db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 
   revalidatePath("/production");

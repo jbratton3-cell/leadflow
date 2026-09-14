@@ -15,6 +15,7 @@ export type Permission =
   | "production"
   | "marketing"
   | "reports"
+  | "job_financials"
   | "import" // bulk import / data migration
   | "settings" // manage sources, products, reps
   | "users"; // manage login users & invites (admin only)
@@ -54,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "production",
     "marketing",
     "reports",
+    "job_financials",
     "import",
     "settings",
     "users",
