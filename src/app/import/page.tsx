@@ -1,6 +1,7 @@
 import { PageHeader, Card } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import ImportWizard from "@/components/ImportWizard";
+import HcpPaymentsImportWizard from "@/components/HcpPaymentsImportWizard";
 import DuplicateCleanup from "@/components/DuplicateCleanup";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,12 @@ export default async function ImportPage() {
     <div>
       <PageHeader
         title="Import & Migrate Data"
-        subtitle="Bring your existing leads into LeadFlow from a spreadsheet or another CRM."
+        subtitle="Import data one dataset at a time, or use the general lead importer for CRM exports."
       />
+
+      <Card className="mb-6 p-6">
+        <HcpPaymentsImportWizard />
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-6 lg:col-span-2">

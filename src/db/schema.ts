@@ -8,6 +8,7 @@ import {
   timestamp,
   numeric,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // Inbound "contact us / request pricing" leads from the public marketing site.
@@ -412,6 +413,60 @@ export const invoices = pgTable("invoices", {
 }, (t) => [index("invoices_org_idx").on(t.orgId)]);
 
 export type Invoice = typeof invoices.$inferSelect;
+
+// Housecall Pro payment transactions preserved during historical migrations.
+export const hcpPayments = pgTable(
+  "hcp_payments",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    leadId: integer("lead_id"),
+    jobId: integer("job_id"),
+    invoiceId: integer("invoice_id"),
+    receivedAt: timestamp("received_at"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    tipAmount: numeric("tip_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    feeAmount: numeric("fee_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    feeType: varchar("fee_type", { length: 80 }),
+    paymentType: varchar("payment_type", { length: 80 }),
+    customerName: varchar("customer_name", { length: 160 }),
+    customerExternalId: varchar("customer_external_id", { length: 100 }),
+    jobReference: varchar("job_reference", { length: 50 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("hcp_payments_org_idx").on(t.orgId),
+    index("hcp_payments_job_idx").on(t.jobId),
+    index("hcp_payments_invoice_idx").on(t.invoiceId),
+  ],
+);
+
+// Traceability and idempotency map for records imported from external systems.
+export const migrationRecords = pgTable(
+  "migration_records",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    sourceSystem: varchar("source_system", { length: 50 }).notNull(),
+    entityType: varchar("entity_type", { length: 50 }).notNull(),
+    sourceId: varchar("source_id", { length: 120 }).notNull(),
+    targetTable: varchar("target_table", { length: 80 }).notNull(),
+    targetId: integer("target_id").notNull(),
+    sourceHash: varchar("source_hash", { length: 128 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("migration_records_source_unique").on(
+      t.orgId,
+      t.sourceSystem,
+      t.entityType,
+      t.sourceId,
+    ),
+    index("migration_records_target_idx").on(t.orgId, t.targetTable, t.targetId),
+  ],
+);
 
 // Material suppliers (Settings-managed; orders are emailed to them)
 export const suppliers = pgTable("suppliers", {
