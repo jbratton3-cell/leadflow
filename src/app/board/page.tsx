@@ -151,27 +151,37 @@ export default async function BoardPage({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="border-b border-slate-800 bg-slate-900/95 px-6 py-4">
+    <main className={`min-h-screen bg-slate-950 text-white ${tight ? "text-[13px]" : ""}`}>
+      <div className={`border-b border-slate-800 bg-slate-900/95 ${tight ? "px-4 py-2" : "px-6 py-4"}`}>
         <div className="flex items-center justify-between gap-4">
           <a href="/dashboard" className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-slate-800">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-orange-500 text-2xl font-bold text-white">
+            <div className={`grid place-items-center rounded-xl bg-orange-500 font-bold text-white ${tight ? "h-8 w-8 text-lg" : "h-12 w-12 text-2xl"}`}>
               {APP_NAME.slice(0, 1)}
             </div>
             <div>
-              <div className="text-2xl font-bold tracking-tight text-white">{APP_NAME}</div>
-              <div className="text-sm text-slate-400">TV Production Board</div>
+              <div className={`font-bold tracking-tight text-white ${tight ? "text-lg" : "text-2xl"}`}>{APP_NAME}</div>
+              <div className="text-slate-400">TV Production Board</div>
             </div>
           </a>
 
           <div className="text-right">
-            <div className="text-sm text-slate-400">Active Jobs</div>
-            <div className="text-3xl font-bold text-cyan-400">{view.length}</div>
+            <div className="text-slate-400">Active Jobs</div>
+            <div className={`font-bold text-cyan-400 ${tight ? "text-2xl" : "text-3xl"}`}>{view.length}</div>
           </div>
         </div>
+        <nav className={`flex flex-wrap gap-4 text-orange-400 ${tight ? "mt-1 text-sm" : "mt-2 text-base"}`}>
+          <Link href={`/board${tight ? "?tight=1" : ""}`}>Jobs</Link>
+          <Link href={`/board/sales${tight ? "?tight=1" : ""}`}>Revenue</Link>
+          <Link href={`/board/reps${tight ? "?tight=1" : ""}`}>Reps</Link>
+          {tight ? (
+            <Link href="/board" className="text-slate-500">Larger</Link>
+          ) : (
+            <Link href="/board?tight=1" className="text-slate-500">Tighter</Link>
+          )}
+        </nav>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className={`space-y-3 ${tight ? "p-2" : "p-4"}`}>
         {view.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-700 px-6 py-12 text-center text-lg text-slate-500">
             No active jobs yet.
