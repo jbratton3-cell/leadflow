@@ -1,6 +1,6 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Sept 15, 2026*
+*Last updated: Aug 26, 2026*
 
 ## BRANDING & DOMAIN (decided Aug 27 night)
 - **LeadFlow = standalone brand/future business** — NOT under JMB umbrella. JMB appears only as SEO/backlink credit: "Developed by JMB Business Solutions" (footer link + about page)
@@ -153,9 +153,15 @@ Facebook launch posts (aggressive + polished + captions), LeadFlow monetization,
 ## MAJOR STATE CHANGE (synced Sept 10): BUILDPROS IS LIVE ON REAL DATA
 - HCP full history imported (by other agent/user): 1,191 leads, 156 estimates, 531 jobs, 532 invoices, 14 sales. 5 orgs, 8 users, 1 supplier entered. LF is now BuildPros' system of record
 - Other agent's new work (merged through 8c9a790a): material orders upgraded (RECEIVED/GOT-IT reply tracking, address-only supplier display, replies -> jon@leadflowcrm.info, extra custom lines), dashboard includes imported job revenue, TV board refresh survives casting/idle tabs, editable lead sources, WISESTACK prequalify note on customer estimates + office summary + PDF (financing angle!), src/lib/quickbooks.ts EXISTS (QB integration started)
-- **ROSE CORRECTION (Sept 15):** shorthand for the manager/admin exception used when a paper contract total and an already-paid deposit need to be synchronized. The original fix restores the paper contract total to **$9,600**, keeps the **$4,800 credit-card deposit marked paid**, and synchronizes the estimate, deposit invoice, sale, job, lead value, and reporting totals. Reuse only for the same kind of one-off mismatch; do **not** turn it into a system-wide pricing or cash-discount feature. Preserve the normal global cash-discount policy.
 - FB STRATEGY PIVOT (user, ~Sept 8): memes for engagement instead of straight launch posts; original posts still available as conversion layer. User generating memes on another platform during outages
 - Agent status: this workspace synced + verified current with production
+
+## RECEIPT PROJECT — RESOLVED Sept 15 (scope changed by Kevin, retroactively)
+- ORIGINAL ASK (per user, from Kevin directly): pull past receipts + match to jobs for historical profit. Parser BUILT + PROVEN on 15-receipt test batch: mbox parsing, PDF extraction (dates/totals/items/PO names), date-window job matching (receipts_matched.json, Receipt_Match_Review_v2.pdf). Tooling works, is shelved-ready if bulk processing ever needed
+- FINDING: the backfill is IMPOSSIBLE as asked — most BuildPros jobs never entered HCP (only rep Damon used it); the 534 LF jobs are partial history. Also: installers reuse ghost PO names from Home Depot's saved dropdown (receipt POs reference jobs not in any system); receipts contain NO job addresses (verified all 15); only 65/534 jobs have start dates
+- KEVIN'S REVISED SCOPE (as he now remembers it): expense tracking FROM THIS POINT FORWARD. The other agent's expense feature + per-job profit = the live solution. Workflow going forward: every new job entered in LF + receipts assigned to jobs (PO field should carry job address/name for self-matching)
+- Kevin pattern noted: misremembers assignments when the original ask proves infeasible. Practice adopted: one-line confirmation text after Kevin task assignments (paper trail, same doctrine as IP/payment)
+- Artifacts kept: receipts_parsed.json, receipts_matched.json, verification sheets (v1+v2), receipts_extracted/ (15 PDFs)
 
 ## RECEIPT BACKFILL PROJECT (started Sept 14 — user + 2 agents in tandem)
 - CONTEXT: Kevin wants job expense tracking + per-job profit (FEATURE BUILT by other agent Sept 14). Now needs HUNDREDS of past receipts from BP gmail manually entered + matched to jobs — user was facing a week of typing
