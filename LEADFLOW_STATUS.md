@@ -159,7 +159,7 @@ Facebook launch posts (aggressive + polished + captions), LeadFlow monetization,
 ## RECEIPT BACKFILL PROJECT (started Sept 14 — user + 2 agents in tandem)
 - CONTEXT: Kevin wants job expense tracking + per-job profit (FEATURE BUILT by other agent Sept 14). Now needs HUNDREDS of past receipts from BP gmail manually entered + matched to jobs — user was facing a week of typing
 - PLAN (agreed): user exports/labels receipt emails from BP gmail (office computer only); gives me a 10-15 email sample; I build a PARSER + pre-matcher (vendor/date/amount/job hints) so hundreds become a REVIEW queue not an entry queue; script runs WITHOUT me once built. Other agent builds PERMANENT feature: LF reads receipts natively on upload (in progress)
-- PENDING: Kevin's cutoff answer (this year vs all history — determines scope); user's gmail export + sample; supplier names list
+- PENDING: Kevin's cutoff answer (this year vs all history — determines scope); user's gmail export + sample. RESOLVED: supplier = ONE supplier only (already entered in LF for material ordering — parser should filter receipts to this vendor's emails primarily, though older receipts may include other vendors from before the consolidation)
 - NOTE: parser script once built = runs independent of agent responsiveness. Build the tool, not the labor
 
 ## MEME ARSENAL (as of Sept 11 night — BATCH 3 DELIVERED)
