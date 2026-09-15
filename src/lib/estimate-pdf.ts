@@ -214,7 +214,7 @@ export async function buildSignedEstimatePdf(opts: {
 
   y -= 6;
   const financeLines = wrap(
-    "Prequalify for financing without impacting your credit score*: https://wisetack.us/#/kehyadc/prequalify  *All financing is subject to credit approval. Payment options through Wisetack are provided by our lending partners. See https://www.wisetack.com/faqs.",
+    "Prequalify for financing without impacting your credit score*: https://wisetack.us/#/xn10kh5/prequalify  *All financing is subject to credit approval. Payment options through Wisetack are provided by our lending partners. See https://www.wisetack.com/faqs.",
     font,
     8,
     W - 2 * M

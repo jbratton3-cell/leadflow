@@ -1,4 +1,4 @@
-export const WISETACK_PREQUAL_URL = "https://wisetack.us/#/kehyadc/prequalify";
+export const WISETACK_PREQUAL_URL = "https://wisetack.us/#/xn10kh5/prequalify";
 export const WISETACK_FAQ_URL = "https://www.wisetack.com/faqs";
 
 export function WisetackPrequalNote({ compact = false }: { compact?: boolean }) {
