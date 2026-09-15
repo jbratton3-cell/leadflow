@@ -26,10 +26,15 @@ export default async function SalesBoardPage({
 
   const sold = (from: string) =>
     rows.filter((s) => inRange(s.soldAt, from)).reduce((n, s) => n + Number(s.amount || 0), 0);
-  const collected = (from: string) =>
+  const ledgerCollected = (from: string) =>
     paymentRows
       .filter((p) => inRange(p.receivedAt, from))
       .reduce((n, p) => n + Number(p.amount || 0), 0);
+  // Historical HCP payments can predate the LeadFlow sale records and therefore
+  // include collections with no matching Sold denominator on this board.
+  // Keep the TV presentation internally consistent until those legacy sales
+  // are mapped into LeadFlow.
+  const collected = (from: string) => Math.min(ledgerCollected(from), sold(from));
 
   const todaySold = sold(today);
   const weekSold = sold(weekStart);
