@@ -1,4 +1,5 @@
 # LeadFlow CRM — Project Status
+*THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
 *Last updated: Aug 26, 2026*
 
 ## BRANDING & DOMAIN (decided Aug 27 night)
