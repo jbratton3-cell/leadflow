@@ -8,7 +8,7 @@ import { money, fmtDate } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { ensureQbColumns } from "@/lib/quickbooks";
-import { collectedWithinSold } from "@/lib/revenue";
+import { withinContractAmount } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export default async function InvoicesPage() {
     paidByContract.set(key, existing);
   }
   const collected = Array.from(paidByContract.values()).reduce(
-    (sum, contract) => sum + collectedWithinSold(contract.collected, contract.sold),
+    (sum, contract) => sum + withinContractAmount(contract.collected, contract.sold),
     0,
   );
   const financed = rows

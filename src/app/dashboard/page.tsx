@@ -1,5 +1,13 @@
 import { db } from "@/db";
-import { leads, appointments, sales, jobs, callLogs } from "@/db/schema";
+import {
+  hcpPayments,
+  invoices,
+  leads,
+  appointments,
+  sales,
+  jobs,
+  callLogs,
+} from "@/db/schema";
 import { sql, desc, eq, gte, and, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, StatCard, Card, Badge } from "@/components/ui";
@@ -11,24 +19,66 @@ import {
   money,
   fmtDateTime,
   dispositionLabel, personName } from "@/lib/constants";
-import { collectedWithinSold } from "@/lib/revenue";
+import {
+  buildRevenueContracts,
+  collectedStats,
+  importedJobIds,
+  linkedContractKey,
+} from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
 async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
   try {
-    const result = await db.execute(sql`
-      select count(*)::int as count, coalesce(sum(amount), 0) as total
-      from hcp_payments
-      where org_id = ${orgId} and received_at >= ${monthStart}
-    `);
-    const row = result.rows[0] as
-      | { count?: number | string; total?: number | string }
-      | undefined;
-    return {
-      count: Number(row?.count ?? 0),
-      total: Number(row?.total ?? 0),
-    };
+    const [salesRows, jobRows, paymentRows] = await Promise.all([
+      db
+        .select({ id: sales.id, amount: sales.amount, soldAt: sales.soldAt })
+        .from(sales)
+        .where(eq(sales.orgId, orgId)),
+      db
+        .select({
+          id: jobs.id,
+          saleId: jobs.saleId,
+          contractAmount: jobs.contractAmount,
+          createdAt: jobs.createdAt,
+          notes: jobs.notes,
+        })
+        .from(jobs)
+        .where(eq(jobs.orgId, orgId)),
+      db
+        .select({
+          jobId: hcpPayments.jobId,
+          invoiceJobId: invoices.jobId,
+          amount: hcpPayments.amount,
+          receivedAt: hcpPayments.receivedAt,
+          paymentType: hcpPayments.paymentType,
+          jobSaleId: jobs.saleId,
+          invoiceSaleId: invoices.saleId,
+        })
+        .from(hcpPayments)
+        .leftJoin(jobs, eq(hcpPayments.jobId, jobs.id))
+        .leftJoin(invoices, eq(hcpPayments.invoiceId, invoices.id))
+        .where(eq(hcpPayments.orgId, orgId)),
+    ]);
+    const periodStamp = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}-01`;
+    const contracts = buildRevenueContracts(salesRows, jobRows);
+    const importedJobs = importedJobIds(jobRows);
+    return collectedStats(
+      contracts,
+      paymentRows.map((payment) => ({
+        amount: payment.amount,
+        receivedAt: payment.receivedAt,
+        paymentType: payment.paymentType,
+        contractKey: linkedContractKey(
+          payment.jobId,
+          payment.invoiceJobId,
+          payment.jobSaleId,
+          payment.invoiceSaleId,
+          importedJobs,
+        ),
+      })),
+      periodStamp,
+    );
   } catch (error) {
     console.error("HCP payment reporting query failed:", error);
     return { count: 0, total: 0 };
@@ -138,7 +188,7 @@ export default async function DashboardPage({
   const setRate = monthLeads ? Math.round((setCount / monthLeads) * 100) : 0;
   const closeRate = satCount ? Math.round((soldCount / satCount) * 100) : 0;
   const avgSale = soldCount ? revenue / soldCount : 0;
-  const collectedRevenue = collectedWithinSold(hcpPaymentMtd.total, revenue);
+  const collectedRevenue = hcpPaymentMtd.total;
 
   return (
     <div>

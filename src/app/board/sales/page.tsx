@@ -1,10 +1,16 @@
 import { db } from "@/db";
-import { hcpPayments, sales } from "@/db/schema";
+import { hcpPayments, invoices, jobs, sales } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
-import { inRange, nyPeriodStarts, weekStamps } from "@/lib/ny-dates";
-import { collectedWithinSold } from "@/lib/revenue";
+import { nyPeriodStarts, weekStamps } from "@/lib/ny-dates";
+import {
+  buildRevenueContracts,
+  collectedStats,
+  importedJobIds,
+  linkedContractKey,
+  soldStats,
+} from "@/lib/revenue";
 import TvBoardChrome from "@/components/TvBoardChrome";
 
 export const dynamic = "force-dynamic";
@@ -19,19 +25,50 @@ export default async function SalesBoardPage({
   const tight = tightQ === "1";
   const { today, weekStart, monthStart, yearStart } = nyPeriodStarts();
 
-  const rows = await db.select().from(sales).where(eq(sales.orgId, user.orgId));
-  const paymentRows = await db
-    .select()
-    .from(hcpPayments)
-    .where(eq(hcpPayments.orgId, user.orgId));
+  const [rows, jobRows, paymentRows] = await Promise.all([
+    db.select().from(sales).where(eq(sales.orgId, user.orgId)),
+    db
+      .select({
+        id: jobs.id,
+        saleId: jobs.saleId,
+        contractAmount: jobs.contractAmount,
+        createdAt: jobs.createdAt,
+        notes: jobs.notes,
+      })
+      .from(jobs)
+      .where(eq(jobs.orgId, user.orgId)),
+    db
+      .select({
+        jobId: hcpPayments.jobId,
+        invoiceJobId: invoices.jobId,
+        amount: hcpPayments.amount,
+        receivedAt: hcpPayments.receivedAt,
+        paymentType: hcpPayments.paymentType,
+        jobSaleId: jobs.saleId,
+        invoiceSaleId: invoices.saleId,
+      })
+      .from(hcpPayments)
+      .leftJoin(jobs, eq(hcpPayments.jobId, jobs.id))
+      .leftJoin(invoices, eq(hcpPayments.invoiceId, invoices.id))
+      .where(eq(hcpPayments.orgId, user.orgId)),
+  ]);
 
-  const sold = (from: string) =>
-    rows.filter((s) => inRange(s.soldAt, from)).reduce((n, s) => n + Number(s.amount || 0), 0);
-  const ledgerCollected = (from: string) =>
-    paymentRows
-      .filter((p) => inRange(p.receivedAt, from))
-      .reduce((n, p) => n + Number(p.amount || 0), 0);
-  const collected = (from: string) => collectedWithinSold(ledgerCollected(from), sold(from));
+  const contracts = buildRevenueContracts(rows, jobRows);
+  const importedJobs = importedJobIds(jobRows);
+  const revenuePayments = paymentRows.map((payment) => ({
+    amount: payment.amount,
+    receivedAt: payment.receivedAt,
+    paymentType: payment.paymentType,
+    contractKey: linkedContractKey(
+      payment.jobId,
+      payment.invoiceJobId,
+      payment.jobSaleId,
+      payment.invoiceSaleId,
+      importedJobs,
+    ),
+  }));
+  const sold = (from: string) => soldStats(contracts, from).total;
+  const collected = (from: string) => collectedStats(contracts, revenuePayments, from).total;
 
   const todaySold = sold(today);
   const weekSold = sold(weekStart);
@@ -45,14 +82,16 @@ export default async function SalesBoardPage({
   const weeks = weekStamps(8);
   const weekly = weeks.map((w, i) => {
     const end = weeks[i + 1]?.start ?? "9999-12-32";
-    const amt = rows
-      .filter((s) => {
-        const st = s.soldAt
-          ? new Date(s.soldAt).toLocaleDateString("en-CA", { timeZone: "America/New_York" })
+    const amt = contracts
+      .filter((contract) => {
+        const st = contract.soldAt
+          ? new Date(contract.soldAt).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
           : "";
         return st >= w.start && st < end;
       })
-      .reduce((n, s) => n + Number(s.amount || 0), 0);
+      .reduce((n, contract) => n + Number(contract.amount || 0), 0);
     return { ...w, amt };
   });
   const maxW = Math.max(...weekly.map((w) => w.amt), 1);

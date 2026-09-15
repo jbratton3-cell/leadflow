@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { hcpPayments, sales, leads } from "@/db/schema";
+import { hcpPayments, invoices, jobs, sales, leads } from "@/db/schema";
 import { and, desc, eq, sql, gte } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
@@ -8,7 +8,13 @@ import DeleteButton from "@/components/DeleteButton";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
-import { collectedWithinSold } from "@/lib/revenue";
+import {
+  buildRevenueContracts,
+  collectedStats,
+  importedJobIds,
+  linkedContractKey,
+  soldStats,
+} from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -33,14 +39,12 @@ export default async function SalesPage({
 
   const [
     rows,
-    periodSales,
     allReps,
     prods,
     byRep,
-    periodPayments,
-    periodWisetack,
-    allWisetack,
-    allSalesTotal,
+    revenueSales,
+    revenueJobs,
+    paymentRows,
   ] = await Promise.all([
     db
       .select({
@@ -55,13 +59,6 @@ export default async function SalesPage({
       .where(eq(sales.orgId, orgId))
       .orderBy(desc(sales.soldAt))
       .limit(200),
-    db
-      .select({
-        count: sql<number>`count(*)::int`,
-        total: sql<string>`coalesce(sum(${sales.amount}),0)`,
-      })
-      .from(sales)
-      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, periodStart))),
     getReps(),
     getProducts(),
     db
@@ -76,62 +73,77 @@ export default async function SalesPage({
       .groupBy(effectiveRepId),
     db
       .select({
-        count: sql<number>`count(*)::int`,
-        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
-      })
-      .from(hcpPayments)
-      .where(and(eq(hcpPayments.orgId, orgId), gte(hcpPayments.receivedAt, periodStart))),
-    db
-      .select({
-        count: sql<number>`count(*)::int`,
-        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
-      })
-      .from(hcpPayments)
-      .where(
-        and(
-          eq(hcpPayments.orgId, orgId),
-          eq(hcpPayments.paymentType, "Wisetack settlement"),
-          gte(hcpPayments.receivedAt, periodStart),
-        ),
-      ),
-    db
-      .select({
-        total: sql<string>`coalesce(sum(${hcpPayments.amount}),0)`,
-      })
-      .from(hcpPayments)
-      .where(
-        and(
-          eq(hcpPayments.orgId, orgId),
-          eq(hcpPayments.paymentType, "Wisetack settlement"),
-        ),
-      ),
-    db
-      .select({
-        total: sql<string>`coalesce(sum(${sales.amount}),0)`,
+        id: sales.id,
+        amount: sales.amount,
+        soldAt: sales.soldAt,
       })
       .from(sales)
       .where(eq(sales.orgId, orgId)),
+    db
+      .select({
+        id: jobs.id,
+        saleId: jobs.saleId,
+        contractAmount: jobs.contractAmount,
+        createdAt: jobs.createdAt,
+        notes: jobs.notes,
+      })
+      .from(jobs)
+      .where(eq(jobs.orgId, orgId)),
+    db
+      .select({
+        jobId: hcpPayments.jobId,
+        invoiceJobId: invoices.jobId,
+        amount: hcpPayments.amount,
+        receivedAt: hcpPayments.receivedAt,
+        paymentType: hcpPayments.paymentType,
+        jobSaleId: jobs.saleId,
+        invoiceSaleId: invoices.saleId,
+      })
+      .from(hcpPayments)
+      .leftJoin(jobs, eq(hcpPayments.jobId, jobs.id))
+      .leftJoin(invoices, eq(hcpPayments.invoiceId, invoices.id))
+      .where(eq(hcpPayments.orgId, orgId)),
   ]);
 
   const repMap = toMap(allReps);
   const prodMap = toMap(prods);
 
-  const periodCount = periodSales[0]?.count ?? 0;
-  const periodTotal = Number(periodSales[0]?.total ?? 0);
-  const collectedCount = periodPayments[0]?.count ?? 0;
-  const collectedTotal = collectedWithinSold(
-    Number(periodPayments[0]?.total ?? 0),
-    periodTotal,
+  const periodStamp = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}-01`;
+  const contracts = buildRevenueContracts(revenueSales, revenueJobs);
+  const importedJobs = importedJobIds(revenueJobs);
+  const revenuePayments = paymentRows.map((payment) => ({
+    amount: payment.amount,
+    receivedAt: payment.receivedAt,
+    paymentType: payment.paymentType,
+    contractKey: linkedContractKey(
+      payment.jobId,
+      payment.invoiceJobId,
+      payment.jobSaleId,
+      payment.invoiceSaleId,
+      importedJobs,
+    ),
+  }));
+  const sold = soldStats(contracts, periodStamp);
+  const collected = collectedStats(contracts, revenuePayments, periodStamp);
+  const wisetack = collectedStats(
+    contracts,
+    revenuePayments,
+    periodStamp,
+    "Wisetack settlement",
   );
-  const wisetackTotal = collectedWithinSold(
-    Number(periodWisetack[0]?.total ?? 0),
-    periodTotal,
+  const allWisetack = collectedStats(
+    contracts,
+    revenuePayments,
+    "0000-01-01",
+    "Wisetack settlement",
   );
-  const allTotal = Number(allSalesTotal[0]?.total ?? 0);
-  const allWisetackTotal = collectedWithinSold(
-    Number(allWisetack[0]?.total ?? 0),
-    allTotal,
-  );
+  const collectedCount = collected.count;
+  const collectedTotal = collected.total;
+  const wisetackTotal = wisetack.total;
+  const allTotal = soldStats(contracts, "0000-01-01").total;
+  const allWisetackTotal = allWisetack.total;
+  const periodCount = sold.count;
+  const periodTotal = sold.total;
 
   const leaderboard = byRep
     .map((r) => ({
