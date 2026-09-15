@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
 import { inRange, nyPeriodStarts, weekStamps } from "@/lib/ny-dates";
+import { collectedWithinSold } from "@/lib/revenue";
 import TvBoardChrome from "@/components/TvBoardChrome";
 
 export const dynamic = "force-dynamic";
@@ -30,11 +31,7 @@ export default async function SalesBoardPage({
     paymentRows
       .filter((p) => inRange(p.receivedAt, from))
       .reduce((n, p) => n + Number(p.amount || 0), 0);
-  // Historical HCP payments can predate the LeadFlow sale records and therefore
-  // include collections with no matching Sold denominator on this board.
-  // Keep the TV presentation internally consistent until those legacy sales
-  // are mapped into LeadFlow.
-  const collected = (from: string) => Math.min(ledgerCollected(from), sold(from));
+  const collected = (from: string) => collectedWithinSold(ledgerCollected(from), sold(from));
 
   const todaySold = sold(today);
   const weekSold = sold(weekStart);

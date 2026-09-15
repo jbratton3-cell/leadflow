@@ -8,6 +8,7 @@ import DeleteButton from "@/components/DeleteButton";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
+import { collectedWithinSold } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function SalesPage({
     periodPayments,
     periodWisetack,
     allWisetack,
+    allSalesTotal,
   ] = await Promise.all([
     db
       .select({
@@ -103,6 +105,12 @@ export default async function SalesPage({
           eq(hcpPayments.paymentType, "Wisetack settlement"),
         ),
       ),
+    db
+      .select({
+        total: sql<string>`coalesce(sum(${sales.amount}),0)`,
+      })
+      .from(sales)
+      .where(eq(sales.orgId, orgId)),
   ]);
 
   const repMap = toMap(allReps);
@@ -111,10 +119,19 @@ export default async function SalesPage({
   const periodCount = periodSales[0]?.count ?? 0;
   const periodTotal = Number(periodSales[0]?.total ?? 0);
   const collectedCount = periodPayments[0]?.count ?? 0;
-  const collectedTotal = Number(periodPayments[0]?.total ?? 0);
-  const wisetackTotal = Number(periodWisetack[0]?.total ?? 0);
-  const allWisetackTotal = Number(allWisetack[0]?.total ?? 0);
-  const allTotal = rows.reduce((sum, r) => sum + Number(r.sale.amount), 0);
+  const collectedTotal = collectedWithinSold(
+    Number(periodPayments[0]?.total ?? 0),
+    periodTotal,
+  );
+  const wisetackTotal = collectedWithinSold(
+    Number(periodWisetack[0]?.total ?? 0),
+    periodTotal,
+  );
+  const allTotal = Number(allSalesTotal[0]?.total ?? 0);
+  const allWisetackTotal = collectedWithinSold(
+    Number(allWisetack[0]?.total ?? 0),
+    allTotal,
+  );
 
   const leaderboard = byRep
     .map((r) => ({

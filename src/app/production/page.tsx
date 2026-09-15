@@ -22,6 +22,7 @@ import {
   jobStatusColor,
   money,
   fmtDate, fmtDateOnly } from "@/lib/constants";
+import { collectedWithinSold } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -149,7 +150,12 @@ export default async function ProductionPage() {
     0,
   );
   const settledAmount = settledFinanced.reduce(
-    (sum, r) => sum + Number(r.wisetackSettlement?.amount ?? 0),
+    (sum, r) =>
+      sum +
+      collectedWithinSold(
+        Number(r.wisetackSettlement?.amount ?? 0),
+        Number(r.displayAmount ?? 0),
+      ),
     0,
   );
 

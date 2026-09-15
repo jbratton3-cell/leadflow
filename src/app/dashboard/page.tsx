@@ -11,6 +11,7 @@ import {
   money,
   fmtDateTime,
   dispositionLabel, personName } from "@/lib/constants";
+import { collectedWithinSold } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,7 @@ export default async function DashboardPage({
   const setRate = monthLeads ? Math.round((setCount / monthLeads) * 100) : 0;
   const closeRate = satCount ? Math.round((soldCount / satCount) * 100) : 0;
   const avgSale = soldCount ? revenue / soldCount : 0;
+  const collectedRevenue = collectedWithinSold(hcpPaymentMtd.total, revenue);
 
   return (
     <div>
@@ -181,7 +183,7 @@ export default async function DashboardPage({
         />
         <StatCard
           label="Payments Received (MTD)"
-          value={money(hcpPaymentMtd.total)}
+          value={money(collectedRevenue)}
           sub={`${hcpPaymentMtd.count} HCP transactions`}
           accent="text-cyan-600"
         />

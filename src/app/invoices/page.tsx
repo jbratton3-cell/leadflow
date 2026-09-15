@@ -8,6 +8,7 @@ import { money, fmtDate } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { ensureQbColumns } from "@/lib/quickbooks";
+import { collectedWithinSold } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +56,22 @@ export default async function InvoicesPage() {
   const outstanding = rows
     .filter((r) => ["sent", "viewed", "draft"].includes(r.inv.status))
     .reduce((s, r) => s + Number(r.inv.amount), 0);
-  const collected = rows
-    .filter((r) => r.inv.status === "paid")
-    .reduce((s, r) => s + Number(r.inv.amount), 0);
+  const paidByContract = new Map<string, { collected: number; sold: number }>();
+  for (const row of rows) {
+    if (row.inv.status !== "paid") continue;
+    const key = row.inv.saleId ? `sale:${row.inv.saleId}` : `invoice:${row.inv.id}`;
+    const existing = paidByContract.get(key) ?? { collected: 0, sold: 0 };
+    existing.collected += Number(row.inv.amount ?? 0);
+    existing.sold = Math.max(
+      existing.sold,
+      Number(row.inv.contractTotal ?? row.inv.amount ?? 0),
+    );
+    paidByContract.set(key, existing);
+  }
+  const collected = Array.from(paidByContract.values()).reduce(
+    (sum, contract) => sum + collectedWithinSold(contract.collected, contract.sold),
+    0,
+  );
   const financed = rows
     .filter((r) => r.inv.status === "financed")
     .reduce((s, r) => s + Number(r.inv.amount), 0);

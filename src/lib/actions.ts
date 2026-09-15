@@ -549,6 +549,8 @@ export async function recordFinancingSettlement(formData: FormData) {
     .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
     .limit(1);
   if (!row || row.financeType !== "financed" || row.job.status !== "completed") return;
+  const saleAmount = Number(row.saleAmount ?? row.job.contractAmount ?? 0);
+  if (saleAmount > 0 && amount > saleAmount) return;
 
   const [existing] = await db
     .select({ id: hcpPayments.id })
