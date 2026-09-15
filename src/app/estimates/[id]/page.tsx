@@ -21,11 +21,10 @@ import {
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
-  recalcTotals,
+  correctPaperEstimateContract,
 } from "@/lib/estimate-actions";
 import { deleteEstimatePhoto } from "@/lib/estimate-photo-actions";
 import { recordDepositPaid } from "@/lib/invoice-actions";
-import { WisetackPrequalNote } from "@/components/WisetackPrequalNote";
 
 export const dynamic = "force-dynamic";
 
@@ -58,16 +57,6 @@ export default async function EstimateDetailPage({
     .where(and(eq(estimates.id, estId), eq(estimates.orgId, orgId)))
     .limit(1);
   if (!est) notFound();
-
-  if (Number(est.discount) > 0) {
-    await recalcTotals(estId);
-    const [fresh] = await db
-      .select()
-      .from(estimates)
-      .where(and(eq(estimates.id, estId), eq(estimates.orgId, orgId)))
-      .limit(1);
-    if (fresh) Object.assign(est, fresh);
-  }
 
   const [items, [lead], book, photos] = await Promise.all([
     db.select().from(estimateItems).where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, estId))).orderBy(asc(estimateItems.sortOrder)),
@@ -224,11 +213,19 @@ export default async function EstimateDetailPage({
                   <input name="title" defaultValue={est.title} className={input} />
                 </div>
                 <div>
-                  <label className={label}>Cash price ($)</label>
-                  <input name="cashPrice" type="number" step="0.01" min="0" max={Number(est.subtotal) || Number(est.total) || undefined} defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
-                  <p className="mt-1 text-[11px] text-slate-400">What they pay if 50/50 cash — cannot be higher than list/financed. Leave blank for no cash offer.</p>
+                  <label className={label}>Discount ($)</label>
+                  <input name="discount" type="number" step="0.01" defaultValue={est.discount} className={input} />
                 </div>
-                <input type="hidden" name="cashDiscountPercent" value={est.cashDiscountPercent} />
+                <div>
+                  <label className={label}>Cash price ($, optional)</label>
+                  <input name="cashPrice" type="number" step="0.01" min="0" max={Number(est.total) || undefined} defaultValue={est.cashPrice ?? ""} placeholder="e.g. 8500" className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">Optional explicit 50/50 cash total. It cannot be higher than the list total.</p>
+                </div>
+                <div>
+                  <label className={label}>Cash discount (%)</label>
+                  <input name="cashDiscountPercent" type="number" step="0.01" min="0" max="100" defaultValue={est.cashDiscountPercent} className={input} />
+                  <p className="mt-1 text-[11px] text-slate-400">Set to 0 and leave cash price blank to show only the list/financed price on this estimate.</p>
+                </div>
                 <div>
                   <label className={label}>Tax Rate (%)</label>
                   <input name="taxRate" type="number" step="0.001" defaultValue={est.taxRate} className={input} />
@@ -262,6 +259,7 @@ export default async function EstimateDetailPage({
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Summary</h2>
             <dl className="space-y-1.5 text-sm">
               <Row label="Subtotal" value={money(est.subtotal)} />
+              {Number(est.discount) > 0 && <Row label="Discount" value={`- ${money(est.discount)}`} />}
               {Number(est.taxRate) > 0 && (
                 <Row label={`Tax (${Number(est.taxRate)}%)`} value={money(est.taxAmount)} />
               )}
@@ -287,7 +285,6 @@ export default async function EstimateDetailPage({
                   Enter a cash price under Details (then Save) to offer 50/50 cash on this quote.
                 </p>
               )}
-              <WisetackPrequalNote compact />
             </dl>
           </Card>
 
@@ -339,6 +336,37 @@ export default async function EstimateDetailPage({
               </p>
             )}
           </Card>
+
+          {est.status === "accepted" &&
+            depositInv?.status === "paid" &&
+            (user.role === "admin" || user.role === "manager") && (
+              <Card className="border-amber-200 bg-amber-50/60 p-5">
+                <h2 className="mb-2 text-sm font-semibold text-amber-900">
+                  Correct paper-estimate pricing
+                </h2>
+                <p className="mb-3 text-xs leading-5 text-amber-800">
+                  Use this only when the signed paper quote did not include the
+                  cash-discount option. It updates this estimate, its paid
+                  deposit, the related sale/job, and reporting value together.
+                  It does not change the company-wide cash-discount setting.
+                </p>
+                <form action={correctPaperEstimateContract} className="space-y-2">
+                  <input type="hidden" name="estimateId" value={est.id} />
+                  <label className={label}>Actual paper contract total ($)</label>
+                  <input
+                    name="contractTotal"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    defaultValue={est.total}
+                    className={input}
+                  />
+                  <button className="w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700">
+                    Correct Paid Deposit &amp; Contract
+                  </button>
+                </form>
+              </Card>
+            )}
 
           <Card className="p-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Send to Customer</h2>
@@ -402,7 +430,7 @@ export default async function EstimateDetailPage({
               <OfficeAcceptForm
                 estimateId={est.id}
                 listTotal={money(est.total)}
-                cashTotal={money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice))}
+                cashTotal={money(cashPrice(est.total, est.cashDiscountPercent))}
                 cashPct={hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice) ? 1 : 0}
               />
               <form action={markEstimateStatus} className="mt-3">

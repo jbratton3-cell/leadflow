@@ -16,7 +16,6 @@ import {
 import { handleEstimateAccepted } from "@/lib/invoice-actions";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 import { signedEstimateEmailHtml } from "@/lib/notify";
-import { getEstimateRepContact } from "@/lib/queries";
 
 const APP_NAME_FALLBACK = "LeadFlow";
 import { BUSINESS_NAME, personName, contractPrice } from "@/lib/constants";
@@ -40,7 +39,7 @@ function toDate(v: FormDataEntryValue | null): Date | null {
 }
 
 // Recalculate subtotal/tax/total from line items and save onto the estimate.
-export async function recalcTotals(estimateId: number) {
+async function recalcTotals(estimateId: number) {
   const items = await db
     .select()
     .from(estimateItems)
@@ -50,17 +49,13 @@ export async function recalcTotals(estimateId: number) {
   const [est] = await db.select().from(estimates).where(eq(estimates.id, estimateId)).limit(1);
   if (!est) return;
 
+  const discount = Number(est.discount);
   const taxRate = Number(est.taxRate);
-  const taxAmount = +(subtotal * (taxRate / 100)).toFixed(2);
-  const total = +(subtotal + taxAmount).toFixed(2);
+  const taxable = Math.max(subtotal - discount, 0);
+  const taxAmount = +(taxable * (taxRate / 100)).toFixed(2);
+  const total = +(taxable + taxAmount).toFixed(2);
 
-  // List/financed is the pricebook total. Never subtract "discount" from it —
-  // reps were putting the cash number there and list collapsed to cash.
   let cashPrice = est.cashPrice;
-  const leftoverDiscount = Number(est.discount) || 0;
-  if ((cashPrice == null || Number(cashPrice) <= 0) && leftoverDiscount > 0 && leftoverDiscount < total) {
-    cashPrice = (total - leftoverDiscount).toFixed(2);
-  }
   if (cashPrice != null && Number(cashPrice) > total) {
     cashPrice = total.toFixed(2);
   }
@@ -72,7 +67,6 @@ export async function recalcTotals(estimateId: number) {
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
       cashPrice,
-      discount: "0",
       updatedAt: new Date(),
     })
     .where(eq(estimates.id, estimateId));
@@ -81,8 +75,7 @@ export async function recalcTotals(estimateId: number) {
 /* ------------------------------ estimates ------------------------------ */
 
 export async function createEstimate(formData: FormData) {
-  const user = await requireAccess("estimates");
-  const { orgId } = user;
+  const { orgId } = await requireAccess("estimates");
   const leadId = Number(formData.get("leadId"));
 
   // Generate a sequential-ish estimate number (per organization)
@@ -109,7 +102,6 @@ export async function createEstimate(formData: FormData) {
       publicToken: randomBytes(24).toString("hex"),
       status: "draft",
       cashDiscountPercent: org?.cashDiscountPercent ?? "0",
-      createdById: user.id,
     })
     .returning();
 
@@ -134,9 +126,9 @@ export async function updateEstimate(formData: FormData) {
     formData.get("cashPrice") === "" || formData.get("cashPrice") == null
       ? null
       : num(formData.get("cashPrice")).toString();
-  const listCap = Number(current.subtotal) || Number(current.total) || 0;
   if (cashPriceVal != null) {
-    if (Number(cashPriceVal) > listCap && listCap > 0) cashPriceVal = listCap.toFixed(2);
+    const cap = Number(current.total) || 0;
+    if (Number(cashPriceVal) > cap && cap > 0) cashPriceVal = cap.toFixed(2);
     if (Number(cashPriceVal) <= 0) cashPriceVal = null;
   }
 
@@ -145,7 +137,7 @@ export async function updateEstimate(formData: FormData) {
     .set({
       title: req(formData.get("title")) || "Project Estimate",
       taxRate: num(formData.get("taxRate")).toString(),
-      discount: "0",
+      discount: num(formData.get("discount")).toString(),
       notes: str(formData.get("notes")),
       terms: str(formData.get("terms")),
       validUntil: toDate(formData.get("validUntil")),
@@ -157,6 +149,105 @@ export async function updateEstimate(formData: FormData) {
 
   await recalcTotals(id);
   revalidatePath(`/estimates/${id}`);
+}
+
+// Correct the financial terms of an accepted paper estimate after the office
+// discovers that the customer was quoted the list price outside LeadFlow.
+// This is intentionally separate from normal estimate editing so accepted
+// customer-facing documents remain locked by default.
+export async function correctPaperEstimateContract(formData: FormData) {
+  const user = await requireAccess("estimates");
+  if (user.role !== "admin" && user.role !== "manager") return;
+
+  const estimateId = Number(formData.get("estimateId"));
+  const correctedTotal = num(formData.get("contractTotal"));
+  if (!estimateId || !Number.isFinite(correctedTotal) || correctedTotal <= 0) return;
+
+  let leadId: number | null = null;
+  await db.transaction(async (tx) => {
+    const [est] = await tx
+      .select()
+      .from(estimates)
+      .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, user.orgId)))
+      .limit(1);
+    if (!est || est.status !== "accepted") return;
+
+    const [deposit] = await tx
+      .select()
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.orgId, user.orgId),
+          eq(invoices.estimateId, estimateId),
+          eq(invoices.kind, "deposit"),
+        ),
+      )
+      .limit(1);
+    if (!deposit || deposit.status !== "paid") return;
+
+    const depositAmount = +(correctedTotal * 0.5).toFixed(2);
+    leadId = est.leadId;
+
+    // A zero snapshot discount removes the cash offer for this estimate only.
+    await tx
+      .update(estimates)
+      .set({
+        cashDiscountPercent: "0",
+        cashPrice: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, user.orgId)));
+
+    await tx
+      .update(invoices)
+      .set({
+        amount: depositAmount.toFixed(2),
+        contractTotal: correctedTotal.toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(invoices.id, deposit.id), eq(invoices.orgId, user.orgId)));
+
+    const relatedJobs = await tx
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.orgId, user.orgId), eq(jobs.leadId, est.leadId)));
+    const relatedJob =
+      relatedJobs.find((job) => job.saleId != null) ?? relatedJobs[0] ?? null;
+
+    const saleRows = await tx
+      .select()
+      .from(sales)
+      .where(and(eq(sales.orgId, user.orgId), eq(sales.leadId, est.leadId)));
+    const saleId = relatedJob?.saleId ?? (saleRows.length === 1 ? saleRows[0].id : null);
+
+    if (saleId) {
+      await tx
+        .update(sales)
+        .set({ amount: correctedTotal.toFixed(2) })
+        .where(and(eq(sales.id, saleId), eq(sales.orgId, user.orgId)));
+    }
+
+    if (relatedJob) {
+      await tx
+        .update(jobs)
+        .set({ contractAmount: correctedTotal.toFixed(2), updatedAt: new Date() })
+        .where(and(eq(jobs.id, relatedJob.id), eq(jobs.orgId, user.orgId)));
+    }
+
+    await tx
+      .update(leads)
+      .set({ estimatedValue: correctedTotal.toFixed(2), updatedAt: new Date() })
+      .where(and(eq(leads.id, est.leadId), eq(leads.orgId, user.orgId)));
+  });
+
+  if (!leadId) return;
+  revalidatePath(`/estimates/${estimateId}`);
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+  revalidatePath("/sales");
+  revalidatePath("/production");
+  revalidatePath("/invoices");
+  revalidatePath("/");
 }
 
 export async function deleteEstimate(formData: FormData) {
@@ -244,8 +335,7 @@ export async function sendEstimate(
   _prev: { message?: string; link?: string; error?: string } | undefined,
   formData: FormData
 ): Promise<{ message?: string; link?: string; error?: string }> {
-  const user = await requireAccess("estimates");
-  const { orgId } = user;
+  const { orgId } = await requireAccess("estimates");
   const id = Number(formData.get("id"));
 
   const [est] = await db
@@ -294,12 +384,7 @@ export async function sendEstimate(
 
   await db
     .update(estimates)
-    .set({
-      status: "sent",
-      sentAt: new Date(),
-      updatedAt: new Date(),
-      createdById: est.createdById ?? user.id,
-    })
+    .set({ status: "sent", sentAt: new Date(), updatedAt: new Date() })
     .where(eq(estimates.id, id));
 
   revalidatePath(`/estimates/${id}`);
@@ -421,11 +506,6 @@ export async function saveSignature(input: {
         lead,
         orgName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
         photos,
-        rep: await getEstimateRepContact({
-          orgId: est.orgId,
-          assignedRepId: lead.assignedRepId,
-          createdById: fresh?.createdById ?? est.createdById,
-        }),
       });
       await sendEmail({
         to: lead.email,
