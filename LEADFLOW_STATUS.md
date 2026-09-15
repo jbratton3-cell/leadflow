@@ -1,6 +1,6 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Aug 26, 2026*
+*Last updated: Sept 15, 2026*
 
 ## BRANDING & DOMAIN (decided Aug 27 night)
 - **LeadFlow = standalone brand/future business** — NOT under JMB umbrella. JMB appears only as SEO/backlink credit: "Developed by JMB Business Solutions" (footer link + about page)
@@ -153,6 +153,7 @@ Facebook launch posts (aggressive + polished + captions), LeadFlow monetization,
 ## MAJOR STATE CHANGE (synced Sept 10): BUILDPROS IS LIVE ON REAL DATA
 - HCP full history imported (by other agent/user): 1,191 leads, 156 estimates, 531 jobs, 532 invoices, 14 sales. 5 orgs, 8 users, 1 supplier entered. LF is now BuildPros' system of record
 - Other agent's new work (merged through 8c9a790a): material orders upgraded (RECEIVED/GOT-IT reply tracking, address-only supplier display, replies -> jon@leadflowcrm.info, extra custom lines), dashboard includes imported job revenue, TV board refresh survives casting/idle tabs, editable lead sources, WISESTACK prequalify note on customer estimates + office summary + PDF (financing angle!), src/lib/quickbooks.ts EXISTS (QB integration started)
+- **ROSE CORRECTION (Sept 15):** shorthand for the manager/admin exception used when a paper contract total and an already-paid deposit need to be synchronized. Keep it available for similar one-off cases, but do **not** turn it into a system-wide pricing or cash-discount feature. Preserve the normal global cash-discount policy.
 - FB STRATEGY PIVOT (user, ~Sept 8): memes for engagement instead of straight launch posts; original posts still available as conversion layer. User generating memes on another platform during outages
 - Agent status: this workspace synced + verified current with production
 
