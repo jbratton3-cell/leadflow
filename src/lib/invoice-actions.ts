@@ -2,8 +2,8 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { invoices, leads, sales, estimates } from "@/db/schema";
-import type { Estimate, Job, Lead } from "@/db/schema";
+import { hcpPayments, invoices, leads, sales, estimates } from "@/db/schema";
+import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
@@ -14,7 +14,6 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { money, personName, contractPrice } from "@/lib/constants";
-import { syncInvoiceToQb } from "@/lib/qb-actions";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
 
@@ -38,6 +37,33 @@ async function notifyOfficeOfFinancing(opts: {
     to,
     subject: `Financing requested — ${opts.customerName} (${opts.number})`,
     html: financingRequestedEmailHtml(opts),
+  });
+}
+
+async function ensureCollectedPayment(invoice: Invoice): Promise<void> {
+  const [existing] = await db
+    .select({ id: hcpPayments.id })
+    .from(hcpPayments)
+    .where(
+      and(
+        eq(hcpPayments.orgId, invoice.orgId),
+        eq(hcpPayments.invoiceId, invoice.id),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+
+  const method = invoice.paymentMethod || "other";
+  await db.insert(hcpPayments).values({
+    orgId: invoice.orgId,
+    leadId: invoice.leadId,
+    jobId: invoice.jobId,
+    invoiceId: invoice.id,
+    receivedAt: invoice.paidAt ?? new Date(),
+    amount: invoice.amount,
+    paymentType: `LeadFlow ${invoice.kind} payment`,
+    jobReference: invoice.number,
+    notes: `Recorded from ${invoice.number} via ${method}.`,
   });
 }
 
@@ -72,17 +98,8 @@ async function insertAndSendInvoice(opts: {
     sentAt: new Date(),
   });
 
-  const [created] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.orgId, opts.orgId), eq(invoices.number, number)))
-    .limit(1);
-
   const email = opts.lead.email;
-  if (!email) {
-    if (created) await syncInvoiceToQb(opts.orgId, created.id);
-    return;
-  }
+  if (!email) return; // stays a draft — office can send once an email is on file
 
   const link = `${getBaseUrl()}/invoice/${token}`;
   const sent = await sendEmail({
@@ -106,7 +123,6 @@ async function insertAndSendInvoice(opts: {
       .set({ status: "sent", sentAt: new Date() })
       .where(eq(invoices.number, number));
   }
-  if (created) await syncInvoiceToQb(opts.orgId, created.id);
 }
 
 /* ------------------------- automatic triggers ------------------------- */
@@ -257,42 +273,55 @@ export async function recordDepositPaid(formData: FormData) {
     )
     .limit(1);
 
+  let paidInvoice: Invoice;
+
   if (existing) {
+    if (existing.status === "void") return;
+
     if (existing.status !== "paid" && existing.status !== "void") {
+      const paidAt = new Date();
       await db
         .update(invoices)
-        .set({ status: "paid", paidAt: new Date(), paymentMethod: method, updatedAt: new Date() })
+        .set({ status: "paid", paidAt, paymentMethod: method, updatedAt: paidAt })
         .where(eq(invoices.id, existing.id));
-      await syncInvoiceToQb(orgId, existing.id);
+      paidInvoice = {
+        ...existing,
+        status: "paid",
+        paidAt,
+        paymentMethod: method,
+        updatedAt: paidAt,
+      };
+    } else {
+      paidInvoice = existing;
     }
   } else {
     const number = await nextInvoiceNumber(orgId);
-    await db.insert(invoices).values({
-      orgId,
-      leadId: est.leadId,
-      jobId: null,
-      saleId: null,
-      estimateId: est.id,
-      number,
-      kind: "deposit",
-      status: "paid",
-      amount: (total * 0.5).toFixed(2),
-      contractTotal: total.toFixed(2),
-      publicToken: randomBytes(24).toString("hex"),
-      paidAt: new Date(),
-      paymentMethod: method,
-      notes: "Deposit collected outside the automated flow (recorded by office).",
-    });
-    const [made] = await db
-      .select()
-      .from(invoices)
-      .where(and(eq(invoices.orgId, orgId), eq(invoices.number, number)))
-      .limit(1);
-    if (made) await syncInvoiceToQb(orgId, made.id);
+    [paidInvoice] = await db
+      .insert(invoices)
+      .values({
+        orgId,
+        leadId: est.leadId,
+        jobId: null,
+        saleId: null,
+        estimateId: est.id,
+        number,
+        kind: "deposit",
+        status: "paid",
+        amount: (total * 0.5).toFixed(2),
+        contractTotal: total.toFixed(2),
+        publicToken: randomBytes(24).toString("hex"),
+        paidAt: new Date(),
+        paymentMethod: method,
+        notes: "Deposit collected outside the automated flow (recorded by office).",
+      })
+      .returning();
   }
 
+  await ensureCollectedPayment(paidInvoice);
   revalidatePath(`/estimates/${estimateId}`);
   revalidatePath("/invoices");
+  revalidatePath("/sales");
+  revalidatePath("/reports");
   revalidatePath("/");
 }
 
@@ -360,16 +389,33 @@ export async function markInvoicePaid(formData: FormData) {
   const { orgId } = await requireUser();
   const id = Number(formData.get("id"));
   const method = (formData.get("method") ?? "other").toString();
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
+    .limit(1);
+  if (!invoice || invoice.status === "void") return;
+
+  const paidAt = new Date();
   await db
     .update(invoices)
     .set({
       status: "paid",
-      paidAt: new Date(),
+      paidAt,
       paymentMethod: method,
-      updatedAt: new Date(),
+      updatedAt: paidAt,
     })
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+  await ensureCollectedPayment({
+    ...invoice,
+    status: "paid",
+    paidAt,
+    paymentMethod: method,
+    updatedAt: paidAt,
+  });
   revalidatePath("/invoices");
+  revalidatePath("/sales");
+  revalidatePath("/reports");
 }
 
 export async function voidInvoice(formData: FormData) {
