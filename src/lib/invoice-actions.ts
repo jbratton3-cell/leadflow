@@ -488,6 +488,7 @@ export async function sendPaymentReceipt(formData: FormData) {
     : "Today";
   const customerName = personName(lead.firstName, lead.lastName, "Customer");
   const companyName = process.env.CRM_ORGANIZATION_NAME || "LeadFlow";
+  const paidInFull = invoice.kind === "final";
   const pdfBytes = await buildPaymentReceiptPdf({
     invoice,
     lead,
@@ -495,7 +496,7 @@ export async function sendPaymentReceipt(formData: FormData) {
   });
   const sent = await sendEmail({
     to: lead.email,
-    subject: `Payment receipt ${invoice.number} — ${money(invoice.amount)}`,
+    subject: `Payment receipt ${invoice.number} — ${paidInFull ? "Paid in full" : money(invoice.amount)}`,
     html: paymentReceiptEmailHtml({
       customerName,
       companyName,
@@ -503,6 +504,7 @@ export async function sendPaymentReceipt(formData: FormData) {
       amount: money(invoice.amount),
       paymentType: invoice.kind === "deposit" ? "50% deposit" : invoice.kind === "final" ? "final payment" : "payment",
       paymentDate,
+      paidInFull,
     }),
     attachments: [
       {

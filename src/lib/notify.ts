@@ -253,6 +253,7 @@ export function paymentReceiptEmailHtml(opts: {
   amount: string;
   paymentType: string;
   paymentDate: string;
+  paidInFull: boolean;
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
@@ -271,6 +272,7 @@ export function paymentReceiptEmailHtml(opts: {
       <div style="color:#166534;font-size:13px;margin-top:6px">
         ${opts.paymentType} · ${opts.paymentDate}
       </div>
+      ${opts.paidInFull ? '<div style="color:#14532d;font-size:13px;font-weight:700;margin-top:8px">Invoice paid in full · Balance due: $0.00</div>' : ""}
     </div>
     <p style="color:#64748b;font-size:13px">
       Receipt number: <strong>${opts.number}</strong>

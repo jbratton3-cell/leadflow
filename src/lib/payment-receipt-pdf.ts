@@ -34,6 +34,7 @@ export async function buildPaymentReceiptPdf(opts: {
   orgName: string;
 }): Promise<Uint8Array> {
   const { invoice, lead, orgName } = opts;
+  const isPaidInFull = invoice.kind === "final";
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -70,7 +71,8 @@ export async function buildPaymentReceiptPdf(opts: {
 
   text("PAYMENT RECEIPT", M, 650, 24, bold);
   text(invoice.number, W - M - 100, 664, 12, bold);
-  text("PAID", W - M - 100, 646, 10, bold, GREEN);
+  const statusText = isPaidInFull ? "PAID IN FULL" : "PAID";
+  text(statusText, W - M - (isPaidInFull ? 150 : 100), 646, 10, bold, GREEN);
   page.drawLine({ start: { x: M, y: 632 }, end: { x: W - M, y: 632 }, thickness: 1, color: LINE });
 
   const customerName = lead
@@ -91,13 +93,17 @@ export async function buildPaymentReceiptPdf(opts: {
   if (lead?.email) text(lead.email, M, 542, 10, font, MUTED);
 
   page.drawRectangle({ x: M, y: 418, width: W - M * 2, height: 92, color: rgb(0.97, 0.98, 0.99) });
-  text("Amount received", M + 18, 480, 10, font, MUTED);
+  text(isPaidInFull ? "Final payment received" : "Amount received", M + 18, 480, 10, font, MUTED);
   text(money(invoice.amount), M + 18, 444, 30, bold, GREEN);
   text(`Project total: ${money(invoice.contractTotal)}`, W - M - 168, 464, 10, font, MUTED);
+  if (isPaidInFull) {
+    text(`Balance due: ${money(0)}`, W - M - 168, 444, 10, bold, GREEN);
+  }
 
   const rows: [string, string][] = [
     ["Receipt number", invoice.number],
     ["Payment type", kindLabel(invoice.kind)],
+    ["Payment status", isPaidInFull ? "Paid in full" : "Payment received"],
     ["Payment date", dateLabel(invoice.paidAt)],
     ["Payment method", invoice.paymentMethod ? invoice.paymentMethod.toUpperCase() : "Other"],
   ];
