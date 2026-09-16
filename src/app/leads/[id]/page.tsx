@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { leads, callLogs, outreachLogs, appointments, sales, jobs, estimates, organizations } from "@/db/schema";
+import { leads, callLogs, outreachLogs, appointments, sales, jobs, estimates, invoices, organizations } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -82,7 +82,7 @@ export default async function LeadDetailPage({
     .where(and(eq(documents.orgId, orgId), eq(documents.leadId, leadId)))
     .orderBy(desc(documents.createdAt));
 
-  const [calls, outreach, appts, saleRows, jobRows, estRows, sources, prods, allReps, salesReps, callReps] =
+  const [calls, outreach, appts, saleRows, jobRows, estRows, invoiceRows, sources, prods, allReps, salesReps, callReps] =
     await Promise.all([
       db.select().from(callLogs).where(and(eq(callLogs.orgId, orgId), eq(callLogs.leadId, leadId))).orderBy(desc(callLogs.createdAt)),
       showOutreach
@@ -92,6 +92,7 @@ export default async function LeadDetailPage({
       db.select().from(sales).where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId))).orderBy(desc(sales.soldAt)),
       db.select().from(jobs).where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId))).orderBy(desc(jobs.createdAt)),
       db.select().from(estimates).where(and(eq(estimates.orgId, orgId), eq(estimates.leadId, leadId))).orderBy(desc(estimates.createdAt)),
+      db.select().from(invoices).where(and(eq(invoices.orgId, orgId), eq(invoices.leadId, leadId))).orderBy(desc(invoices.createdAt)),
       getSources(),
       getProducts(),
       getReps(),
@@ -431,6 +432,47 @@ export default async function LeadDetailPage({
                       <span className="text-slate-600">{money(e.total)}</span>
                       <Badge className={estimateStatusColor(e.status)}>
                         {estimateStatusLabel(e.status)}
+                      </Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">Invoices</h2>
+              <Link href="/invoices" className="text-xs font-medium text-orange-600 hover:underline">
+                View all
+              </Link>
+            </div>
+            {invoiceRows.length === 0 ? (
+              <p className="text-sm text-slate-400">No invoices for this customer yet.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {invoiceRows.map((invoice) => (
+                  <li key={invoice.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <Link
+                      href={`/invoices/${invoice.id}`}
+                      className="font-medium text-slate-700 hover:text-orange-600"
+                    >
+                      {invoice.number}
+                    </Link>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-600">{money(invoice.amount)}</span>
+                      <Badge
+                        className={
+                          invoice.status === "paid"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : invoice.status === "void"
+                              ? "bg-rose-100 text-rose-600"
+                              : invoice.status === "financed"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-slate-100 text-slate-600"
+                        }
+                      >
+                        {invoice.status}
                       </Badge>
                     </div>
                   </li>
