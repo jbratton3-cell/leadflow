@@ -246,6 +246,41 @@ export function invoiceEmailHtml(opts: {
   </div>`;
 }
 
+export function paymentReceiptEmailHtml(opts: {
+  customerName: string;
+  companyName: string;
+  number: string;
+  amount: string;
+  paymentType: string;
+  paymentDate: string;
+}): string {
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+    <div style="margin-bottom:20px">
+      <img src="${getBaseUrl()}/buildpros-logo.png" alt="${opts.companyName}" width="219" height="30"
+        style="display:block;height:30px;width:auto" />
+    </div>
+    <h2 style="color:#0f172a;font-size:20px">Payment receipt</h2>
+    <p style="color:#334155;line-height:1.5">
+      Hi ${opts.customerName}, thank you for your payment to ${opts.companyName}.
+      Your receipt is attached for your records.
+    </p>
+    <div style="margin:16px 0;padding:16px;background:#f0fdf4;border-radius:12px">
+      <div style="color:#166534;font-size:13px">Amount received</div>
+      <div style="color:#14532d;font-size:28px;font-weight:700">${opts.amount}</div>
+      <div style="color:#166534;font-size:13px;margin-top:6px">
+        ${opts.paymentType} · ${opts.paymentDate}
+      </div>
+    </div>
+    <p style="color:#64748b;font-size:13px">
+      Receipt number: <strong>${opts.number}</strong>
+    </p>
+    <p style="color:#94a3b8;font-size:12px;margin-top:24px">
+      Please keep the attached receipt for your records. If you have any questions, reply to this email.
+    </p>
+  </div>`;
+}
+
 export function financingRequestedEmailHtml(opts: {
   customerName: string;
   number: string;

@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, personName } from "@/lib/constants";
-import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
+import { markInvoicePaid, sendPaymentReceipt, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists, linkQbInvoice } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
 
@@ -47,7 +47,7 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ qb?: string }>;
+  searchParams: Promise<{ qb?: string; receipt?: string }>;
 }) {
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
@@ -221,6 +221,47 @@ export default async function InvoiceDetailPage({
               </div>
             )}
           </Card>
+
+          {inv.status === "paid" && (
+            <Card className="p-5">
+              <h2 className="font-semibold text-slate-800">Payment Receipt</h2>
+              {q.receipt === "sent" && (
+                <p className="mt-2 text-sm text-emerald-700">
+                  Receipt emailed to {lead?.email}.
+                </p>
+              )}
+              {q.receipt === "failed" && (
+                <p className="mt-2 text-sm text-rose-600">
+                  The receipt could not be sent. Check the email configuration and try again.
+                </p>
+              )}
+              {q.receipt === "missing-email" && (
+                <p className="mt-2 text-sm text-amber-700">
+                  Add an email address to this customer before sending a receipt.
+                </p>
+              )}
+              {q.receipt === "unavailable" && (
+                <p className="mt-2 text-sm text-rose-600">
+                  Only paid invoices can send receipts.
+                </p>
+              )}
+              {lead?.email ? (
+                <form action={sendPaymentReceipt} className="mt-3">
+                  <input type="hidden" name="id" value={inv.id} />
+                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                    Email Receipt
+                  </button>
+                </form>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">
+                  No customer email is on file.
+                </p>
+              )}
+              <p className="mt-2 text-xs text-slate-500">
+                Sends a payment summary with a PDF receipt attached.
+              </p>
+            </Card>
+          )}
 
           {active && (
             <Card className="p-5">

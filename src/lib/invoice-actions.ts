@@ -5,16 +5,19 @@ import { db } from "@/db";
 import { hcpPayments, invoices, leads, sales, estimates } from "@/db/schema";
 import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import {
   sendEmail,
   invoiceEmailHtml,
   financingRequestedEmailHtml,
+  paymentReceiptEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
 import { money, personName, contractPrice } from "@/lib/constants";
 import { syncInvoiceToQb } from "@/lib/qb-actions";
+import { buildPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
 
@@ -450,6 +453,67 @@ export async function markInvoicePaid(formData: FormData) {
   revalidatePath("/invoices");
   revalidatePath("/sales");
   revalidatePath("/reports");
+}
+
+export async function sendPaymentReceipt(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = Number(formData.get("id"));
+  if (!id) return;
+
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
+    .limit(1);
+  if (!invoice || invoice.status !== "paid") {
+    redirect(`/invoices/${id}?receipt=unavailable`);
+  }
+
+  const [lead] = await db
+    .select()
+    .from(leads)
+    .where(and(eq(leads.id, invoice.leadId), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (!lead?.email) {
+    redirect(`/invoices/${id}?receipt=missing-email`);
+  }
+
+  const paymentDate = invoice.paidAt
+    ? invoice.paidAt.toLocaleDateString("en-US", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Today";
+  const customerName = personName(lead.firstName, lead.lastName, "Customer");
+  const companyName = process.env.CRM_ORGANIZATION_NAME || "LeadFlow";
+  const pdfBytes = await buildPaymentReceiptPdf({
+    invoice,
+    lead,
+    orgName: companyName,
+  });
+  const sent = await sendEmail({
+    to: lead.email,
+    subject: `Payment receipt ${invoice.number} — ${money(invoice.amount)}`,
+    html: paymentReceiptEmailHtml({
+      customerName,
+      companyName,
+      number: invoice.number,
+      amount: money(invoice.amount),
+      paymentType: invoice.kind === "deposit" ? "50% deposit" : invoice.kind === "final" ? "final payment" : "payment",
+      paymentDate,
+    }),
+    attachments: [
+      {
+        filename: `${invoice.number}-receipt.pdf`,
+        content: Buffer.from(pdfBytes),
+        contentType: "application/pdf",
+      },
+    ],
+  });
+
+  redirect(`/invoices/${id}?receipt=${sent ? "sent" : "failed"}`);
 }
 
 export async function voidInvoice(formData: FormData) {
