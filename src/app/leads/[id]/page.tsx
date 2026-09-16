@@ -33,6 +33,7 @@ import {
   ensureOutreachTable,
 } from "@/lib/actions";
 import { createEstimate } from "@/lib/estimate-actions";
+import { createManualFinalInvoice } from "@/lib/invoice-actions";
 import { deleteLead } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import UploadDocument from "@/components/UploadDocument";
@@ -53,12 +54,15 @@ const label = "mb-1 block text-xs font-medium text-slate-600";
 
 export default async function LeadDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ invoice?: string }>;
 }) {
   const { orgId } = await requireAccess("leads");
 
   const { id } = await params;
+  const q = await searchParams;
   const leadId = Number(id);
   const [lead] = await db
     .select()
@@ -104,6 +108,14 @@ export default async function LeadDetailPage({
   const srcMap = toMap(sources);
   const prodMap = toMap(prods);
   const openAppt = appts.find((a) => a.status === "set" || a.status === "confirmed");
+  const activeFinalInvoice = invoiceRows.find(
+    (invoice) => invoice.kind === "final" && invoice.status !== "void",
+  );
+  const depositTotal = invoiceRows
+    .filter((invoice) => invoice.kind === "deposit" && invoice.status !== "void")
+    .reduce((sum, invoice) => sum + Number(invoice.amount), 0);
+  const suggestedContractTotal = Number(saleRows[0]?.amount ?? estRows[0]?.total ?? 0);
+  const suggestedFinalAmount = Math.max(suggestedContractTotal - depositTotal, 0);
 
   return (
     <div>
@@ -478,6 +490,51 @@ export default async function LeadDetailPage({
                   </li>
                 ))}
               </ul>
+            )}
+            {q.invoice === "invalid" && (
+              <p className="mt-3 text-sm text-rose-600">
+                Enter a valid final payment amount and project total.
+              </p>
+            )}
+            {!activeFinalInvoice && (
+              <details className="mt-4 rounded-lg border border-slate-200">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700">
+                  + Create Final Invoice
+                </summary>
+                <form action={createManualFinalInvoice} className="grid gap-3 border-t border-slate-100 p-3">
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <div>
+                    <label className={label}>Final Payment Amount ($) *</label>
+                    <input
+                      type="number"
+                      name="amount"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      defaultValue={suggestedFinalAmount > 0 ? suggestedFinalAmount.toFixed(2) : ""}
+                      className={input}
+                    />
+                  </div>
+                  <div>
+                    <label className={label}>Updated Project Total ($) *</label>
+                    <input
+                      type="number"
+                      name="contractTotal"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      defaultValue={suggestedContractTotal > 0 ? suggestedContractTotal.toFixed(2) : ""}
+                      className={input}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    This creates a draft final invoice. You can mark it paid and send the receipt from the invoice page.
+                  </p>
+                  <button className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600">
+                    Create Draft Final Invoice
+                  </button>
+                </form>
+              </details>
             )}
           </Card>
 

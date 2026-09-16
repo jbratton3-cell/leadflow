@@ -2,9 +2,9 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { hcpPayments, invoices, leads, sales, estimates } from "@/db/schema";
+import { hcpPayments, invoices, leads, sales, estimates, jobs } from "@/db/schema";
 import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
@@ -254,6 +254,79 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
     lead,
   });
   revalidatePath("/invoices");
+}
+
+// Create a final invoice manually when a job was completed outside the normal
+// production workflow or the final contract amount changed.
+export async function createManualFinalInvoice(formData: FormData) {
+  const { orgId } = await requireUser();
+  const leadId = Number(formData.get("leadId"));
+  const amount = Number(formData.get("amount"));
+  const contractTotal = Number(formData.get("contractTotal"));
+  if (!leadId || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(contractTotal) || contractTotal <= 0) {
+    redirect(`/leads/${leadId || ""}?invoice=invalid`);
+  }
+
+  const [lead] = await db
+    .select()
+    .from(leads)
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (!lead) return;
+
+  const [existing] = await db
+    .select({ id: invoices.id })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.orgId, orgId),
+        eq(invoices.leadId, leadId),
+        eq(invoices.kind, "final"),
+        ne(invoices.status, "void"),
+      ),
+    )
+    .orderBy(desc(invoices.createdAt))
+    .limit(1);
+  if (existing) {
+    redirect(`/invoices/${existing.id}`);
+  }
+
+  const [sale] = await db
+    .select({ id: sales.id })
+    .from(sales)
+    .where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId)))
+    .orderBy(desc(sales.soldAt))
+    .limit(1);
+  const [job] = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId)))
+    .orderBy(desc(jobs.createdAt))
+    .limit(1);
+
+  const number = await nextInvoiceNumber(orgId);
+  const [created] = await db
+    .insert(invoices)
+    .values({
+      orgId,
+      leadId,
+      jobId: job?.id ?? null,
+      saleId: sale?.id ?? null,
+      estimateId: null,
+      number,
+      kind: "final",
+      status: "draft",
+      amount: amount.toFixed(2),
+      contractTotal: contractTotal.toFixed(2),
+      publicToken: randomBytes(24).toString("hex"),
+      notes: "Final invoice created manually by the office.",
+    })
+    .returning();
+
+  if (created) await syncInvoiceToQb(orgId, created.id);
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/invoices");
+  redirect(`/invoices/${created.id}`);
 }
 
 
