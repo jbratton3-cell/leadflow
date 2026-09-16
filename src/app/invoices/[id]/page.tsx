@@ -246,33 +246,27 @@ export default async function InvoiceDetailPage({
                 </p>
               )}
               {lead?.email ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <form action={sendPaymentReceipt}>
-                    <input type="hidden" name="id" value={inv.id} />
-                    <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                      Email Receipt
-                    </button>
-                  </form>
-                  <Link
-                    href={`/api/invoices/${inv.id}/receipt`}
-                    target="_blank"
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Print Receipt
-                  </Link>
-                </div>
+                <p className="mt-3 text-xs text-slate-500">Receipt will be sent to {lead.email}.</p>
               ) : (
-                <div className="mt-3">
-                  <p className="text-sm text-slate-500">No customer email is on file.</p>
-                  <Link
-                    href={`/api/invoices/${inv.id}/receipt`}
-                    target="_blank"
-                    className="mt-3 block rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Print Receipt
-                  </Link>
-                </div>
+                <p className="mt-3 text-sm text-amber-700">
+                  No customer email is on file yet. Add one, then retry the email action.
+                </p>
               )}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <form action={sendPaymentReceipt}>
+                  <input type="hidden" name="id" value={inv.id} />
+                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                    Email Receipt
+                  </button>
+                </form>
+                <Link
+                  href={`/api/invoices/${inv.id}/receipt`}
+                  target="_blank"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Print Receipt
+                </Link>
+              </div>
               <p className="mt-2 text-xs text-slate-500">
                 Sends a payment summary with a PDF receipt attached.
               </p>
