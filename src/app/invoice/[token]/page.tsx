@@ -161,7 +161,7 @@ export default async function PublicInvoicePage({
                 </form>
               </div>
               <p className="mt-3 text-xs text-slate-400">
-                Select financing below, then use the prequalification link to begin your
+                Select Finance This Amount above, then use the prequalification link to begin your
                 application through Wisetack.
               </p>
               <a
