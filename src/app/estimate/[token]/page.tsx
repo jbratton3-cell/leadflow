@@ -90,7 +90,26 @@ export default async function PublicEstimatePage({
             <img src="/buildpros-logo.png" alt={companyName} className="h-12 w-auto" />
             <div className="mt-1 text-xs text-slate-500">Project Estimate</div>
           </div>
-          <PrintButton />
+          <div className="no-print flex flex-col items-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <PrintButton label="Print Page" />
+              {est.status !== "draft" && (
+                <a
+                  href={`/api/estimates/public/${token}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+                >
+                  📄 Open PDF to Print
+                </a>
+              )}
+            </div>
+            {est.status !== "draft" && (
+              <span className="text-[11px] text-slate-400">
+                iPhone: open the PDF, tap Share, then Print.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="print-plain overflow-hidden rounded-2xl bg-white shadow">
