@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { hcpPayments, jobs, leads, properties, sales } from "@/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
 import { deleteJob } from "@/lib/delete-actions";
@@ -53,8 +53,38 @@ function financingStatusLabel(status: string) {
   return status;
 }
 
-export default async function ProductionPage() {
+export default async function ProductionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { orgId } = await requireAccess("production");
+  const { q: rawQuery } = await searchParams;
+  const query = rawQuery?.trim() ?? "";
+  const jobConditions: SQL[] = [eq(jobs.orgId, orgId)];
+  if (query) {
+    const like = `%${query}%`;
+    jobConditions.push(
+      or(
+        ilike(leads.firstName, like),
+        ilike(leads.lastName, like),
+        ilike(leads.address, like),
+        ilike(leads.city, like),
+        ilike(leads.zip, like),
+        ilike(leads.phone, like),
+        ilike(jobs.customerName, like),
+        ilike(jobs.customerAddress, like),
+        ilike(jobs.customerCity, like),
+        ilike(jobs.customerPhone, like),
+        ilike(jobs.productName, like),
+        ilike(jobs.crew, like),
+        ilike(jobs.unitNumber, like),
+        ilike(jobs.status, like),
+        ilike(jobs.notes, like),
+        ilike(properties.name, like),
+      )!,
+    );
+  }
   const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
   const isTrial = org?.plan === "trial";
 
@@ -74,7 +104,7 @@ export default async function ProductionPage() {
       .leftJoin(leads, eq(jobs.leadId, leads.id))
       .leftJoin(properties, eq(jobs.propertyId, properties.id))
       .leftJoin(sales, eq(jobs.saleId, sales.id))
-      .where(eq(jobs.orgId, orgId))
+      .where(and(...jobConditions))
       .orderBy(desc(jobs.createdAt))
       .limit(200),
     db
@@ -176,6 +206,35 @@ export default async function ProductionPage() {
           ) : undefined
         }
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <form className="flex gap-2" action="/production">
+          <label className="sr-only" htmlFor="production-search">
+            Search production jobs
+          </label>
+          <input
+            id="production-search"
+            name="q"
+            defaultValue={query}
+            placeholder="Search customer, address, product, crew…"
+            className="w-72 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-orange-400"
+          />
+          <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+            Search
+          </button>
+          {query && (
+            <Link
+              href="/production"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+        <span className="text-xs text-slate-500">
+          {query ? `Showing jobs matching “${query}”` : "Search all production jobs"}
+        </span>
+      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Active Jobs" value={active.length} accent="text-cyan-600" />
@@ -418,7 +477,13 @@ export default async function ProductionPage() {
       </Card>
 
       {view.length === 0 ? (
-        <EmptyState message="No production jobs yet. Jobs are created automatically when a sale is recorded — or add one manually above." />
+        <EmptyState
+          message={
+            query
+              ? "No production jobs matched that search."
+              : "No production jobs yet. Jobs are created automatically when a sale is recorded — or add one manually above."
+          }
+        />
       ) : (
         <div className="space-y-4">
           {view.map((r) => {

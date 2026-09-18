@@ -93,7 +93,15 @@ export default async function EstimateDetailPage({
         title={`${est.number}`}
         subtitle={lead ? `For ${personName(lead.firstName, lead.lastName, "customer")}` : undefined}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href={`/api/estimates/${est.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              📄 Open / Print PDF
+            </Link>
             <Badge className={estimateStatusColor(est.status)}>
               {estimateStatusLabel(est.status)}
             </Badge>
