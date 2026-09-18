@@ -331,11 +331,10 @@ export default async function EstimateDetailPage({
                   <input type="hidden" name="estimateId" value={est.id} />
                   <input
                     name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max={contractTotal}
+                    type="text"
+                    inputMode="decimal"
                     defaultValue={(contractTotal * 0.5).toFixed(2)}
+                    placeholder="11,000.00"
                     aria-label="Deposit amount received"
                     className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
                   />

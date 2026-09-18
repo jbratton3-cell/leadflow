@@ -361,8 +361,9 @@ export async function recordDepositPaid(formData: FormData) {
 
   const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed", est.cashPrice);
   if (total <= 0) return;
+  const normalizedAmount = rawAmount.replace(/[$,\s]/g, "");
   const defaultAmount = +(total * 0.5).toFixed(2);
-  const amount = rawAmount === "" ? defaultAmount : +Number(rawAmount).toFixed(2);
+  const amount = normalizedAmount === "" ? defaultAmount : +Number(normalizedAmount).toFixed(2);
   if (!Number.isFinite(amount) || amount <= 0 || amount > total) return;
 
   const [existing] = await db
