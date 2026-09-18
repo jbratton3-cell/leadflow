@@ -54,7 +54,6 @@ export default function UploadEstimatePhoto({ estimateId }: { estimateId: number
           ref={inputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
-          capture="environment"
           multiple
           className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-700"
         />
@@ -68,7 +67,7 @@ export default function UploadEstimatePhoto({ estimateId }: { estimateId: number
         </button>
       </div>
       <p className="text-[11px] text-slate-400">
-        On a phone this opens the camera. Photos show on the customer estimate so they don’t have to get on the roof.
+        Choose photos from the camera or gallery. Photos show on the customer estimate so they don’t have to get on the roof.
       </p>
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
