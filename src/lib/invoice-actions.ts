@@ -328,10 +328,11 @@ export async function createManualFinalInvoice(formData: FormData) {
       estimateId: null,
       number,
       kind: "final",
-      status: "draft",
+      status: "sent",
       amount: amount.toFixed(2),
       contractTotal: contractTotal.toFixed(2),
       publicToken: randomBytes(24).toString("hex"),
+      sentAt: new Date(),
       notes: "Final invoice created manually by the office.",
     })
     .returning();

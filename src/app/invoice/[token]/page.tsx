@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { markInvoiceViewed, customerInvoiceChoice } from "@/lib/invoice-actions";
 import { getSessionUser } from "@/lib/auth";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
+import { WISETACK_PREQUAL_URL } from "@/components/WisetackPrequalNote";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,14 @@ export default async function PublicInvoicePage({
                 Choosing financing pauses this payment — we&apos;ll contact you to set up
                 a monthly payment plan instead.
               </p>
+              <a
+                href={WISETACK_PREQUAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex rounded-lg border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50"
+              >
+                Prequalify for financing ↗
+              </a>
             </div>
           )}
 
