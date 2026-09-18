@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { estimates, estimateItems, leads, invoices, pricebookItems, estimatePhotos } from "@/db/schema";
 import AddEstimateItemForm from "@/components/AddEstimateItemForm";
 import UploadEstimatePhoto from "@/components/UploadEstimatePhoto";
+import CopyEstimateLink from "@/components/CopyEstimateLink";
 import { and, eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -391,6 +392,14 @@ export default async function EstimateDetailPage({
                 Preview Customer View
               </Link>
             </div>
+            {est.sentAt && (
+              <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
+                <p className="mb-2 text-xs text-emerald-700">
+                  This estimate has been sent. Reopen or copy the customer link anytime.
+                </p>
+                <CopyEstimateLink token={est.publicToken} />
+              </div>
+            )}
             {locked ? (
               <p className="text-sm text-slate-500">
                 This estimate has been {est.status}. It can no longer be edited or resent.
