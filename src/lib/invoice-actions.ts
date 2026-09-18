@@ -343,12 +343,13 @@ export async function createManualFinalInvoice(formData: FormData) {
 }
 
 
-// Record a 50% deposit as already collected (e.g. paper estimate paid in the
+// Record a deposit as already collected (e.g. paper estimate paid in the
 // field). Creates the deposit invoice in PAID state — no email is sent.
 export async function recordDepositPaid(formData: FormData) {
   const { orgId } = await requireUser();
   const estimateId = Number(formData.get("estimateId"));
   const method = (formData.get("method") ?? "other").toString();
+  const rawAmount = formData.get("amount")?.toString().trim() ?? "";
   if (!estimateId) return;
 
   const [est] = await db
@@ -360,6 +361,9 @@ export async function recordDepositPaid(formData: FormData) {
 
   const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed", est.cashPrice);
   if (total <= 0) return;
+  const defaultAmount = +(total * 0.5).toFixed(2);
+  const amount = rawAmount === "" ? defaultAmount : +Number(rawAmount).toFixed(2);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > total) return;
 
   const [existing] = await db
     .select()
@@ -391,6 +395,7 @@ export async function recordDepositPaid(formData: FormData) {
         .update(invoices)
         .set({
           status: "paid",
+          amount: amount.toFixed(2),
           paidAt,
           paymentMethod: method,
           updatedAt: paidAt,
@@ -400,6 +405,7 @@ export async function recordDepositPaid(formData: FormData) {
       paidInvoice = {
         ...existing,
         status: "paid",
+        amount: amount.toFixed(2),
         paidAt,
         paymentMethod: method,
         updatedAt: paidAt,

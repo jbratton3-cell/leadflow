@@ -16,7 +16,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
+  fmtDateTime, personName, cashPrice, cashSavings, hasCashOffer, contractPrice } from "@/lib/constants";
 import {
   updateEstimate,
   deleteEstimateItem,
@@ -87,6 +87,12 @@ export default async function EstimateDetailPage({
       )
     )
     .limit(1);
+  const contractTotal = contractPrice(
+    est.total,
+    est.cashDiscountPercent,
+    est.paymentChoice === "financed",
+    est.cashPrice,
+  );
 
   return (
     <div>
@@ -318,11 +324,21 @@ export default async function EstimateDetailPage({
             ) : est.status === "accepted" ? (
               <>
                 <p className="mb-2 text-xs text-slate-400">
-                  Record a 50% deposit that was collected outside the automated flow
+                  Record the actual deposit amount collected outside the automated flow
                   (e.g. already paid on a paper estimate). No email is sent.
                 </p>
                 <form action={recordDepositPaid} className="flex flex-wrap items-center gap-2">
                   <input type="hidden" name="estimateId" value={est.id} />
+                  <input
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={contractTotal}
+                    defaultValue={(contractTotal * 0.5).toFixed(2)}
+                    aria-label="Deposit amount received"
+                    className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                  />
                   <select
                     name="method"
                     defaultValue="check"
