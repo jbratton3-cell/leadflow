@@ -161,8 +161,8 @@ export default async function PublicInvoicePage({
                 </form>
               </div>
               <p className="mt-3 text-xs text-slate-400">
-                Choosing financing pauses this payment — we&apos;ll contact you to set up
-                a monthly payment plan instead.
+                Select financing below, then use the prequalification link to begin your
+                application through Wisetack.
               </p>
               <a
                 href={WISETACK_PREQUAL_URL}
