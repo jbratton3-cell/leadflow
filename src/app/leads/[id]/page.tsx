@@ -114,7 +114,15 @@ export default async function LeadDetailPage({
   const depositTotal = invoiceRows
     .filter((invoice) => invoice.kind === "deposit" && invoice.status !== "void")
     .reduce((sum, invoice) => sum + Number(invoice.amount), 0);
-  const suggestedContractTotal = Number(saleRows[0]?.amount ?? estRows[0]?.total ?? 0);
+  const recordedDepositContract = invoiceRows.find(
+    (invoice) =>
+      invoice.kind === "deposit" &&
+      invoice.status !== "void" &&
+      Number(invoice.contractTotal) > 0,
+  )?.contractTotal;
+  const suggestedContractTotal = Number(
+    recordedDepositContract ?? saleRows[0]?.amount ?? estRows[0]?.total ?? 0,
+  );
   const suggestedFinalAmount = Math.max(suggestedContractTotal - depositTotal, 0);
 
   return (

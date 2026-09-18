@@ -229,13 +229,26 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
       contract = Number(sale.amount);
     }
   }
-  if (contract <= 0) return;
 
-  // Remaining due = contract minus everything already invoiced (not voided).
+  // If a deposit was recorded, its contractTotal is the amount actually
+  // agreed for the 50/50 deal. Prefer it over the sale snapshot, which may
+  // reflect an older cash-offer calculation.
   const priorRows = await db
     .select()
     .from(invoices)
     .where(and(eq(invoices.orgId, job.orgId), eq(invoices.leadId, job.leadId)));
+  const depositInvoice = priorRows.find(
+    (invoice) =>
+      invoice.kind === "deposit" &&
+      invoice.status !== "void" &&
+      Number(invoice.contractTotal) > 0,
+  );
+  if (depositInvoice) {
+    contract = Number(depositInvoice.contractTotal);
+  }
+  if (contract <= 0) return;
+
+  // Remaining due = contract minus everything already invoiced (not voided).
   const prior = priorRows
     .filter((i) => i.status !== "void")
     .reduce((sum, i) => sum + Number(i.amount), 0);
