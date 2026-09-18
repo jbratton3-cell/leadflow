@@ -9,7 +9,7 @@ import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
@@ -44,10 +44,11 @@ export async function GET(
     photos,
   });
 
+  const download = new URL(req.url).searchParams.get("download") === "1";
   return new Response(Buffer.from(pdfBytes), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${est.number}.pdf"`,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${est.number}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

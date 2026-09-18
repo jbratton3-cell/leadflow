@@ -103,10 +103,19 @@ export default async function PublicEstimatePage({
                   📄 Open PDF to Print
                 </a>
               )}
+              {est.status !== "draft" && (
+                <a
+                  href={`/api/estimates/public/${token}/pdf?download=1`}
+                  download={`${est.number}.pdf`}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  ⬇ Download PDF
+                </a>
+              )}
             </div>
             {est.status !== "draft" && (
               <span className="text-[11px] text-slate-400">
-                iPhone: open the PDF, tap Share, then Print.
+                iPhone: if Share is unavailable, download the PDF and print it from Files.
               </span>
             )}
           </div>
