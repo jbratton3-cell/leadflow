@@ -56,6 +56,10 @@ export default async function EditLeadPage({
             <label className={label}>Last Name *</label>
             <input name="lastName" defaultValue={lead.lastName} className={input} />
           </div>
+          <div className="col-span-2">
+            <label className={label}>Company</label>
+            <input name="company" defaultValue={lead.company ?? ""} className={input} />
+          </div>
           <div>
             <label className={label}>Phone</label>
             <input name="phone" defaultValue={lead.phone ?? ""} className={input} />

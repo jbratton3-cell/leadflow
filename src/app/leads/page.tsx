@@ -29,6 +29,7 @@ export default async function LeadsPage({
       or(
         ilike(leads.firstName, like),
         ilike(leads.lastName, like),
+        ilike(leads.company, like),
         ilike(leads.address, like),
         ilike(leads.phone, like),
         ilike(leads.city, like),
@@ -205,6 +206,7 @@ export default async function LeadsPage({
                       <Link href={`/leads/${l.id}`} className="font-semibold text-slate-800 hover:text-orange-600">
                         {personName(l.firstName, l.lastName)}
                       </Link>
+                      {l.company && <div className="text-xs text-slate-500">{l.company}</div>}
                       {l.doNotCall && (
                         <span className="ml-2 text-[10px] font-bold uppercase text-rose-600">DNC</span>
                       )}

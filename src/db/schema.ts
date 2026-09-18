@@ -147,6 +147,7 @@ export const leads = pgTable(
     orgId: integer("org_id").notNull(),
     firstName: varchar("first_name", { length: 80 }).notNull(),
     lastName: varchar("last_name", { length: 80 }).notNull(),
+    company: varchar("company", { length: 160 }),
     email: varchar("email", { length: 160 }),
     phone: varchar("phone", { length: 40 }),
     altPhone: varchar("alt_phone", { length: 40 }),

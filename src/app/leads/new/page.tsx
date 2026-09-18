@@ -63,6 +63,10 @@ export default async function NewLeadPage({
             <label className={label}>Last Name *</label>
             <input name="lastName" defaultValue={lastName} className={input} />
           </div>
+          <div className="col-span-2">
+            <label className={label}>Company</label>
+            <input name="company" className={input} />
+          </div>
           <div>
             <label className={label}>Phone</label>
             <input name="phone" className={input} />

@@ -167,6 +167,7 @@ export default async function LeadDetailPage({
           <Card className="p-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Contact</h2>
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
+              <Info label="Company" value={lead.company} />
               <Info label="Phone" value={lead.phone} />
               <Info label="Alt Phone" value={lead.altPhone} />
               <Info label="Email" value={lead.email} />

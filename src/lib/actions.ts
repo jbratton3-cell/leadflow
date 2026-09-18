@@ -76,6 +76,7 @@ export async function createLead(formData: FormData) {
     orgId,
     firstName: req(formData.get("firstName")),
     lastName: req(formData.get("lastName")),
+      company: str(formData.get("company")),
     email: str(formData.get("email")),
     phone: str(formData.get("phone")),
     altPhone: str(formData.get("altPhone")),
@@ -105,6 +106,7 @@ export async function updateLead(formData: FormData) {
     .set({
       firstName: req(formData.get("firstName")),
       lastName: req(formData.get("lastName")),
+      company: str(formData.get("company")),
       email: str(formData.get("email")),
       phone: str(formData.get("phone")),
       altPhone: str(formData.get("altPhone")),

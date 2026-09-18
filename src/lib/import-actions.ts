@@ -115,6 +115,7 @@ export async function importLeads(payload: {
         orgId,
         firstName: firstName || "(no name)",
         lastName: lastName || "",
+        company: clean(row.company) || null,
         email: email || null,
         phone: phone || null,
         altPhone: clean(row.altPhone) || null,
