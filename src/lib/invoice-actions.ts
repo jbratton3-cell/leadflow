@@ -529,7 +529,6 @@ export async function markInvoicePaid(formData: FormData) {
       updatedAt: paidAt,
     })
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
-<<<<<<< HEAD
   await ensureCollectedPayment({
     ...invoice,
     status: "paid",
@@ -537,9 +536,7 @@ export async function markInvoicePaid(formData: FormData) {
     paymentMethod: method,
     updatedAt: paidAt,
   });
-=======
   await syncInvoiceToQb(orgId, id);
->>>>>>> b7165ac (Push payment to QuickBooks when an invoice is marked paid)
   revalidatePath("/invoices");
   revalidatePath("/sales");
   revalidatePath("/reports");

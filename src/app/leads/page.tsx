@@ -16,14 +16,15 @@ export default async function LeadsPage({
 }) {
   const { orgId } = await requireAccess("leads");
   const { stage, q, page: pageParam } = await searchParams;
+  const search = q?.trim();
   const pageSize = 50;
   const parsedPage = Number.parseInt(pageParam ?? "1", 10);
   const requestedPage = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
 
   const conds: SQL[] = [eq(leads.orgId, orgId)];
   if (stage) conds.push(eq(leads.stage, stage));
-  if (q) {
-    const like = `%${q}%`;
+  if (search) {
+    const like = `%${search}%`;
     conds.push(
       or(
         ilike(leads.firstName, like),
@@ -69,7 +70,7 @@ export default async function LeadsPage({
   const pageHref = (targetPage: number) => {
     const params = new URLSearchParams();
     if (stage) params.set("stage", stage);
-    if (q) params.set("q", q);
+    if (search) params.set("q", search);
     if (targetPage > 1) params.set("page", String(targetPage));
     const query = params.toString();
     return query ? `/leads?${query}` : "/leads";
@@ -165,7 +166,21 @@ export default async function LeadsPage({
       </div>
 
       {rows.length === 0 ? (
-        <EmptyState message="No prospects match. Add a new prospect to get started." />
+        search ? (
+          <div className="grid place-items-center rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+            <p className="text-sm text-slate-600">
+              No prospect found for <span className="font-semibold text-slate-800">“{search}”</span>.
+            </p>
+            <Link
+              href={`/leads/new?q=${encodeURIComponent(search)}`}
+              className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
+            >
+              Create new prospect
+            </Link>
+          </div>
+        ) : (
+          <EmptyState message="No prospects yet. Add a new prospect to get started." />
+        )
       ) : (
         <Card>
           <div className="overflow-x-auto">

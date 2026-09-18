@@ -10,8 +10,13 @@ import { ACCOUNT_TYPES, roleLabel } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewLeadPage() {
+export default async function NewLeadPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const me = await requireAccess("leads");
+  const search = ((await searchParams).q ?? "").trim();
 
   const [sources, prods, salesReps, allReps] = await Promise.all([
     getSources(),
@@ -33,19 +38,30 @@ export default async function NewLeadPage() {
   const input =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-400";
   const label = "mb-1 block text-xs font-medium text-slate-600";
+  const looksLikeAddress = /\d/.test(search) || search.includes(",");
+  const nameParts = !looksLikeAddress ? search.split(/\s+/).filter(Boolean) : [];
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ");
 
   return (
     <div>
-      <PageHeader title="New Prospect" subtitle="Capture a new lead into the pipeline." />
+      <PageHeader
+        title="New Prospect"
+        subtitle={
+          search
+            ? `Create a prospect from your search for “${search}”.`
+            : "Capture a new lead into the pipeline."
+        }
+      />
       <Card className="max-w-3xl p-6">
         <form action={action} className="grid grid-cols-2 gap-4">
           <div>
             <label className={label}>First Name *</label>
-            <input name="firstName" className={input} />
+            <input name="firstName" defaultValue={firstName} className={input} />
           </div>
           <div>
             <label className={label}>Last Name *</label>
-            <input name="lastName" className={input} />
+            <input name="lastName" defaultValue={lastName} className={input} />
           </div>
           <div>
             <label className={label}>Phone</label>
@@ -61,7 +77,7 @@ export default async function NewLeadPage() {
           </div>
           <div className="col-span-2">
             <label className={label}>Address</label>
-            <input name="address" className={input} />
+            <input name="address" defaultValue={looksLikeAddress ? search : ""} className={input} />
           </div>
           <div>
             <label className={label}>City</label>
