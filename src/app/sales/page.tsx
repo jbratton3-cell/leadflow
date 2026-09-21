@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { hcpPayments, invoices, jobs, sales, leads } from "@/db/schema";
-import { and, desc, eq, sql, gte } from "drizzle-orm";
+import { hcpPayments, invoices, jobs, sales, leads, products, reps } from "@/db/schema";
+import { and, desc, eq, sql, gte, ilike, or, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
 import { deleteSale } from "@/lib/delete-actions";
@@ -21,12 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function SalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; q?: string }>;
 }) {
   const { orgId } = await requireAccess("sales");
-  const { period: periodParam } = await searchParams;
+  const { period: periodParam, q: rawQuery } = await searchParams;
   const period = periodParam === "ytd" ? "ytd" : "mtd";
   const periodLabel = period.toUpperCase();
+  const query = rawQuery?.trim() ?? "";
 
   const now = new Date();
   const periodStart = new Date(
@@ -36,6 +37,27 @@ export default async function SalesPage({
   );
   periodStart.setHours(0, 0, 0, 0);
   const effectiveRepId = sql<number | null>`coalesce(${sales.salesRepId}, ${leads.assignedRepId})`;
+  const saleConditions: SQL[] = [eq(sales.orgId, orgId)];
+  if (query) {
+    const like = `%${query}%`;
+    saleConditions.push(
+      or(
+        ilike(leads.firstName, like),
+        ilike(leads.lastName, like),
+        ilike(leads.company, like),
+        ilike(leads.address, like),
+        ilike(leads.phone, like),
+        ilike(leads.city, like),
+        ilike(leads.zip, like),
+        ilike(products.name, like),
+        ilike(reps.name, like),
+        ilike(sales.financeType, like),
+        ilike(sales.notes, like),
+        ilike(sql`${sales.amount}::text`, like),
+        ilike(sql`${sales.id}::text`, like),
+      )!,
+    );
+  }
 
   const [
     rows,
@@ -53,10 +75,14 @@ export default async function SalesPage({
         lastName: leads.lastName,
         city: leads.city,
         assignedRepId: leads.assignedRepId,
+        productName: products.name,
+        repName: reps.name,
       })
       .from(sales)
       .leftJoin(leads, eq(sales.leadId, leads.id))
-      .where(eq(sales.orgId, orgId))
+      .leftJoin(products, eq(sales.productId, products.id))
+      .leftJoin(reps, eq(reps.id, effectiveRepId))
+      .where(and(...saleConditions))
       .orderBy(desc(sales.soldAt))
       .limit(200),
     getReps(),
@@ -168,7 +194,7 @@ export default async function SalesPage({
             </span>
             <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
               <Link
-                href="/sales?period=mtd"
+                href={query ? `/sales?period=mtd&q=${encodeURIComponent(query)}` : "/sales?period=mtd"}
                 aria-current={period === "mtd" ? "page" : undefined}
                 className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                   period === "mtd"
@@ -179,7 +205,7 @@ export default async function SalesPage({
                 MTD
               </Link>
               <Link
-                href="/sales?period=ytd"
+                href={query ? `/sales?period=ytd&q=${encodeURIComponent(query)}` : "/sales?period=ytd"}
                 aria-current={period === "ytd" ? "page" : undefined}
                 className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                   period === "ytd"
@@ -193,6 +219,37 @@ export default async function SalesPage({
           </div>
         }
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <form className="flex gap-2" action="/sales">
+          <input type="hidden" name="period" value={period} />
+          <label className="sr-only" htmlFor="sales-search">
+            Search sales
+          </label>
+          <input
+            id="sales-search"
+            name="q"
+            type="search"
+            defaultValue={query}
+            placeholder="Search customer, product, rep, amount…"
+            className="w-72 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-orange-400"
+          />
+          <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+            Search
+          </button>
+          {query && (
+            <Link
+              href={`/sales?period=${period}`}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+        <span className="text-xs text-slate-500">
+          {query ? `Showing sales matching “${query}”` : "Search all sales"}
+        </span>
+      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label={`Sales (${periodLabel})`} value={periodCount} accent="text-emerald-600" />
@@ -231,7 +288,13 @@ export default async function SalesPage({
         <Card className="lg:col-span-2">
           {rows.length === 0 ? (
             <div className="p-6">
-              <EmptyState message="No sales recorded yet. Record a sale from a prospect after the demo." />
+              <EmptyState
+                message={
+                  query
+                    ? "No sales matched that search."
+                    : "No sales recorded yet. Record a sale from a prospect after the demo."
+                }
+              />
             </div>
           ) : (
             <div className="overflow-x-auto">
