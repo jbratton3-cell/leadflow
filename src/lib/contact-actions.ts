@@ -16,14 +16,10 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-// Where new-lead alerts land. Falls back to the owner's account email so a
-// missing env var never silently swallows a lead.
+// Public contact-form leads go through the LeadFlow contact alias, which
+// forwards to the business inbox.
 function leadAlertInbox(): string {
-  return (
-    process.env.CRM_ADMIN_EMAIL ||
-    process.env.GMAIL_USER ||
-    "leadflow76@gmail.com"
-  );
+  return "contact@leadflowcrm.info";
 }
 
 export function demoRequestEmailHtml(opts: {
