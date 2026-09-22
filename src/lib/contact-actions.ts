@@ -22,6 +22,54 @@ function leadAlertInbox(): string {
   return "contact@leadflowcrm.info";
 }
 
+function looksLikeSpam(fields: {
+  name: string;
+  email: string;
+  company: string;
+  message: string;
+}): boolean {
+  const emailDomain = fields.email.split("@").at(-1)?.toLowerCase() ?? "";
+  if (emailDomain === "search-leadflowcrm.info") return true;
+
+  const text = [fields.name, fields.email, fields.company, fields.message]
+    .join(" ")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+  const knownSpamPhrases = [
+    "search index",
+    "targeted instagram followers",
+    "scale your instagram",
+    "grow your instagram",
+    "our videos can generate",
+    "video to advertise your business",
+    "seo services",
+    "seo package",
+    "rank your website",
+    "rank on google",
+    "first page of google",
+    "guest post",
+    "backlink",
+    "domain authority",
+    "website traffic",
+    "find out more information here",
+    "if you are not interested",
+    "unsubscribe:",
+  ];
+  if (knownSpamPhrases.some((phrase) => text.includes(phrase))) return true;
+
+  const hasExternalLink =
+    /(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(?:com|net|org|io|co|site|pro|biz)\b/i.test(
+      fields.message
+    );
+  const soundsLikeSalesPitch =
+    /\b(?:we (?:help|offer|provide|specialize)|our (?:services?|videos?|team)|i can (?:show|send)|register .+ today|submit .+ today|list .+ today)\b/i.test(
+      text
+    );
+
+  return hasExternalLink && soundsLikeSalesPitch;
+}
+
 function demoRequestEmailHtml(opts: {
   name: string;
   email: string;
@@ -75,8 +123,18 @@ export async function submitDemoRequest(
   const trade = str(formData.get("trade"));
   const message = str(formData.get("message"));
   const website = str(formData.get("website"));
+  const faxNumber = str(formData.get("faxNumber"));
+  const formStartedAt = Number(str(formData.get("formStartedAt")));
+  const formAgeMs = Date.now() - formStartedAt;
 
-  if (website) {
+  // Quietly accept bot submissions so they cannot learn which trap caught them.
+  if (
+    website ||
+    faxNumber ||
+    !Number.isFinite(formStartedAt) ||
+    formAgeMs < 2_500 ||
+    formAgeMs > 24 * 60 * 60 * 1_000
+  ) {
     return { success: true };
   }
 
@@ -86,6 +144,10 @@ export async function submitDemoRequest(
   // Basic email sanity check
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Please enter a valid email address." };
+  }
+
+  if (looksLikeSpam({ name, email, company, message })) {
+    return { success: true };
   }
 
   await db.insert(demoRequests).values({

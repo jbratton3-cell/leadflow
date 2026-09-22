@@ -20,7 +20,7 @@ function SubmitButton() {
   );
 }
 
-export default function ContactForm() {
+export default function ContactForm({ formStartedAt }: { formStartedAt: number }) {
   const [state, formAction] = useActionState(submitDemoRequest, {});
 
   if (state?.success) {
@@ -37,6 +37,7 @@ export default function ContactForm() {
 
   return (
     <form action={formAction} className="rounded-2xl bg-white p-6 shadow-xl">
+      <input type="hidden" name="formStartedAt" value={formStartedAt} />
       <div
         aria-hidden="true"
         className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
@@ -45,6 +46,14 @@ export default function ContactForm() {
         <input
           id="contact-website"
           name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+        <label htmlFor="contact-fax">Fax Number</label>
+        <input
+          id="contact-fax"
+          name="faxNumber"
           type="text"
           tabIndex={-1}
           autoComplete="off"

@@ -31,7 +31,7 @@ export default function ContactPage() {
         </div>
 
         <div>
-          <ContactForm />
+          <ContactForm formStartedAt={Date.now()} />
         </div>
       </section>
 
