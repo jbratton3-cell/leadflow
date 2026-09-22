@@ -22,7 +22,7 @@ function leadAlertInbox(): string {
   return "contact@leadflowcrm.info";
 }
 
-export function demoRequestEmailHtml(opts: {
+function demoRequestEmailHtml(opts: {
   name: string;
   email: string;
   company: string | null;
