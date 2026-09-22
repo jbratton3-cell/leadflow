@@ -26,6 +26,10 @@ function str(v: FormDataEntryValue | null): string {
   return (v ?? "").toString().trim();
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 const INVITE_DAYS = 7;
 
 /* -------------------------------- login -------------------------------- */
@@ -485,6 +489,36 @@ export async function signup(
       active: true,
     })
     .returning();
+
+  // Alert the owner that a new trial workspace was created, so signups from
+  // the public tour/signup page don't go unnoticed.
+  await sendEmail({
+    to: process.env.CRM_ADMIN_EMAIL || process.env.GMAIL_USER || "leadflow76@gmail.com",
+    subject: `New trial signup: ${company}`,
+    fromName: "LeadFlow CRM",
+    replyTo: email,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:20px">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden">
+        <div style="background:#f97316;padding:14px 20px">
+          <div style="color:#ffffff;font-size:16px;font-weight:700">New trial signup</div>
+          <div style="color:#ffedd5;font-size:12px">Self-serve account created on leadflowcrm.info</div>
+        </div>
+        <table style="padding:16px 20px;border-collapse:collapse">
+          <tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">Company</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:600">${esc(company)}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">Contact</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:600">${esc(name)}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">Email</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:600">${email}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#64748b;font-size:13px">Workspace</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:600">#${org.id}</td></tr>
+        </table>
+        <div style="padding:0 20px 18px;font-size:12px;color:#64748b">
+          Replying to this email goes straight to ${email}.
+        </div>
+      </div>
+    </div>`,
+  });
 
   if (user) await createSession(user.id);
   redirect("/dashboard");
