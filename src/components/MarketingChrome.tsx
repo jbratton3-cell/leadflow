@@ -34,7 +34,7 @@ export function MarketingNav({ cta = "Book a demo" }: { cta?: string }) {
 export function MarketingFooter() {
   return (
     <footer className="border-t border-slate-800 py-8">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 text-sm text-slate-500 sm:flex-row">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 text-sm text-slate-500">
         <div className="flex items-center gap-2">
           <div className="grid h-6 w-6 place-items-center rounded bg-orange-500 text-xs font-bold text-white">
             {APP_NAME.slice(0, 1)}
