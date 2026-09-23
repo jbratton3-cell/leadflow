@@ -11,9 +11,6 @@ export function MarketingNav({ cta = "Book a demo" }: { cta?: string }) {
         <span className="text-lg font-bold">{APP_NAME}</span>
       </Link>
       <nav className="flex flex-wrap items-center justify-end gap-3 text-sm">
-        <Link href="/housecall-pro-alternative" className="hidden font-medium text-slate-300 hover:text-white sm:inline">
-          For roofers
-        </Link>
         <Link href="/tour" className="font-medium text-slate-300 hover:text-white">
           Guided tour
         </Link>
@@ -45,9 +42,6 @@ export function MarketingFooter() {
           <span>{APP_NAME}</span>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
-          <Link href="/housecall-pro-alternative" className="hover:text-slate-300">
-            Housecall Pro alternative
-          </Link>
           <Link href="/roofing-estimate-photos" className="hover:text-slate-300">
             Estimate photos
           </Link>

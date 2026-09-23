@@ -111,9 +111,6 @@ export default async function LandingPage() {
             )}
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm">
-            <Link href="/housecall-pro-alternative" className="text-orange-400 hover:underline">
-              Housecall Pro alternative for roofers
-            </Link>
             <Link href="/roofing-estimate-photos" className="text-orange-400 hover:underline">
               Estimates with photos
             </Link>
