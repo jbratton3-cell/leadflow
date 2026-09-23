@@ -18,6 +18,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// PayPal's dashboard may validate the URL before the webhook credentials are
+// installed. Keep that health check public; actual events still require a
+// verified PayPal signature in POST below.
+export async function GET() {
+  return NextResponse.json({ ok: true, service: "LeadFlow PayPal webhook" });
+}
+
 type PayPalWebhookEvent = {
   id?: string;
   event_type?: string;
