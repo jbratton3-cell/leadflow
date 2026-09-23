@@ -80,6 +80,7 @@ async function insertAndSendInvoice(opts: {
   kind: "deposit" | "final";
   amount: number;
   contractTotal: number;
+  paymentChoice: "cash" | "card" | null;
   lead: Lead;
 }): Promise<void> {
   const number = await nextInvoiceNumber(opts.orgId);
@@ -98,6 +99,8 @@ async function insertAndSendInvoice(opts: {
     status: "draft",
     amount: opts.amount.toFixed(2),
     contractTotal: opts.contractTotal.toFixed(2),
+    paymentChoice: opts.paymentChoice,
+    choiceAt: opts.paymentChoice ? new Date() : null,
     publicToken: token,
     sentAt: new Date(),
   });
@@ -142,15 +145,15 @@ async function insertAndSendInvoice(opts: {
 /* ------------------------- automatic triggers ------------------------- */
 
 // Called when a customer accepts an estimate.
-// financing=true → they chose financing at acceptance: alert the office, no deposit invoice.
-// financing=false → they chose to pay directly: auto-send the 50% deposit invoice.
+// Financing alerts the office and creates no deposit invoice. Cash/check uses
+// the discounted contract total; card/PayPal uses the standard list total.
 export async function handleEstimateAccepted(
   est: Estimate,
   lead: Lead,
   saleId: number | null,
-  financing: boolean
+  paymentChoice: "cash" | "card" | "financed"
 ): Promise<void> {
-  if (financing) {
+  if (paymentChoice === "financed") {
     await notifyOfficeOfFinancing({
       customerName: personName(lead.firstName, lead.lastName, "there"),
       number: est.number,
@@ -174,7 +177,12 @@ export async function handleEstimateAccepted(
     .limit(1);
   if (existing) return; // already invoiced for this estimate
 
-  const total = contractPrice(est.total, est.cashDiscountPercent, false, est.cashPrice);
+  const total = contractPrice(
+    est.total,
+    est.cashDiscountPercent,
+    paymentChoice === "card",
+    est.cashPrice,
+  );
   if (total <= 0) return;
 
   const deposit = +(total * 0.5).toFixed(2);
@@ -187,6 +195,7 @@ export async function handleEstimateAccepted(
     kind: "deposit",
     amount: deposit,
     contractTotal: total,
+    paymentChoice,
     lead,
   });
   revalidatePath("/invoices");
@@ -218,6 +227,7 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
 
   // Skip auto-invoice when the whole deal was financed up front.
   let contract = Number(job.contractAmount ?? 0);
+  let paymentChoice: "cash" | "card" | null = null;
   if (job.saleId) {
     const [sale] = await db
       .select()
@@ -226,6 +236,7 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
       .limit(1);
     if (sale) {
       if (sale.financeType === "financed") return;
+      paymentChoice = sale.financeType === "card" ? "card" : "cash";
       contract = Number(sale.amount);
     }
   }
@@ -245,6 +256,7 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
   );
   if (depositInvoice) {
     contract = Number(depositInvoice.contractTotal);
+    paymentChoice = depositInvoice.paymentChoice === "card" ? "card" : "cash";
   }
   if (contract <= 0) return;
 
@@ -264,6 +276,7 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
     kind: "final",
     amount: remaining,
     contractTotal: contract,
+    paymentChoice,
     lead,
   });
   revalidatePath("/invoices");
@@ -360,7 +373,12 @@ export async function recordDepositPaid(formData: FormData) {
     .limit(1);
   if (!est || est.status !== "accepted") return;
 
-  const total = contractPrice(est.total, est.cashDiscountPercent, est.paymentChoice === "financed", est.cashPrice);
+  const total = contractPrice(
+    est.total,
+    est.cashDiscountPercent,
+    est.paymentChoice === "financed" || est.paymentChoice === "card",
+    est.cashPrice,
+  );
   if (total <= 0) return;
   const normalizedAmount = rawAmount.replace(/[$,\s]/g, "");
   const defaultAmount = +(total * 0.5).toFixed(2);
@@ -474,8 +492,8 @@ export async function markInvoiceViewed(token: string) {
 
 export async function customerInvoiceChoice(formData: FormData) {
   const token = (formData.get("token") ?? "").toString().trim();
-  const choice = (formData.get("choice") ?? "").toString().trim(); // direct | finance
-  if (!token || (choice !== "direct" && choice !== "finance")) return;
+  const choice = (formData.get("choice") ?? "").toString().trim(); // cash | finance (legacy: direct)
+  if (!token || !["cash", "direct", "finance"].includes(choice)) return;
 
   const [inv] = await db
     .select()
@@ -484,18 +502,19 @@ export async function customerInvoiceChoice(formData: FormData) {
     .limit(1);
   if (!inv) return;
   if (inv.status === "paid" || inv.status === "void" || inv.paymentChoice) return;
+  const normalizedChoice = choice === "direct" ? "cash" : choice;
 
   await db
     .update(invoices)
     .set({
-      paymentChoice: choice,
+      paymentChoice: normalizedChoice,
       choiceAt: new Date(),
-      status: choice === "finance" ? "financed" : inv.status,
+      status: normalizedChoice === "finance" ? "financed" : inv.status,
       updatedAt: new Date(),
     })
     .where(eq(invoices.id, inv.id));
 
-  if (choice === "finance") {
+  if (normalizedChoice === "finance") {
     const [lead] = await db
       .select()
       .from(leads)

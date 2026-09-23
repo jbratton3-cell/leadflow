@@ -6,6 +6,8 @@ import { markInvoiceViewed, customerInvoiceChoice } from "@/lib/invoice-actions"
 import { getSessionUser } from "@/lib/auth";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
 import { WISETACK_PREQUAL_URL } from "@/components/WisetackPrequalNote";
+import PayPalInvoiceCheckout from "@/components/PayPalInvoiceCheckout";
+import { paypalMode, paypalPublicClientId } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,8 @@ export default async function PublicInvoicePage({
   const decided = Boolean(inv.paymentChoice);
   const paid = inv.status === "paid";
   const financed = inv.status === "financed";
+  const paypalClientId = paypalPublicClientId();
+  const payingOnline = inv.paymentChoice === "card" && !paid && !financed;
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -131,14 +135,37 @@ export default async function PublicInvoicePage({
               your financing application. No payment is needed right now.
             </div>
           )}
-          {decided && inv.paymentChoice === "direct" && !paid && (
+          {decided && (inv.paymentChoice === "cash" || inv.paymentChoice === "direct") && !paid && (
             <div className="bg-sky-50 px-6 py-3 text-sm font-semibold text-sky-700">
-              Thanks! We&apos;ve noted you&apos;re paying this directly. Our office will
-              reach out to arrange payment, or feel free to call us.
+              Thanks! We&apos;ve noted you&apos;re paying by cash or check. Our office will
+              reach out to coordinate payment.
+            </div>
+          )}
+          {inv.paypalStatus === "PENDING" && !paid && (
+            <div className="bg-amber-50 px-6 py-3 text-sm font-semibold text-amber-800">
+              PayPal is still processing this payment. We&apos;ll update the invoice as soon as it clears.
             </div>
           )}
 
-          {/* Pay / Finance choice — final invoices only */}
+          {/* Card / PayPal checkout for the standard-price payment route */}
+          {payingOnline && (
+            <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
+              {paypalClientId ? (
+                <PayPalInvoiceCheckout
+                  clientId={paypalClientId}
+                  token={token}
+                  amountLabel={money(inv.amount)}
+                  sandbox={paypalMode() === "sandbox"}
+                />
+              ) : (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Online checkout is temporarily unavailable. Please contact our office before sending payment.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pay / Finance choice — legacy final invoices only */}
           {inv.kind === "final" && !paid && !financed && !decided && (
             <div className="border-t border-slate-100 bg-slate-50 px-6 py-5">
               <div className="mb-3 text-sm font-semibold text-slate-700">
@@ -147,9 +174,9 @@ export default async function PublicInvoicePage({
               <div className="flex flex-wrap gap-3">
                 <form action={customerInvoiceChoice}>
                   <input type="hidden" name="token" value={token} />
-                  <input type="hidden" name="choice" value="direct" />
+                  <input type="hidden" name="choice" value="cash" />
                   <button className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-                    Pay This Amount
+                    Pay by Cash or Check
                   </button>
                 </form>
                 <form action={customerInvoiceChoice}>
@@ -175,12 +202,11 @@ export default async function PublicInvoicePage({
             </div>
           )}
 
-          {/* Deposit invoices: simple payment note, no choices */}
-          {inv.kind !== "final" && !paid && !financed && (
+          {/* Cash/check deposit invoices: office coordinates collection. */}
+          {inv.kind !== "final" && !paid && !financed && inv.paymentChoice !== "card" && (
             <div className="border-t border-slate-100 bg-slate-50 px-6 py-5 text-sm text-slate-500">
               <span className="font-medium text-slate-700">This down payment is due upon receipt.</span>{" "}
-              Our office will reach out to arrange payment — or feel free to call us to
-              pay by card.
+              Our office will reach out to coordinate your cash or check payment.
             </div>
           )}
 

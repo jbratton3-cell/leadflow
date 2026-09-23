@@ -156,6 +156,9 @@ export default async function InvoicesPage() {
                       {inv.paymentChoice === "finance" && (
                         <div className="text-xs text-amber-600">wants financing</div>
                       )}
+                      {inv.paymentChoice === "card" && (
+                        <div className="text-xs text-blue-600">card / PayPal</div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="font-semibold text-slate-800">{money(inv.amount)}</div>
@@ -185,6 +188,7 @@ export default async function InvoicesPage() {
                             className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
                           >
                             <option value="card">Card</option>
+                            <option value="paypal">PayPal</option>
                             <option value="cash">Cash</option>
                             <option value="check">Check</option>
                             <option value="ach">ACH</option>

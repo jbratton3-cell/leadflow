@@ -199,8 +199,9 @@ export const REHASHABLE_REASONS = DEAD_REASONS.filter((d) => d.rehash).map(
 
 export const FINANCE_TYPES = [
   { key: "cash", label: "Cash" },
-  { key: "financed", label: "Financed" },
   { key: "check", label: "Check" },
+  { key: "card", label: "Card / PayPal" },
+  { key: "financed", label: "Financed" },
 ] as const;
 
 export const ESTIMATE_STATUSES = [
@@ -252,11 +253,11 @@ export function cashSavings(
 export function contractPrice(
   listTotal: number | string,
   percent: number | string | null | undefined,
-  financing: boolean,
+  useListPrice: boolean,
   explicitCash?: number | string | null
 ): number {
   const list = +(typeof listTotal === "string" ? parseFloat(listTotal) : listTotal || 0).toFixed(2);
-  return financing ? list : cashPrice(list, percent, explicitCash);
+  return useListPrice ? list : cashPrice(list, percent, explicitCash);
 }
 
 export function hasCashOffer(

@@ -3,18 +3,23 @@
 import { useState } from "react";
 import { markEstimateStatus } from "@/lib/estimate-actions";
 
+type PaymentIntent = "cash" | "card" | "finance";
+
 export default function OfficeAcceptForm({
   estimateId,
   listTotal,
   cashTotal,
   cashPct,
+  cardPaymentsEnabled,
 }: {
   estimateId: number;
   listTotal: string;
   cashTotal: string;
   cashPct: number;
+  cardPaymentsEnabled: boolean;
 }) {
-  const [financing, setFinancing] = useState(false);
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntent>("cash");
+  const financing = paymentIntent === "finance";
 
   return (
     <form
@@ -24,20 +29,22 @@ export default function OfficeAcceptForm({
       <input type="hidden" name="id" value={estimateId} />
       <input type="hidden" name="status" value="accepted" />
 
-      <label className="flex items-start gap-2 text-xs text-slate-600">
-        <input
-          type="checkbox"
-          name="financing"
-          checked={financing}
-          onChange={(e) => setFinancing(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-amber-600"
-        />
-        <span>
-          Customer chose financing ({listTotal})
-          <span className="block text-slate-400">
-            Leave unchecked for cash {cashPct > 0 ? `(${cashTotal}, 50/50)` : ""}
-          </span>
-        </span>
+      <label className="block text-xs font-medium text-slate-600">
+        Customer&apos;s payment route
+        <select
+          name="paymentIntent"
+          value={paymentIntent}
+          onChange={(e) => setPaymentIntent(e.target.value as PaymentIntent)}
+          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700"
+        >
+          <option value="cash">
+            Cash / check {cashPct > 0 ? `(${cashTotal}, 50/50)` : `(${listTotal})`}
+          </option>
+          {cardPaymentsEnabled && (
+            <option value="card">Card / PayPal ({listTotal}, 50/50)</option>
+          )}
+          <option value="finance">Financing ({listTotal})</option>
+        </select>
       </label>
 
       {!financing && (
@@ -50,7 +57,9 @@ export default function OfficeAcceptForm({
           <span>
             Also email the customer their 50% deposit invoice
             <span className="block text-slate-400">
-              Leave unchecked if the deposit was already collected
+              {paymentIntent === "card"
+                ? "The invoice will include secure card and PayPal checkout"
+                : "Leave unchecked if the cash/check deposit was already collected"}
             </span>
           </span>
         </label>

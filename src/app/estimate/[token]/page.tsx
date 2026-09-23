@@ -12,6 +12,7 @@ import PrintButton from "@/components/PrintButton";
 import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
 import { getEstimateRepContact } from "@/lib/queries";
 import { WisetackPrequalNote } from "@/components/WisetackPrequalNote";
+import { paypalPublicClientId } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function PublicEstimatePage({
   const cashPct = Number(est.cashDiscountPercent);
   const cashTotal = cashPrice(est.total, cashPct, est.cashPrice);
   const showCash = hasCashOffer(est.total, cashPct, est.cashPrice);
+  const cardPaymentsEnabled = Boolean(paypalPublicClientId());
   const rep = await getEstimateRepContact({
     orgId: est.orgId,
     assignedRepId: lead?.assignedRepId,
@@ -251,13 +253,16 @@ export default async function PublicEstimatePage({
                 </div>
               )}
               <div className="flex justify-between border-t border-slate-200 pt-2">
-                <span className="font-semibold text-slate-800">List / financed total</span>
+                <span className="font-semibold text-slate-800">Standard price</span>
                 <span className="text-xl font-bold text-slate-900">{money(est.total)}</span>
               </div>
+              <p className="text-right text-xs text-slate-500">
+                {cardPaymentsEnabled ? "Card, PayPal, or financing" : "Financing"}
+              </p>
               {showCash && (
                 <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5">
                   <div className="flex justify-between">
-                    <span className="font-semibold text-emerald-800">Cash price</span>
+                    <span className="font-semibold text-emerald-800">Cash / check price</span>
                     <span className="text-xl font-bold text-emerald-800">{money(cashTotal)}</span>
                   </div>
                   <p className="mt-1 text-xs text-emerald-700">
@@ -322,7 +327,7 @@ export default async function PublicEstimatePage({
                   />
                   <span>
                     <span className="block text-sm font-semibold text-slate-800">
-                      Pay cash — {showCash ? money(cashTotal) : money(est.total)}
+                      Pay by cash or check — {showCash ? money(cashTotal) : money(est.total)}
                     </span>
                     <span className="block text-sm text-slate-500">
                       {showCash
@@ -331,6 +336,24 @@ export default async function PublicEstimatePage({
                     </span>
                   </span>
                 </label>
+                {cardPaymentsEnabled && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-400">
+                    <input
+                      type="radio"
+                      name="paymentIntent"
+                      value="card"
+                      className="mt-1 h-4 w-4 accent-blue-600"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-800">
+                        Pay by card or PayPal — {money(est.total)}
+                      </span>
+                      <span className="block text-sm text-slate-500">
+                        Standard price — 50% deposit now, remainder when the job is complete.
+                      </span>
+                    </span>
+                  </label>
+                )}
                 <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-amber-400">
                   <input
                     type="radio"

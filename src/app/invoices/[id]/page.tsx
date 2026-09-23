@@ -123,8 +123,21 @@ export default async function InvoiceDetailPage({
                 )}
                 {inv.paymentChoice && (
                   <div className="capitalize">
-                    Customer chose: <span className="font-medium">{inv.paymentChoice === "finance" ? "financing" : "pay directly"}</span>
+                    Customer chose:{" "}
+                    <span className="font-medium">
+                      {inv.paymentChoice === "finance"
+                        ? "financing"
+                        : inv.paymentChoice === "card"
+                          ? "card / PayPal"
+                          : "cash / check"}
+                    </span>
                     {inv.choiceAt ? ` (${fmtDate(inv.choiceAt)})` : ""}
+                  </div>
+                )}
+                {inv.paypalCaptureId && (
+                  <div className="mt-1 text-xs normal-case text-slate-400">
+                    PayPal capture {inv.paypalCaptureId}
+                    {inv.paypalFeeAmount ? ` · fee ${money(inv.paypalFeeAmount)}` : ""}
                   </div>
                 )}
               </div>
@@ -284,6 +297,7 @@ export default async function InvoiceDetailPage({
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
                   <option value="card">Card</option>
+                  <option value="paypal">PayPal</option>
                   <option value="cash">Cash</option>
                   <option value="check">Check</option>
                   <option value="ach">ACH</option>

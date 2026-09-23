@@ -256,7 +256,7 @@ export const sales = pgTable(
     salesRepId: integer("sales_rep_id"),
     productId: integer("product_id"),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
-    // finance: cash | financed | check
+    // payment route: cash | card | financed | check
     financeType: varchar("finance_type", { length: 30 }).default("cash"),
     soldAt: timestamp("sold_at").notNull().defaultNow(),
     notes: text("notes"),
@@ -365,7 +365,7 @@ export const estimates = pgTable(
       .default("0"),
     // Rep-entered cash contract amount (50/50). When set, this is the cash price shown.
     cashPrice: numeric("cash_price", { precision: 12, scale: 2 }),
-    // cash | financed — set when accepted
+    // cash | card | financed — set when accepted
     paymentChoice: varchar("payment_choice", { length: 20 }),
   },
   (t) => [index("estimates_org_idx").on(t.orgId)]
@@ -397,7 +397,7 @@ export const invoices = pgTable("invoices", {
   status: varchar("status", { length: 20 }).notNull().default("sent"),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
   contractTotal: numeric("contract_total", { precision: 12, scale: 2 }).notNull().default("0"),
-  // customer's choice on the invoice page: direct | finance
+  // customer's route: cash | card | finance (legacy value: direct)
   paymentChoice: varchar("payment_choice", { length: 20 }),
   choiceAt: timestamp("choice_at"),
   publicToken: text("public_token").notNull().unique(),
@@ -409,9 +409,19 @@ export const invoices = pgTable("invoices", {
   notes: text("notes"),
   qbInvoiceId: varchar("qb_invoice_id", { length: 40 }),
   qbPaymentId: varchar("qb_payment_id", { length: 40 }),
+  paypalOrderId: varchar("paypal_order_id", { length: 40 }),
+  paypalCaptureId: varchar("paypal_capture_id", { length: 40 }),
+  paypalStatus: varchar("paypal_status", { length: 30 }),
+  paypalPaymentSource: varchar("paypal_payment_source", { length: 30 }),
+  paypalPayerEmail: varchar("paypal_payer_email", { length: 190 }),
+  paypalFeeAmount: numeric("paypal_fee_amount", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => [index("invoices_org_idx").on(t.orgId)]);
+}, (t) => [
+  index("invoices_org_idx").on(t.orgId),
+  uniqueIndex("invoices_paypal_order_unique").on(t.paypalOrderId),
+  uniqueIndex("invoices_paypal_capture_unique").on(t.paypalCaptureId),
+]);
 
 export type Invoice = typeof invoices.$inferSelect;
 

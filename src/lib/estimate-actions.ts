@@ -18,6 +18,7 @@ import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 import { signedEstimateEmailHtml } from "@/lib/notify";
 
 const APP_NAME_FALLBACK = "LeadFlow";
+type EstimatePaymentChoice = "cash" | "card" | "financed";
 import { BUSINESS_NAME, personName, contractPrice } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
@@ -414,8 +415,14 @@ export async function markEstimateStatus(formData: FormData) {
   const { orgId } = await requireAccess("estimates");
   const id = Number(formData.get("id"));
   const status = req(formData.get("status")); // accepted | declined
-  const financing = formData.get("financing") === "on";
-  const sendDeposit = formData.get("sendDeposit") === "on" && !financing;
+  const paymentIntent = req(formData.get("paymentIntent"));
+  const paymentChoice: EstimatePaymentChoice =
+    paymentIntent === "card"
+      ? "card"
+      : paymentIntent === "finance" || formData.get("financing") === "on"
+        ? "financed"
+        : "cash";
+  const sendDeposit = formData.get("sendDeposit") === "on" && paymentChoice !== "financed";
   if (status !== "accepted" && status !== "declined") return;
 
   const [est] = await db
@@ -426,10 +433,14 @@ export async function markEstimateStatus(formData: FormData) {
   if (!est) return;
   if (est.status === "accepted" || est.status === "declined") return;
 
-  const paymentChoice = financing ? "financed" : "cash";
   await db
     .update(estimates)
-    .set({ status, paymentChoice, respondedAt: new Date(), updatedAt: new Date() })
+    .set({
+      status,
+      paymentChoice: status === "accepted" ? paymentChoice : null,
+      respondedAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(eq(estimates.id, id));
 
   if (status === "accepted") {
@@ -440,7 +451,7 @@ export async function markEstimateStatus(formData: FormData) {
       .limit(1);
     if (lead) {
       // No automatic invoice email unless the office explicitly asks for it.
-      await applyAcceptanceBookkeeping(est, lead, financing, sendDeposit);
+      await applyAcceptanceBookkeeping(est, lead, paymentChoice, sendDeposit);
     }
   }
 
@@ -553,7 +564,7 @@ export async function markEstimateViewed(token: string) {
 async function applyAcceptanceBookkeeping(
   est: Estimate,
   lead: Lead,
-  financing: boolean,
+  paymentChoice: EstimatePaymentChoice,
   triggerInvoices: boolean
 ): Promise<void> {
       const [existingSale] = await db
@@ -563,7 +574,12 @@ async function applyAcceptanceBookkeeping(
         .limit(1);
 
       let saleId = existingSale?.id ?? null;
-      const amount = contractPrice(est.total, est.cashDiscountPercent, financing, est.cashPrice);
+      const amount = contractPrice(
+        est.total,
+        est.cashDiscountPercent,
+        paymentChoice !== "cash",
+        est.cashPrice,
+      );
       if (!existingSale) {
         const inserted = await db
           .insert(sales)
@@ -573,7 +589,7 @@ async function applyAcceptanceBookkeeping(
             salesRepId: lead.assignedRepId,
             productId: lead.productId,
             amount: String(amount),
-            financeType: financing ? "financed" : "cash",
+            financeType: paymentChoice,
             soldAt: new Date(),
             notes: `Auto-created from accepted estimate ${est.number}.`,
           })
@@ -633,7 +649,7 @@ async function applyAcceptanceBookkeeping(
 
       // Auto-invoice: deposit invoice (paying directly) or financing alert.
       if (triggerInvoices) {
-        await handleEstimateAccepted(est, lead, saleId, financing);
+        await handleEstimateAccepted(est, lead, saleId, paymentChoice);
       }
     
 }
@@ -641,7 +657,9 @@ async function applyAcceptanceBookkeeping(
 export async function respondToEstimate(formData: FormData) {
   const token = req(formData.get("token"));
   const decision = req(formData.get("decision")); // accept | decline
-  const financing = req(formData.get("paymentIntent")) === "finance";
+  const paymentIntent = req(formData.get("paymentIntent"));
+  const paymentChoice: EstimatePaymentChoice =
+    paymentIntent === "card" ? "card" : paymentIntent === "finance" ? "financed" : "cash";
   const [est] = await db
     .select()
     .from(estimates)
@@ -653,7 +671,12 @@ export async function respondToEstimate(formData: FormData) {
   const status = decision === "accept" ? "accepted" : "declined";
   await db
     .update(estimates)
-    .set({ status, respondedAt: new Date(), updatedAt: new Date() })
+    .set({
+      status,
+      paymentChoice: status === "accepted" ? paymentChoice : null,
+      respondedAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(eq(estimates.id, est.id));
 
   if (status === "accepted") {
@@ -664,7 +687,7 @@ export async function respondToEstimate(formData: FormData) {
       .limit(1);
 
     if (lead) {
-      await applyAcceptanceBookkeeping(est, lead, financing, true);
+      await applyAcceptanceBookkeeping(est, lead, paymentChoice, true);
     }
   }
 

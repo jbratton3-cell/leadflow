@@ -207,9 +207,9 @@ export async function buildSignedEstimatePdf(opts: {
   y -= 4;
   page.drawLine({ start: { x: W - M - 250, y }, end: { x: W - M, y }, thickness: 1, color: INK });
   y -= 16;
-  totalRow("List / financed", money(est.total), true);
+  totalRow("Standard price", money(est.total), true);
   if (hasCashOffer(est.total, est.cashDiscountPercent, est.cashPrice)) {
-    totalRow("Cash (50/50)", money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice)), true);
+    totalRow("Cash / check (50/50)", money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice)), true);
   }
 
   y -= 6;
