@@ -1,6 +1,46 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Aug 26, 2026*
+*Last updated: Sep 24, 2026*
+
+## CURRENT OPERATING STATE — SEP 24, 2026
+
+### Standing execution protocol
+- A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
+- Carry all accepted requirements forward during revisions. A new instruction is a delta, not permission to drop earlier constraints. Inspect surrounding layout/functionality and clean up obvious ripple effects without waiting to be told.
+- User gives instructions one step at a time. New branch tasks do not cancel the active task. Live rep/customer blockers take immediate priority; checkpoint the original task, resolve the blocker fully, then resume automatically.
+- Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.”
+
+### PayPal/card payments — LIVE and end-to-end verified Sep 24
+- Live customer flow: accepted estimate with **Card / PayPal** at standard/list price -> automatic 50% deposit invoice -> PayPal or card checkout -> invoice auto-marks paid -> payment/fee ledger -> QuickBooks payment -> customer PDF receipt. Final invoice repeats automatically on job completion.
+- Pricing decision: **card, PayPal, and financing use the existing standard/list price; cash/check keeps the existing 10% discount.** No separate 3% surcharge or third price tier.
+- Sandbox passed: PayPal-wallet path, card-entry form, deposit invoice, final invoice, fee capture, automatic QuickBooks sandbox records, and receipt PDFs. Temporary LF test records were deleted after verification.
+- Live credentials + live webhook are installed in Vercel project `leadflow-k926`; real-mode order creation verified without a capture. Live payments are enabled.
+- Relevant commits: `3966fb0` (checkout/API/schema/estimate pricing), `ce47854` (public webhook health validation). PayPal columns/indexes are live in Neon; schema script: `scripts/paypal-schema.sql`.
+- Never put live PayPal credentials in the ledger or chat. User entered live Client ID/Secret/Webhook ID directly in Vercel.
+
+### Public contact flow — LIVE
+- LeadFlow Facebook Contact Us button opens `https://www.leadflowcrm.info/contact`.
+- Public contact submissions email `contact@leadflowcrm.info` (forwarded to the LeadFlow Gmail). Owner alerts also exist for trial signup.
+- Invisible contact-form spam protection is live and verified: timing trap, two honeypots, and targeted solicitation/link filtering. Legitimate submission + email tested end to end.
+- Relevant commits: `e43c7ad`, `e7569e5`, `1d363f6`, `3b41dd3`.
+
+### Facebook pages
+- LeadFlow: categories corrected; Contact Us button -> `/contact`; website link already present. No address/hours (online software). Page setup complete.
+- JMB: primary category **Website Designer** only; **Call Now** button tested; website corrected from old `.site` to `https://jmbcreative.org`; bio now: “Albany web design for small businesses. Professional websites built to turn visitors into calls.” No home address/hours.
+- JMB/LeadFlow schedule rule: five posts per page per Thu-Wed block; intended mix is three memes + two text/conversion posts per page, with humor + pivot content. Never schedule a meme for both pages on the same date; preserve approved meme order. Every item needs Page caption, personal-share text, and relevant-group text.
+- **NO-REPEAT rule:** cross-check every meme against Buffer Sent/Published history before approving a schedule. Known published LeadFlow memes include **Estimate Clipboard** (published before Sep 24) and **11 PM Paperwork** (published Sep 23; current early engagement leader). This is not a complete published inventory—Buffer is the source of truth and must be audited before the next rotation is approved.
+- Known completed JMB memes before the current rotation: Under Construction, Facebook Page and a Prayer, One Good Google Review, and The DIY Spiral. JMB Competitor’s Website published Sep 24 morning.
+- Uploaded rotation PDF `UPDATED JMB LeadFlow Facebook Rotation Sep 24-Oct 7 2026.pdf` is **NOT APPROVED YET**: it repeats Estimate Clipboard, only two of five LF text posts carry the founding offer, references obsolete asset filenames, contains audience-facing group-rule instructions, and uses “I’m building LeadFlow” instead of launched-product language. Sep 24 afternoon post was missed; user is considering skipping it and restarting Sep 25.
+- Founding offer source of truth: first five companies get setup waived (up to $4,000 value on current pricing page). Keep terms consistent; do not invent new tiers.
+
+### Prospecting / Craigslist
+- First five personalized LeadFlow emails were scheduled for Thu Sep 24 in recipient-local morning windows. Contact records were independently checked; Mac Wright corrected to `mwright@vbrinc.com`, Justin Gier corrected to `justin@cabinetiq.com`. Emails name/link LeadFlow, assume no CRM status, and rely on Gmail’s saved LeadFlow signature (no JMB in body/signature copy).
+- 11 AM Sep 24 CL scan: clean—no verified, reply-worthy lead. Nationwide actual-post pages were pulled; local-only, low-quality, duplicated harvesting templates, and suspicious video/resume requests were rejected. Next scan remains ~5:30 PM under CL protocol v2.
+
+### BuildPros website
+- Kevin approved all audit fixes that do not need his input. Work is blocked only on access.
+- Site is WordPress on Hostinger infrastructure (LiteSpeed; Hostinger-specific plugins); domain/DNS is controlled at GoDaddy. Original developer appears to be Steve Hendershaw / Ocean Blue Digital (`steve@oceanbluedigital.com`, 917-382-5957), likely providing managed/reseller hosting.
+- Wait until Kevin is present. Kevin should directly authorize Steve to create a separate WordPress Administrator for `jmbalbany@gmail.com` and clarify the current hosting/maintenance arrangement. Do not guess passwords, reset access, change DNS, or request a transfer before reviewing the agreement.
 
 ## BRANDING & DOMAIN (decided Aug 27 night)
 - **LeadFlow = standalone brand/future business** — NOT under JMB umbrella. JMB appears only as SEO/backlink credit: "Developed by JMB Business Solutions" (footer link + about page)
