@@ -9,6 +9,7 @@ import { money, fmtDate, personName } from "@/lib/constants";
 import { markInvoicePaid, sendPaymentReceipt, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists, linkQbInvoice } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
+import InvoiceResendButton from "@/components/InvoiceResendButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ qb?: string; receipt?: string }>;
+  searchParams: Promise<{ qb?: string; receipt?: string; email?: string }>;
 }) {
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
@@ -289,6 +290,26 @@ export default async function InvoiceDetailPage({
           {active && (
             <Card className="p-5">
               <h2 className="font-semibold text-slate-800">Actions</h2>
+              {q.email === "sent" && (
+                <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  Invoice email sent to {lead?.email}.
+                </p>
+              )}
+              {q.email === "failed" && (
+                <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  The invoice email could not be sent. No delivery was recorded; try again or contact support.
+                </p>
+              )}
+              {q.email === "missing-email" && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  This customer has no email address on file. Add one to the prospect record, then retry.
+                </p>
+              )}
+              {q.email === "unavailable" && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  This invoice cannot be resent because it is paid, void, or no longer available.
+                </p>
+              )}
               <form action={markInvoicePaid} className="mt-3 space-y-2">
                 <input type="hidden" name="id" value={inv.id} />
                 <select
@@ -310,9 +331,7 @@ export default async function InvoiceDetailPage({
               <div className="mt-3 flex gap-2">
                 <form action={resendInvoice} className="flex-1">
                   <input type="hidden" name="id" value={inv.id} />
-                  <button className="w-full rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600">
-                    Resend Email
-                  </button>
+                  <InvoiceResendButton />
                 </form>
                 <form action={voidInvoice} className="flex-1">
                   <input type="hidden" name="id" value={inv.id} />

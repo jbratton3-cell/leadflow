@@ -645,19 +645,25 @@ export async function voidInvoice(formData: FormData) {
 export async function resendInvoice(formData: FormData) {
   const { orgId } = await requireUser();
   const id = Number(formData.get("id"));
+  if (!id) redirect("/invoices");
+
   const [inv] = await db
     .select()
     .from(invoices)
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
     .limit(1);
-  if (!inv || inv.status === "paid" || inv.status === "void") return;
+  if (!inv || inv.status === "paid" || inv.status === "void") {
+    redirect(`/invoices/${id}?email=unavailable`);
+  }
 
   const [lead] = await db
     .select()
     .from(leads)
     .where(and(eq(leads.id, inv.leadId), eq(leads.orgId, orgId)))
     .limit(1);
-  if (!lead?.email) return;
+  if (!lead?.email) {
+    redirect(`/invoices/${id}?email=missing-email`);
+  }
 
   const link = `${getBaseUrl()}/invoice/${inv.publicToken}`;
   const sent = await sendEmail({
@@ -682,7 +688,9 @@ export async function resendInvoice(formData: FormData) {
         status: inv.status === "draft" ? "sent" : inv.status,
         updatedAt: new Date(),
       })
-      .where(eq(invoices.id, inv.id));
+      .where(and(eq(invoices.id, inv.id), eq(invoices.orgId, orgId)));
   }
   revalidatePath("/invoices");
+  revalidatePath(`/invoices/${id}`);
+  redirect(`/invoices/${id}?email=${sent ? "sent" : "failed"}`);
 }

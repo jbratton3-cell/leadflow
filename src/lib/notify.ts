@@ -3,9 +3,11 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 
-const PRODUCT_DOMAIN = process.env.APP_URL
-  ? new URL(process.env.APP_URL).hostname
-  : "leadflowcrm.info";
+const PRODUCT_DOMAIN = (
+  process.env.APP_URL
+    ? new URL(process.env.APP_URL).hostname
+    : "leadflowcrm.info"
+).replace(/^www\./, "");
 
 let logoCache: Buffer | null = null;
 function buildprosLogo(): Buffer | null {
