@@ -222,7 +222,8 @@ export function money(value: number | string | null | undefined): string {
   return (n || 0).toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
