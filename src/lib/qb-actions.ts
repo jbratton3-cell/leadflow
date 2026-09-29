@@ -3,9 +3,9 @@
 import { requireAccess } from "@/lib/auth";
 import { disconnectQb, ensureQbColumns, qbPost, qbQuery } from "@/lib/quickbooks";
 import { db } from "@/db";
-import { invoices, leads } from "@/db/schema";
+import { invoices, leads, properties } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { personName } from "@/lib/constants";
+import { accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -18,7 +18,14 @@ export async function disconnectQbAction() {
 type QbQuery<T> = { QueryResponse?: T };
 
 async function findOrCreateCustomer(orgId: number, lead: typeof leads.$inferSelect): Promise<string | null> {
-  const name = personName(lead.firstName, lead.lastName, "Customer").replace(/'/g, "\\'");
+  const displayName = accountDisplayName(
+    lead.firstName,
+    lead.lastName,
+    lead.company,
+    lead.accountType,
+    "Customer",
+  );
+  const name = displayName.replace(/'/g, "\\'");
   const found = await qbQuery<QbQuery<{ Customer?: { Id: string }[] }>>(
     orgId,
     `select Id from Customer where DisplayName = '${name}'`
@@ -27,7 +34,10 @@ async function findOrCreateCustomer(orgId: number, lead: typeof leads.$inferSele
   if (existing) return existing;
 
   const created = await qbPost<{ Customer?: { Id: string } }>(orgId, "customer", {
-    DisplayName: personName(lead.firstName, lead.lastName, "Customer").slice(0, 500),
+    DisplayName: displayName.slice(0, 500),
+    CompanyName: lead.company?.slice(0, 100),
+    GivenName: lead.firstName?.slice(0, 100),
+    FamilyName: lead.lastName?.slice(0, 100),
     PrimaryEmailAddr: lead.email ? { Address: lead.email } : undefined,
     PrimaryPhone: lead.phone ? { FreeFormNumber: lead.phone } : undefined,
     BillAddr: lead.address
@@ -48,6 +58,47 @@ async function serviceItemId(orgId: number): Promise<string> {
     `select Id from Item where Name = 'Services'`
   );
   return found?.QueryResponse?.Item?.[0]?.Id ?? "1";
+}
+
+async function invoiceServiceLocation(
+  orgId: number,
+  propertyId: number | null,
+): Promise<typeof properties.$inferSelect | null> {
+  if (!propertyId) return null;
+  const [location] = await db
+    .select()
+    .from(properties)
+    .where(and(eq(properties.id, propertyId), eq(properties.orgId, orgId)))
+    .limit(1);
+  return location ?? null;
+}
+
+function qbShipAddress(location: typeof properties.$inferSelect | null, unitNumber: string | null) {
+  if (!location?.address) return undefined;
+  return {
+    Line1: location.address,
+    Line2: unitNumber ? `Unit ${unitNumber}` : undefined,
+    City: location.city ?? undefined,
+    CountrySubDivisionCode: location.state ?? undefined,
+    PostalCode: location.zip ?? undefined,
+  };
+}
+
+function invoiceDescription(
+  inv: typeof invoices.$inferSelect,
+  location: typeof properties.$inferSelect | null,
+): string {
+  const base =
+    inv.kind === "deposit"
+      ? `Deposit ${inv.number}`
+      : inv.kind === "final"
+        ? `Final payment ${inv.number}`
+        : `Invoice ${inv.number}`;
+  if (!location) return base;
+  const service = [serviceLocationLabel(location), serviceLocationAddress(location, inv.unitNumber)]
+    .filter(Boolean)
+    .join(" — ");
+  return `${base} · ${service}`.slice(0, 4000);
 }
 
 async function qbInvoiceByNumber(orgId: number, number: string): Promise<string | null> {
@@ -120,17 +171,14 @@ export async function pushInvoiceToQuickBooks(formData: FormData) {
 
   const itemId = await serviceItemId(orgId);
   const amount = Number(inv.amount) || 0;
-  const desc =
-    inv.kind === "deposit"
-      ? `Deposit ${inv.number}`
-      : inv.kind === "final"
-        ? `Final payment ${inv.number}`
-        : `Invoice ${inv.number}`;
+  const location = await invoiceServiceLocation(orgId, inv.propertyId);
+  const desc = invoiceDescription(inv, location);
 
   const created = await qbPost<{ Invoice?: { Id: string } }>(orgId, "invoice", {
     DocNumber: inv.number.slice(0, 21),
     CustomerRef: { value: customerId },
-    PrivateNote: `LeadFlow ${inv.number}`,
+    ShipAddr: qbShipAddress(location, inv.unitNumber),
+    PrivateNote: `LeadFlow ${inv.number}${location ? ` · ${serviceLocationLabel(location)}` : ""}`,
     Line: [
       {
         Amount: amount,
@@ -240,16 +288,13 @@ export async function syncInvoiceToQb(orgId: number, invoiceId: number): Promise
       if (!customerId) return;
       const itemId = await serviceItemId(orgId);
       const amount = Number(inv.amount) || 0;
-      const desc =
-        inv.kind === "deposit"
-          ? `Deposit ${inv.number}`
-          : inv.kind === "final"
-            ? `Final payment ${inv.number}`
-            : `Invoice ${inv.number}`;
+      const location = await invoiceServiceLocation(orgId, inv.propertyId);
+      const desc = invoiceDescription(inv, location);
       const created = await qbPost<{ Invoice?: { Id: string } }>(orgId, "invoice", {
         DocNumber: inv.number.slice(0, 21),
         CustomerRef: { value: customerId },
-        PrivateNote: `LeadFlow ${inv.number}`,
+        ShipAddr: qbShipAddress(location, inv.unitNumber),
+        PrivateNote: `LeadFlow ${inv.number}${location ? ` · ${serviceLocationLabel(location)}` : ""}`,
         Line: [
           {
             Amount: amount,

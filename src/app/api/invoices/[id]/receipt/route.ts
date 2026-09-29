@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { invoices, leads } from "@/db/schema";
+import { invoices, leads, properties } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth";
 import { buildPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
@@ -27,15 +27,25 @@ export async function GET(
     return NextResponse.json({ error: "A receipt is available only for paid invoices." }, { status: 404 });
   }
 
-  const [lead] = await db
-    .select()
-    .from(leads)
-    .where(and(eq(leads.id, invoice.leadId), eq(leads.orgId, user.orgId)))
-    .limit(1);
+  const [[lead], locationRows] = await Promise.all([
+    db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, invoice.leadId), eq(leads.orgId, user.orgId)))
+      .limit(1),
+    invoice.propertyId
+      ? db
+          .select()
+          .from(properties)
+          .where(and(eq(properties.id, invoice.propertyId), eq(properties.orgId, user.orgId)))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
 
   const pdfBytes = await buildPaymentReceiptPdf({
     invoice,
     lead: lead ?? null,
+    location: locationRows[0] ?? null,
     orgName: process.env.CRM_ORGANIZATION_NAME || "LeadFlow",
   });
 

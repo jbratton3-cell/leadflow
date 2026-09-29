@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { hcpPayments, invoices, jobs, sales, leads, products, reps } from "@/db/schema";
+import { hcpPayments, invoices, jobs, sales, leads, products, reps, properties } from "@/db/schema";
 import { and, desc, eq, sql, gte, ilike, or, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
@@ -7,7 +7,7 @@ import { deleteSale } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
-import { money, fmtDate, personName } from "@/lib/constants";
+import { money, fmtDate, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
 import {
   buildRevenueContracts,
   collectedStats,
@@ -49,6 +49,9 @@ export default async function SalesPage({
         ilike(leads.phone, like),
         ilike(leads.city, like),
         ilike(leads.zip, like),
+        ilike(properties.name, like),
+        ilike(properties.address, like),
+        ilike(properties.contactName, like),
         ilike(products.name, like),
         ilike(reps.name, like),
         ilike(sales.financeType, like),
@@ -73,13 +76,17 @@ export default async function SalesPage({
         sale: sales,
         firstName: leads.firstName,
         lastName: leads.lastName,
+        company: leads.company,
+        accountType: leads.accountType,
         city: leads.city,
         assignedRepId: leads.assignedRepId,
         productName: products.name,
         repName: reps.name,
+        property: properties,
       })
       .from(sales)
       .leftJoin(leads, eq(sales.leadId, leads.id))
+      .leftJoin(properties, eq(sales.propertyId, properties.id))
       .leftJoin(products, eq(sales.productId, products.id))
       .leftJoin(reps, eq(reps.id, effectiveRepId))
       .where(and(...saleConditions))
@@ -318,9 +325,11 @@ export default async function SalesPage({
                           href={`/leads/${r.sale.leadId}`}
                           className="font-semibold text-slate-800 hover:text-orange-600"
                         >
-                          {personName(r.firstName, r.lastName)}
+                          {accountDisplayName(r.firstName, r.lastName, r.company, r.accountType)}
                         </Link>
-                        <div className="text-xs text-slate-400">{r.city ?? "—"}</div>
+                        <div className="text-xs text-slate-400">
+                          {r.property ? serviceLocationLabel(r.property) : r.city ?? "—"}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {r.sale.productId ? prodMap.get(r.sale.productId)?.name ?? "—" : "—"}

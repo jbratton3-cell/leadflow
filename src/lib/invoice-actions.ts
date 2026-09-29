@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { hcpPayments, invoices, leads, sales, estimates, jobs } from "@/db/schema";
+import { hcpPayments, invoices, leads, sales, estimates, jobs, properties } from "@/db/schema";
 import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -15,7 +15,7 @@ import {
   paymentReceiptEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
-import { money, personName, contractPrice } from "@/lib/constants";
+import { money, personName, contractPrice, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { syncInvoiceToQb } from "@/lib/qb-actions";
 import { buildPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
 
@@ -77,6 +77,8 @@ async function insertAndSendInvoice(opts: {
   jobId: number | null;
   saleId: number | null;
   estimateId: number | null;
+  propertyId: number | null;
+  unitNumber: string | null;
   kind: "deposit" | "final";
   amount: number;
   contractTotal: number;
@@ -94,6 +96,8 @@ async function insertAndSendInvoice(opts: {
     jobId: opts.jobId,
     saleId: opts.saleId,
     estimateId: opts.estimateId,
+    propertyId: opts.propertyId,
+    unitNumber: opts.unitNumber,
     number,
     kind: opts.kind,
     status: "draft",
@@ -110,6 +114,20 @@ async function insertAndSendInvoice(opts: {
     .from(invoices)
     .where(and(eq(invoices.orgId, opts.orgId), eq(invoices.number, number)))
     .limit(1);
+
+  const [location] = opts.propertyId
+    ? await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.id, opts.propertyId), eq(properties.orgId, opts.orgId)))
+        .limit(1)
+    : [undefined];
+  const locationAddress = location
+    ? serviceLocationAddress(location, opts.unitNumber)
+    : "";
+  const serviceLocation = location
+    ? [serviceLocationLabel(location), locationAddress].filter(Boolean).join(" — ")
+    : undefined;
 
   const email = opts.lead.email;
   if (!email) {
@@ -130,6 +148,7 @@ async function insertAndSendInvoice(opts: {
       total: money(opts.contractTotal),
       link,
       kind: opts.kind,
+      serviceLocation,
     }),
   });
 
@@ -151,6 +170,7 @@ export async function handleEstimateAccepted(
   est: Estimate,
   lead: Lead,
   saleId: number | null,
+  jobId: number | null,
   paymentChoice: "cash" | "card" | "financed"
 ): Promise<void> {
   if (paymentChoice === "financed") {
@@ -189,9 +209,11 @@ export async function handleEstimateAccepted(
   await insertAndSendInvoice({
     orgId: est.orgId,
     leadId: est.leadId,
-    jobId: null,
+    jobId,
     saleId,
     estimateId: est.id,
+    propertyId: est.propertyId,
+    unitNumber: est.unitNumber,
     kind: "deposit",
     amount: deposit,
     contractTotal: total,
@@ -247,7 +269,14 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
   const priorRows = await db
     .select()
     .from(invoices)
-    .where(and(eq(invoices.orgId, job.orgId), eq(invoices.leadId, job.leadId)));
+    .where(
+      and(
+        eq(invoices.orgId, job.orgId),
+        job.saleId
+          ? eq(invoices.saleId, job.saleId)
+          : eq(invoices.jobId, job.id),
+      ),
+    );
   const depositInvoice = priorRows.find(
     (invoice) =>
       invoice.kind === "deposit" &&
@@ -272,7 +301,9 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
     leadId: job.leadId,
     jobId: job.id,
     saleId: job.saleId ?? null,
-    estimateId: null,
+    estimateId: depositInvoice?.estimateId ?? null,
+    propertyId: job.propertyId,
+    unitNumber: job.unitNumber,
     kind: "final",
     amount: remaining,
     contractTotal: contract,
@@ -287,6 +318,7 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
 export async function createManualFinalInvoice(formData: FormData) {
   const { orgId } = await requireUser();
   const leadId = Number(formData.get("leadId"));
+  const requestedJobId = Number(formData.get("jobId")) || null;
   const amount = Number(formData.get("amount"));
   const contractTotal = Number(formData.get("contractTotal"));
   if (!leadId || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(contractTotal) || contractTotal <= 0) {
@@ -300,13 +332,37 @@ export async function createManualFinalInvoice(formData: FormData) {
     .limit(1);
   if (!lead) return;
 
+  const [job] = requestedJobId
+    ? await db
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, requestedJobId),
+            eq(jobs.leadId, leadId),
+            eq(jobs.orgId, orgId),
+          ),
+        )
+        .limit(1)
+    : lead.accountType === "property_management"
+      ? [undefined]
+      : await db
+          .select()
+          .from(jobs)
+          .where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId)))
+          .orderBy(desc(jobs.createdAt))
+          .limit(1);
+  if (lead.accountType === "property_management" && !job) {
+    redirect(`/leads/${leadId}?invoice=job-required`);
+  }
+
   const [existing] = await db
     .select({ id: invoices.id })
     .from(invoices)
     .where(
       and(
         eq(invoices.orgId, orgId),
-        eq(invoices.leadId, leadId),
+        job ? eq(invoices.jobId, job.id) : eq(invoices.leadId, leadId),
         eq(invoices.kind, "final"),
         ne(invoices.status, "void"),
       ),
@@ -317,18 +373,32 @@ export async function createManualFinalInvoice(formData: FormData) {
     redirect(`/invoices/${existing.id}`);
   }
 
-  const [sale] = await db
-    .select({ id: sales.id })
-    .from(sales)
-    .where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId)))
-    .orderBy(desc(sales.soldAt))
-    .limit(1);
-  const [job] = await db
-    .select({ id: jobs.id })
-    .from(jobs)
-    .where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId)))
-    .orderBy(desc(jobs.createdAt))
-    .limit(1);
+  const [sale] = job?.saleId
+    ? await db
+        .select({ id: sales.id })
+        .from(sales)
+        .where(and(eq(sales.orgId, orgId), eq(sales.id, job.saleId)))
+        .limit(1)
+    : await db
+        .select({ id: sales.id })
+        .from(sales)
+        .where(and(eq(sales.orgId, orgId), eq(sales.leadId, leadId)))
+        .orderBy(desc(sales.soldAt))
+        .limit(1);
+
+  const [deposit] = sale?.id
+    ? await db
+        .select({ estimateId: invoices.estimateId })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.orgId, orgId),
+            eq(invoices.saleId, sale.id),
+            eq(invoices.kind, "deposit"),
+          ),
+        )
+        .limit(1)
+    : [undefined];
 
   const number = await nextInvoiceNumber(orgId);
   const [created] = await db
@@ -338,14 +408,15 @@ export async function createManualFinalInvoice(formData: FormData) {
       leadId,
       jobId: job?.id ?? null,
       saleId: sale?.id ?? null,
-      estimateId: null,
+      estimateId: deposit?.estimateId ?? null,
+      propertyId: job?.propertyId ?? null,
+      unitNumber: job?.unitNumber ?? null,
       number,
       kind: "final",
-      status: "sent",
+      status: "draft",
       amount: amount.toFixed(2),
       contractTotal: contractTotal.toFixed(2),
       publicToken: randomBytes(24).toString("hex"),
-      sentAt: new Date(),
       notes: "Final invoice created manually by the office.",
     })
     .returning();
@@ -397,13 +468,27 @@ export async function recordDepositPaid(formData: FormData) {
     )
     .limit(1);
 
-  const [sale] = await db
+  let [sale] = await db
     .select({ id: sales.id })
     .from(sales)
-    .where(and(eq(sales.orgId, orgId), eq(sales.leadId, est.leadId)))
-    .orderBy(desc(sales.soldAt))
+    .where(and(eq(sales.orgId, orgId), eq(sales.estimateId, est.id)))
     .limit(1);
+  if (!sale) {
+    const legacySales = await db
+      .select({ id: sales.id })
+      .from(sales)
+      .where(and(eq(sales.orgId, orgId), eq(sales.leadId, est.leadId)))
+      .limit(2);
+    if (legacySales.length === 1) sale = legacySales[0];
+  }
   const saleId = sale?.id ?? null;
+  const [job] = saleId
+    ? await db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(and(eq(jobs.orgId, orgId), eq(jobs.saleId, saleId)))
+        .limit(1)
+    : [undefined];
   let paidInvoice: Invoice;
 
   if (existing) {
@@ -420,6 +505,9 @@ export async function recordDepositPaid(formData: FormData) {
           paymentMethod: method,
           updatedAt: paidAt,
           saleId: existing.saleId ?? saleId,
+          jobId: existing.jobId ?? job?.id ?? null,
+          propertyId: existing.propertyId ?? est.propertyId,
+          unitNumber: existing.unitNumber ?? est.unitNumber,
         })
         .where(eq(invoices.id, existing.id));
       paidInvoice = {
@@ -430,6 +518,9 @@ export async function recordDepositPaid(formData: FormData) {
         paymentMethod: method,
         updatedAt: paidAt,
         saleId: existing.saleId ?? saleId,
+        jobId: existing.jobId ?? job?.id ?? null,
+        propertyId: existing.propertyId ?? est.propertyId,
+        unitNumber: existing.unitNumber ?? est.unitNumber,
       };
       await syncInvoiceToQb(orgId, existing.id);
     } else {
@@ -449,13 +540,15 @@ export async function recordDepositPaid(formData: FormData) {
       .values({
         orgId,
         leadId: est.leadId,
-        jobId: null,
+        jobId: job?.id ?? null,
         saleId,
         estimateId: est.id,
+        propertyId: est.propertyId,
+        unitNumber: est.unitNumber,
         number,
         kind: "deposit",
         status: "paid",
-        amount: (total * 0.5).toFixed(2),
+        amount: amount.toFixed(2),
         contractTotal: total.toFixed(2),
         publicToken: randomBytes(24).toString("hex"),
         paidAt: new Date(),
@@ -591,6 +684,13 @@ export async function sendPaymentReceipt(formData: FormData) {
   if (!lead?.email) {
     redirect(`/invoices/${id}?receipt=missing-email`);
   }
+  const [location] = invoice.propertyId
+    ? await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.id, invoice.propertyId), eq(properties.orgId, orgId)))
+        .limit(1)
+    : [undefined];
 
   const paymentDate = invoice.paidAt
     ? invoice.paidAt.toLocaleDateString("en-US", {
@@ -606,6 +706,7 @@ export async function sendPaymentReceipt(formData: FormData) {
   const pdfBytes = await buildPaymentReceiptPdf({
     invoice,
     lead,
+    location: location ?? null,
     orgName: companyName,
   });
   const sent = await sendEmail({
@@ -665,6 +766,19 @@ export async function resendInvoice(formData: FormData) {
     redirect(`/invoices/${id}?email=missing-email`);
   }
 
+  const [location] = inv.propertyId
+    ? await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.id, inv.propertyId), eq(properties.orgId, orgId)))
+        .limit(1)
+    : [undefined];
+  const locationAddress = location
+    ? serviceLocationAddress(location, inv.unitNumber)
+    : "";
+  const serviceLocation = location
+    ? [serviceLocationLabel(location), locationAddress].filter(Boolean).join(" — ")
+    : undefined;
   const link = `${getBaseUrl()}/invoice/${inv.publicToken}`;
   const sent = await sendEmail({
     to: lead.email,
@@ -678,6 +792,7 @@ export async function resendInvoice(formData: FormData) {
       total: money(inv.contractTotal),
       link,
       kind: inv.kind,
+      serviceLocation,
     }),
   });
   if (sent) {

@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { estimates, leads } from "@/db/schema";
+import { estimates, leads, properties } from "@/db/schema";
 import { and, desc, eq, sql, gte, ilike, or } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
@@ -8,7 +8,7 @@ import {
   estimateStatusLabel,
   estimateStatusColor,
   money,
-  fmtDate, personName } from "@/lib/constants";
+  fmtDate, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,12 @@ export default async function EstimatesPage({
         or(
           ilike(leads.firstName, `%${search}%`),
           ilike(leads.lastName, `%${search}%`),
+          ilike(leads.company, `%${search}%`),
           ilike(leads.address, `%${search}%`),
+          ilike(properties.name, `%${search}%`),
+          ilike(properties.propertyName, `%${search}%`),
+          ilike(properties.contactName, `%${search}%`),
+          ilike(properties.address, `%${search}%`),
           ilike(leads.email, `%${search}%`),
           ilike(leads.phone, `%${search}%`),
         ),
@@ -44,10 +49,14 @@ export default async function EstimatesPage({
         est: estimates,
         firstName: leads.firstName,
         lastName: leads.lastName,
+        company: leads.company,
+        accountType: leads.accountType,
         city: leads.city,
+        property: properties,
       })
       .from(estimates)
       .leftJoin(leads, eq(estimates.leadId, leads.id))
+      .leftJoin(properties, eq(estimates.propertyId, properties.id))
       .where(estimateFilter)
       .orderBy(desc(estimates.createdAt))
       .limit(200),
@@ -94,7 +103,7 @@ export default async function EstimatesPage({
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="Search customer name, address, email, or phone"
+            placeholder="Search account, service location, address, email, or phone"
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-400"
           />
           <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
@@ -149,9 +158,11 @@ export default async function EstimatesPage({
                         href={`/leads/${r.est.leadId}`}
                         className="text-slate-700 hover:text-orange-600"
                       >
-                        {personName(r.firstName, r.lastName)}
+                        {accountDisplayName(r.firstName, r.lastName, r.company, r.accountType)}
                       </Link>
-                      <div className="text-xs text-slate-400">{r.city ?? "—"}</div>
+                      <div className="text-xs text-slate-400">
+                        {r.property ? serviceLocationLabel(r.property) : r.city ?? "—"}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{r.est.title}</td>
                     <td className="px-4 py-3">

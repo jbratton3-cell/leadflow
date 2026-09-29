@@ -3,8 +3,8 @@ import "server-only";
 import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import type { Invoice, Lead } from "@/db/schema";
-import { money, personName } from "@/lib/constants";
+import type { Invoice, Lead, Property } from "@/db/schema";
+import { money, accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 
 const INK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.42, 0.47, 0.55);
@@ -31,9 +31,10 @@ function kindLabel(kind: string): string {
 export async function buildPaymentReceiptPdf(opts: {
   invoice: Invoice;
   lead: Lead | null;
+  location?: Property | null;
   orgName: string;
 }): Promise<Uint8Array> {
-  const { invoice, lead, orgName } = opts;
+  const { invoice, lead, location, orgName } = opts;
   const isPaidInFull = invoice.kind === "final";
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -76,7 +77,7 @@ export async function buildPaymentReceiptPdf(opts: {
   page.drawLine({ start: { x: M, y: 632 }, end: { x: W - M, y: 632 }, thickness: 1, color: LINE });
 
   const customerName = lead
-    ? personName(lead.firstName, lead.lastName, "Customer")
+    ? accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType, "Customer")
     : "Customer";
   text("Received from", M, 600, 10, font, MUTED);
   text(customerName, M, 578, 16, bold);
@@ -91,6 +92,16 @@ export async function buildPaymentReceiptPdf(opts: {
     );
   }
   if (lead?.email) text(lead.email, M, 542, 10, font, MUTED);
+  if (location) {
+    const serviceX = 330;
+    text("Service location", serviceX, 600, 9, bold, MUTED);
+    text(serviceLocationLabel(location).slice(0, 38), serviceX, 580, 10, bold);
+    const serviceAddress = serviceLocationAddress(location, invoice.unitNumber);
+    if (serviceAddress) text(serviceAddress.slice(0, 46), serviceX, 562, 9, font, MUTED);
+    if (location.contactName) {
+      text(`Site contact: ${location.contactName}`.slice(0, 46), serviceX, 546, 9, font, MUTED);
+    }
+  }
 
   page.drawRectangle({ x: M, y: 418, width: W - M * 2, height: 92, color: rgb(0.97, 0.98, 0.99) });
   text(isPaidInFull ? "Final payment received" : "Amount received", M + 18, 480, 10, font, MUTED);

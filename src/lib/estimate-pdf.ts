@@ -2,8 +2,16 @@ import "server-only";
 import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import type { Estimate, EstimateItem, EstimatePhoto, Lead } from "@/db/schema";
-import { money, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
+import type { Estimate, EstimateItem, EstimatePhoto, Lead, Property } from "@/db/schema";
+import {
+  money,
+  cashPrice,
+  cashSavings,
+  hasCashOffer,
+  accountDisplayName,
+  serviceLocationAddress,
+  serviceLocationLabel,
+} from "@/lib/constants";
 
 // Builds a clean, print-quality PDF of a (signed) estimate for emailing
 // and downloading. Pure pdf-lib — no headless browser needed.
@@ -41,11 +49,12 @@ export async function buildSignedEstimatePdf(opts: {
   est: Estimate;
   items: EstimateItem[];
   lead: Lead | null;
+  location?: Property | null;
   orgName: string;
   photos?: EstimatePhoto[];
   rep?: { name: string; phone: string | null; email: string | null } | null;
 }): Promise<Uint8Array> {
-  const { est, items, lead, orgName, photos = [], rep } = opts;
+  const { est, items, lead, location, orgName, photos = [], rep } = opts;
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -102,7 +111,13 @@ export async function buildSignedEstimatePdf(opts: {
 
   // Bill-to block
   if (lead) {
-    const name = `${lead.firstName ?? ""} ${lead.lastName ?? ""}`.trim() || "Customer";
+    const name = accountDisplayName(
+      lead.firstName,
+      lead.lastName,
+      lead.company,
+      lead.accountType,
+      "Customer",
+    );
     text("Billed to:", M, y, 9, bold, MUTED);
     text(name, M, y - 13, 11, bold);
     let by = y - 26;
@@ -119,6 +134,25 @@ export async function buildSignedEstimatePdf(opts: {
     y = Math.min(by, y - 60);
   } else {
     y -= 30;
+  }
+
+  if (location) {
+    ensureSpace(72);
+    text("Service location:", M, y, 9, bold, MUTED);
+    text(serviceLocationLabel(location), M, y - 13, 11, bold);
+    let ly = y - 26;
+    const serviceAddress = serviceLocationAddress(location, est.unitNumber);
+    if (serviceAddress) {
+      for (const line of wrap(serviceAddress, font, 9, W - 2 * M)) {
+        text(line, M, ly, 9, font, MUTED);
+        ly -= 12;
+      }
+    }
+    if (location.contactName) {
+      text(`Resident / site contact: ${location.contactName}`, M, ly, 9, font, MUTED);
+      ly -= 12;
+    }
+    y = ly - 8;
   }
 
   if (rep?.name) {

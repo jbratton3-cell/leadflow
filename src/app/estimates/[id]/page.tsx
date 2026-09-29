@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { estimates, estimateItems, leads, invoices, pricebookItems, estimatePhotos } from "@/db/schema";
+import { estimates, estimateItems, leads, invoices, pricebookItems, estimatePhotos, properties } from "@/db/schema";
 import AddEstimateItemForm from "@/components/AddEstimateItemForm";
 import UploadEstimatePhoto from "@/components/UploadEstimatePhoto";
 import CopyEstimateLink from "@/components/CopyEstimateLink";
@@ -16,9 +16,11 @@ import {
   estimateStatusColor,
   money,
   fmtDate,
-  fmtDateTime, personName, cashPrice, cashSavings, hasCashOffer, contractPrice } from "@/lib/constants";
+  fmtDateTime, personName, accountDisplayName, serviceLocationAddress, serviceLocationLabel,
+  cashPrice, cashSavings, hasCashOffer, contractPrice } from "@/lib/constants";
 import {
   updateEstimate,
+  updateEstimateLocation,
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
@@ -60,7 +62,7 @@ export default async function EstimateDetailPage({
     .limit(1);
   if (!est) notFound();
 
-  const [items, [lead], book, photos] = await Promise.all([
+  const [items, [lead], book, photos, locationRows] = await Promise.all([
     db.select().from(estimateItems).where(and(eq(estimateItems.orgId, orgId), eq(estimateItems.estimateId, estId))).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId))).limit(1),
     db.select({
@@ -72,11 +74,19 @@ export default async function EstimateDetailPage({
       category: pricebookItems.category,
     }).from(pricebookItems).where(and(eq(pricebookItems.orgId, orgId), eq(pricebookItems.active, true))).orderBy(asc(pricebookItems.category), asc(pricebookItems.name)),
     db.select().from(estimatePhotos).where(and(eq(estimatePhotos.orgId, orgId), eq(estimatePhotos.estimateId, estId))).orderBy(asc(estimatePhotos.createdAt)),
+    db.select().from(properties).where(and(eq(properties.orgId, orgId), eq(properties.leadId, est.leadId))).orderBy(asc(properties.name)),
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
   const canDelete = est.status !== "accepted" || user.role === "admin";
   const cardPaymentsEnabled = Boolean(paypalPublicClientId());
+  const billingName = lead
+    ? accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType, "customer")
+    : "customer";
+  const location = est.propertyId
+    ? locationRows.find((row) => row.id === est.propertyId) ?? null
+    : null;
+  const activeLocations = locationRows.filter((row) => row.active);
 
   const [depositInv] = await db
     .select()
@@ -100,7 +110,7 @@ export default async function EstimateDetailPage({
     <div>
       <PageHeader
         title={`${est.number}`}
-        subtitle={lead ? `For ${personName(lead.firstName, lead.lastName, "customer")}` : undefined}
+        subtitle={lead ? `Billed to ${billingName}` : undefined}
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Link
@@ -132,6 +142,65 @@ export default async function EstimateDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: line items + details */}
         <div className="space-y-6 lg:col-span-2">
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-slate-700">Billing &amp; Service Location</h2>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg bg-slate-50 p-3 text-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Billed to</div>
+                <div className="mt-1 font-semibold text-slate-800">{billingName}</div>
+                {lead?.email && <div className="text-slate-500">{lead.email}</div>}
+                {lead?.address && (
+                  <div className="text-slate-500">
+                    {lead.address}, {lead.city ?? ""} {lead.state ?? ""} {lead.zip ?? ""}
+                  </div>
+                )}
+              </div>
+              <div className={`rounded-lg p-3 text-sm ${location ? "bg-cyan-50" : "bg-amber-50"}`}>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Work performed at</div>
+                {location ? (
+                  <>
+                    <div className="mt-1 font-semibold text-slate-800">{serviceLocationLabel(location)}</div>
+                    <div className="text-slate-600">{serviceLocationAddress(location, est.unitNumber)}</div>
+                    {location.contactName && (
+                      <div className="mt-1 text-xs text-slate-500">Resident / site contact: {location.contactName}</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-1 text-amber-800">
+                    {lead?.accountType === "property_management"
+                      ? "Choose a service location before sending."
+                      : lead?.address
+                        ? `${lead.address}, ${lead.city ?? ""} ${lead.state ?? ""} ${lead.zip ?? ""}`
+                        : "No service address on file."}
+                  </div>
+                )}
+              </div>
+            </div>
+            {!locked && lead?.accountType === "property_management" && (
+              <form action={updateEstimateLocation} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_120px_auto] sm:items-end">
+                <input type="hidden" name="id" value={est.id} />
+                <div>
+                  <label className={label}>Service Location *</label>
+                  <select name="propertyId" required defaultValue={est.propertyId ?? ""} className={input}>
+                    <option value="" disabled>Choose a service location</option>
+                    {activeLocations.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {serviceLocationLabel(row)} — {serviceLocationAddress(row)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={label}>Unit</label>
+                  <input name="unitNumber" defaultValue={est.unitNumber ?? location?.unitNumber ?? ""} className={input} />
+                </div>
+                <button className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">
+                  Save Location
+                </button>
+              </form>
+            )}
+          </Card>
+
           {/* Line items */}
           <Card className="p-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Line Items</h2>

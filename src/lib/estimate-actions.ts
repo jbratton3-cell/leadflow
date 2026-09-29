@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, jobs, sales, products, estimatePhotos, organizations, invoices } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products, properties, estimatePhotos, organizations, invoices } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -19,7 +19,7 @@ import { signedEstimateEmailHtml } from "@/lib/notify";
 
 const APP_NAME_FALLBACK = "LeadFlow";
 type EstimatePaymentChoice = "cash" | "card" | "financed";
-import { BUSINESS_NAME, personName, contractPrice } from "@/lib/constants";
+import { BUSINESS_NAME, accountDisplayName, personName, contractPrice, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = (v ?? "").toString().trim();
@@ -78,6 +78,34 @@ async function recalcTotals(estimateId: number) {
 export async function createEstimate(formData: FormData) {
   const { orgId } = await requireAccess("estimates");
   const leadId = Number(formData.get("leadId"));
+  const propertyId = Number(formData.get("propertyId")) || null;
+
+  const [lead] = await db
+    .select()
+    .from(leads)
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (!lead) return;
+
+  let location: typeof properties.$inferSelect | null = null;
+  if (propertyId) {
+    [location] = await db
+      .select()
+      .from(properties)
+      .where(
+        and(
+          eq(properties.id, propertyId),
+          eq(properties.leadId, leadId),
+          eq(properties.orgId, orgId),
+          eq(properties.active, true),
+        ),
+      )
+      .limit(1);
+    if (!location) redirect(`/leads/${leadId}?location=invalid`);
+  }
+  if (lead.accountType === "property_management" && !location) {
+    redirect(`/leads/${leadId}?location=required`);
+  }
 
   // Generate a sequential-ish estimate number (per organization)
   const [{ count }] = await db
@@ -93,6 +121,8 @@ export async function createEstimate(formData: FormData) {
     .values({
       orgId,
       leadId,
+      propertyId: location?.id ?? null,
+      unitNumber: str(formData.get("unitNumber")) ?? location?.unitNumber ?? null,
       number,
       title: req(formData.get("title")) || "Project Estimate",
       taxRate: num(formData.get("taxRate")).toString(),
@@ -152,6 +182,58 @@ export async function updateEstimate(formData: FormData) {
   revalidatePath(`/estimates/${id}`);
 }
 
+export async function updateEstimateLocation(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  const id = Number(formData.get("id"));
+  const propertyId = Number(formData.get("propertyId")) || null;
+  if (!id) return;
+
+  const [est] = await db
+    .select()
+    .from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!est || est.status === "accepted" || est.status === "declined") return;
+
+  const [lead] = await db
+    .select({ accountType: leads.accountType })
+    .from(leads)
+    .where(and(eq(leads.id, est.leadId), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (!lead) return;
+
+  let location: typeof properties.$inferSelect | null = null;
+  if (propertyId) {
+    [location] = await db
+      .select()
+      .from(properties)
+      .where(
+        and(
+          eq(properties.id, propertyId),
+          eq(properties.leadId, est.leadId),
+          eq(properties.orgId, orgId),
+          eq(properties.active, true),
+        ),
+      )
+      .limit(1);
+    if (!location) return;
+  }
+  if (lead.accountType === "property_management" && !location) return;
+
+  await db
+    .update(estimates)
+    .set({
+      propertyId: location?.id ?? null,
+      unitNumber: str(formData.get("unitNumber")) ?? location?.unitNumber ?? null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
+
+  revalidatePath(`/estimates/${id}`);
+  revalidatePath(`/leads/${est.leadId}`);
+  revalidatePath("/estimates");
+}
+
 // Correct the financial terms of an accepted paper estimate after the office
 // discovers that the customer was quoted the list price outside LeadFlow.
 // This is intentionally separate from normal estimate editing so accepted
@@ -208,18 +290,24 @@ export async function correctPaperEstimateContract(formData: FormData) {
       })
       .where(and(eq(invoices.id, deposit.id), eq(invoices.orgId, user.orgId)));
 
-    const relatedJobs = await tx
-      .select()
-      .from(jobs)
-      .where(and(eq(jobs.orgId, user.orgId), eq(jobs.leadId, est.leadId)));
-    const relatedJob =
-      relatedJobs.find((job) => job.saleId != null) ?? relatedJobs[0] ?? null;
-
     const saleRows = await tx
       .select()
       .from(sales)
       .where(and(eq(sales.orgId, user.orgId), eq(sales.leadId, est.leadId)));
-    const saleId = relatedJob?.saleId ?? (saleRows.length === 1 ? saleRows[0].id : null);
+    const relatedSale =
+      saleRows.find((sale) => sale.estimateId === est.id) ??
+      (saleRows.length === 1 ? saleRows[0] : null);
+    const saleId = relatedSale?.id ?? null;
+
+    const relatedJobs = await tx
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.orgId, user.orgId), eq(jobs.leadId, est.leadId)));
+    const relatedJob = saleId
+      ? relatedJobs.find((job) => job.saleId === saleId) ?? null
+      : relatedJobs.length === 1
+        ? relatedJobs[0]
+        : null;
 
     if (saleId) {
       await tx
@@ -360,6 +448,23 @@ export async function sendEstimate(
     .where(and(eq(leads.orgId, orgId), eq(leads.id, est.leadId)))
     .limit(1);
   if (!lead) return { error: "Customer not found." };
+  if (lead.accountType === "property_management" && !est.propertyId) {
+    return { error: "Choose a service location before sending this estimate." };
+  }
+
+  const [location] = est.propertyId
+    ? await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.id, est.propertyId), eq(properties.orgId, orgId)))
+        .limit(1)
+    : [undefined];
+  const locationAddress = location
+    ? serviceLocationAddress(location, est.unitNumber)
+    : "";
+  const serviceLocation = location
+    ? [serviceLocationLabel(location), locationAddress].filter(Boolean).join(" — ")
+    : undefined;
 
   const link = `${getBaseUrl()}/estimate/${est.publicToken}`;
   const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
@@ -379,6 +484,7 @@ export async function sendEstimate(
         number: est.number,
         total,
         link,
+        serviceLocation,
       }),
     });
   }
@@ -511,10 +617,18 @@ export async function saveSignature(input: {
         .from(estimatePhotos)
         .where(eq(estimatePhotos.estimateId, est.id))
         .orderBy(asc(estimatePhotos.createdAt));
+      const [location] = fresh?.propertyId
+        ? await db
+            .select()
+            .from(properties)
+            .where(and(eq(properties.id, fresh.propertyId), eq(properties.orgId, est.orgId)))
+            .limit(1)
+        : [undefined];
       const pdfBytes = await buildSignedEstimatePdf({
         est: fresh,
         items,
         lead,
+        location: location ?? null,
         orgName: process.env.CRM_ORGANIZATION_NAME || APP_NAME_FALLBACK,
         photos,
       });
@@ -567,91 +681,115 @@ async function applyAcceptanceBookkeeping(
   paymentChoice: EstimatePaymentChoice,
   triggerInvoices: boolean
 ): Promise<void> {
-      const [existingSale] = await db
+  // One accepted estimate is one contract. Never reuse another sale merely
+  // because it belongs to the same management-company account.
+  const [existingSale] = await db
+    .select()
+    .from(sales)
+    .where(and(eq(sales.orgId, est.orgId), eq(sales.estimateId, est.id)))
+    .limit(1);
+
+  let saleId = existingSale?.id ?? null;
+  const amount = contractPrice(
+    est.total,
+    est.cashDiscountPercent,
+    paymentChoice !== "cash",
+    est.cashPrice,
+  );
+  if (!existingSale) {
+    const inserted = await db
+      .insert(sales)
+      .values({
+        orgId: est.orgId,
+        leadId: est.leadId,
+        estimateId: est.id,
+        propertyId: est.propertyId,
+        salesRepId: lead.assignedRepId,
+        productId: lead.productId,
+        amount: String(amount),
+        financeType: paymentChoice,
+        soldAt: new Date(),
+        notes: `Auto-created from accepted estimate ${est.number}.`,
+      })
+      .returning();
+    saleId = inserted[0]?.id ?? null;
+  } else if (!existingSale.salesRepId && lead.assignedRepId) {
+    // Preserve an explicitly chosen rep, but repair older auto-created sales.
+    await db
+      .update(sales)
+      .set({ salesRepId: lead.assignedRepId })
+      .where(and(eq(sales.id, existingSale.id), eq(sales.orgId, est.orgId)));
+  }
+
+  const [existingJob] = saleId
+    ? await db
         .select()
-        .from(sales)
-        .where(and(eq(sales.orgId, est.orgId), eq(sales.leadId, est.leadId)))
-        .limit(1);
-
-      let saleId = existingSale?.id ?? null;
-      const amount = contractPrice(
-        est.total,
-        est.cashDiscountPercent,
-        paymentChoice !== "cash",
-        est.cashPrice,
-      );
-      if (!existingSale) {
-        const inserted = await db
-          .insert(sales)
-          .values({
-            orgId: est.orgId,
-            leadId: est.leadId,
-            salesRepId: lead.assignedRepId,
-            productId: lead.productId,
-            amount: String(amount),
-            financeType: paymentChoice,
-            soldAt: new Date(),
-            notes: `Auto-created from accepted estimate ${est.number}.`,
-          })
-          .returning();
-        saleId = inserted[0]?.id ?? null;
-      } else if (!existingSale.salesRepId && lead.assignedRepId) {
-        // Preserve an explicitly chosen rep, but repair older auto-created
-        // sales that were created before accepted estimates copied the lead
-        // assignment.
-        await db
-          .update(sales)
-          .set({ salesRepId: lead.assignedRepId })
-          .where(and(eq(sales.id, existingSale.id), eq(sales.orgId, est.orgId)));
-      }
-
-      const [existingJob] = await db
-        .select({ id: jobs.id })
         .from(jobs)
-        .where(and(eq(jobs.orgId, est.orgId), eq(jobs.leadId, est.leadId)))
-        .limit(1);
+        .where(and(eq(jobs.orgId, est.orgId), eq(jobs.saleId, saleId)))
+        .limit(1)
+    : [undefined];
 
-      let productName: string | null = null;
-      if (lead.productId) {
-        const [product] = await db
-          .select()
-          .from(products)
-          .where(and(eq(products.orgId, est.orgId), eq(products.id, lead.productId)))
-          .limit(1);
-        productName = product?.name ?? null;
-      }
+  let productName: string | null = null;
+  if (lead.productId) {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.orgId, est.orgId), eq(products.id, lead.productId)))
+      .limit(1);
+    productName = product?.name ?? null;
+  }
 
-      if (!existingJob) {
-        await db.insert(jobs).values({
-          orgId: est.orgId,
-          saleId,
-          leadId: est.leadId,
-          customerName: personName(lead.firstName, lead.lastName, "Customer"),
-          customerAddress: lead.address,
-          customerCity: lead.city,
-          customerPhone: lead.phone,
-          contractAmount: String(amount),
-          productName,
-          status: "pending",
-          milestones: "{}",
-          notes: `Customer accepted estimate ${est.number} online. Contact to schedule the job.`,
-        });
-      }
+  const [location] = est.propertyId
+    ? await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.orgId, est.orgId), eq(properties.id, est.propertyId)))
+        .limit(1)
+    : [undefined];
 
-      await db
-        .update(leads)
-        .set({
-          stage: "sold",
-          estimatedValue: String(amount),
-          updatedAt: new Date(),
-        })
-        .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));
+  let jobId = existingJob?.id ?? null;
+  if (!existingJob) {
+    const [createdJob] = await db
+      .insert(jobs)
+      .values({
+        orgId: est.orgId,
+        saleId,
+        leadId: est.leadId,
+        propertyId: location?.id ?? null,
+        unitNumber: est.unitNumber ?? location?.unitNumber ?? null,
+        customerName: accountDisplayName(
+          lead.firstName,
+          lead.lastName,
+          lead.company,
+          lead.accountType,
+          "Customer",
+        ),
+        customerAddress: location?.address ?? lead.address,
+        customerCity: location?.city ?? lead.city,
+        customerPhone: location?.contactPhone ?? lead.phone,
+        contractAmount: String(amount),
+        productName,
+        status: "pending",
+        milestones: "{}",
+        notes: `Customer accepted estimate ${est.number}. Contact to schedule the job.`,
+      })
+      .returning({ id: jobs.id });
+    jobId = createdJob?.id ?? null;
+  }
 
-      // Auto-invoice: deposit invoice (paying directly) or financing alert.
-      if (triggerInvoices) {
-        await handleEstimateAccepted(est, lead, saleId, paymentChoice);
-      }
-    
+  await db
+    .update(leads)
+    .set({
+      stage: "sold",
+      estimatedValue: String(amount),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(leads.id, est.leadId), eq(leads.orgId, est.orgId)));
+
+  // Auto-invoice: deposit invoice (paying directly) or financing alert.
+  if (triggerInvoices) {
+    await handleEstimateAccepted(est, lead, saleId, jobId, paymentChoice);
+  }
 }
 
 export async function respondToEstimate(formData: FormData) {

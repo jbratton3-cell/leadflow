@@ -12,6 +12,7 @@ import {
   appointments,
   documents,
   expenses,
+  properties,
 } from "@/db/schema";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -46,6 +47,7 @@ export async function deleteLead(formData: FormData) {
   await db.delete(invoices).where(and(eq(invoices.orgId, orgId), eq(invoices.leadId, id)));
   await db.delete(jobs).where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, id)));
   await db.delete(sales).where(and(eq(sales.orgId, orgId), eq(sales.leadId, id)));
+  await db.delete(properties).where(and(eq(properties.orgId, orgId), eq(properties.leadId, id)));
   await db.delete(leads).where(and(eq(leads.id, id), eq(leads.orgId, orgId)));
 
   revalidatePath("/leads");

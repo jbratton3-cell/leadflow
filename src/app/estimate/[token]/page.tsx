@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
+import { estimates, estimateItems, leads, estimatePhotos, properties } from "@/db/schema";
 import { and, eq, asc } from "drizzle-orm";
 import {
   markEstimateViewed,
@@ -9,7 +9,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import SignatureStep from "@/components/SignatureStep";
 import PrintButton from "@/components/PrintButton";
-import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName, accountDisplayName, serviceLocationAddress, serviceLocationLabel, cashPrice, cashSavings, hasCashOffer } from "@/lib/constants";
 import { getEstimateRepContact } from "@/lib/queries";
 import { WisetackPrequalNote } from "@/components/WisetackPrequalNote";
 import { paypalPublicClientId } from "@/lib/paypal";
@@ -56,12 +56,19 @@ export default async function PublicEstimatePage({
     await markEstimateViewed(token);
   }
 
-  const [items, [lead], photos] = await Promise.all([
+  const [items, [lead], photos, locationRows] = await Promise.all([
     db.select().from(estimateItems).where(eq(estimateItems.estimateId, est.id)).orderBy(asc(estimateItems.sortOrder)),
     db.select().from(leads).where(eq(leads.id, est.leadId)).limit(1),
     db.select().from(estimatePhotos).where(eq(estimatePhotos.estimateId, est.id)).orderBy(asc(estimatePhotos.createdAt)),
+    est.propertyId
+      ? db.select().from(properties).where(and(eq(properties.id, est.propertyId), eq(properties.orgId, est.orgId))).limit(1)
+      : Promise.resolve([]),
   ]);
 
+  const location = locationRows[0] ?? null;
+  const billingName = lead
+    ? accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType, "Customer")
+    : "Customer";
   const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
   const responded = est.status === "accepted" || est.status === "declined";
   const cashPct = Number(est.cashDiscountPercent);
@@ -132,14 +139,23 @@ export default async function PublicEstimatePage({
             </div>
             <div className="text-right text-sm text-slate-500">
               {lead && (
-                <div className="font-medium text-slate-700">
-                  {personName(lead.firstName, lead.lastName, "Customer")}
-                </div>
+                <>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Billed to</div>
+                  <div className="font-medium text-slate-700">{billingName}</div>
+                  {lead.address && <div>{lead.address}</div>}
+                  {lead.city && (
+                    <div>
+                      {lead.city}, {lead.state ?? ""} {lead.zip ?? ""}
+                    </div>
+                  )}
+                </>
               )}
-              {lead?.address && <div>{lead.address}</div>}
-              {lead?.city && (
-                <div>
-                  {lead.city}, {lead.state ?? ""} {lead.zip ?? ""}
+              {location && (
+                <div className="mt-3 border-t border-slate-100 pt-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service location</div>
+                  <div className="font-medium text-slate-700">{serviceLocationLabel(location)}</div>
+                  <div>{serviceLocationAddress(location, est.unitNumber)}</div>
+                  {location.contactName && <div>Resident / site contact: {location.contactName}</div>}
                 </div>
               )}
               {rep && (

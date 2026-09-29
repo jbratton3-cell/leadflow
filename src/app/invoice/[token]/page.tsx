@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { db } from "@/db";
-import { invoices, leads } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { invoices, leads, properties } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { markInvoiceViewed, customerInvoiceChoice } from "@/lib/invoice-actions";
 import { getSessionUser } from "@/lib/auth";
-import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, personName } from "@/lib/constants";
+import { money, fmtDate, copyright, BUSINESS_NAME, APP_NAME, accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { WISETACK_PREQUAL_URL } from "@/components/WisetackPrequalNote";
 import PayPalInvoiceCheckout from "@/components/PayPalInvoiceCheckout";
 import { paypalMode, paypalPublicClientId } from "@/lib/paypal";
@@ -43,11 +43,16 @@ export default async function PublicInvoicePage({
   // CRM users previewing get a way back; customers see nothing.
   const internalUser = await getSessionUser();
 
-  const [lead] = await db
-    .select()
-    .from(leads)
-    .where(eq(leads.id, inv.leadId))
-    .limit(1);
+  const [[lead], locationRows] = await Promise.all([
+    db.select().from(leads).where(eq(leads.id, inv.leadId)).limit(1),
+    inv.propertyId
+      ? db.select().from(properties).where(and(eq(properties.id, inv.propertyId), eq(properties.orgId, inv.orgId))).limit(1)
+      : Promise.resolve([]),
+  ]);
+  const location = locationRows[0] ?? null;
+  const billingName = lead
+    ? accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType, "Customer")
+    : "Customer";
 
   const companyName = process.env.CRM_ORGANIZATION_NAME ?? BUSINESS_NAME;
   const kindLabel =
@@ -87,14 +92,23 @@ export default async function PublicInvoicePage({
             </div>
             <div className="text-right text-sm text-slate-500">
               {lead && (
-                <div className="font-medium text-slate-700">
-                  {personName(lead.firstName, lead.lastName, "Customer")}
-                </div>
+                <>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Billed to</div>
+                  <div className="font-medium text-slate-700">{billingName}</div>
+                  {lead.address && <div>{lead.address}</div>}
+                  {lead.city && (
+                    <div>
+                      {lead.city}, {lead.state ?? ""} {lead.zip ?? ""}
+                    </div>
+                  )}
+                </>
               )}
-              {lead?.address && <div>{lead.address}</div>}
-              {lead?.city && (
-                <div>
-                  {lead.city}, {lead.state ?? ""} {lead.zip ?? ""}
+              {location && (
+                <div className="mt-3 border-t border-slate-100 pt-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service location</div>
+                  <div className="font-medium text-slate-700">{serviceLocationLabel(location)}</div>
+                  <div>{serviceLocationAddress(location, inv.unitNumber)}</div>
+                  {location.contactName && <div>Resident / site contact: {location.contactName}</div>}
                 </div>
               )}
             </div>

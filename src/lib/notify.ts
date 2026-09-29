@@ -147,6 +147,7 @@ export function estimateEmailHtml(opts: {
   number: string;
   total: string;
   link: string;
+  serviceLocation?: string;
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
@@ -162,6 +163,7 @@ export function estimateEmailHtml(opts: {
     <div style="margin:16px 0;padding:16px;background:#f8fafc;border-radius:12px">
       <div style="color:#64748b;font-size:13px">Estimate total</div>
       <div style="color:#0f172a;font-size:28px;font-weight:700">${opts.total}</div>
+      ${opts.serviceLocation ? `<div style="color:#475569;font-size:13px;margin-top:8px"><strong>Service location:</strong> ${opts.serviceLocation}</div>` : ""}
     </div>
     <a href="${opts.link}" style="display:inline-block;margin:8px 0;padding:12px 20px;
       background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">
@@ -213,6 +215,7 @@ export function invoiceEmailHtml(opts: {
   total: string;
   link: string;
   kind?: string;
+  serviceLocation?: string;
 }): string {
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
@@ -229,6 +232,7 @@ export function invoiceEmailHtml(opts: {
       <div style="color:#64748b;font-size:13px">Amount due</div>
       <div style="color:#0f172a;font-size:28px;font-weight:700">${opts.amount}</div>
       <div style="color:#64748b;font-size:13px;margin-top:4px">Project total: ${opts.total}</div>
+      ${opts.serviceLocation ? `<div style="color:#475569;font-size:13px;margin-top:8px"><strong>Service location:</strong> ${opts.serviceLocation}</div>` : ""}
     </div>
     <a href="${opts.link}" style="display:inline-block;margin:8px 0;padding:12px 20px;
       background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">

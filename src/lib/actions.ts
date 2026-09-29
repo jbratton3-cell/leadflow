@@ -15,7 +15,7 @@ import {
   products,
   organizations,
 } from "@/db/schema";
-import { orgHasEmailOutreach } from "@/lib/constants";
+import { accountDisplayName, orgHasEmailOutreach } from "@/lib/constants";
 import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -370,6 +370,22 @@ export async function createSale(formData: FormData) {
   const leadId = Number(formData.get("leadId"));
   const amount = num(formData.get("amount")) ?? 0;
   const appointmentId = num(formData.get("appointmentId"));
+  const propertyId = num(formData.get("propertyId"));
+  let location: typeof properties.$inferSelect | null = null;
+  if (propertyId) {
+    [location] = await db
+      .select()
+      .from(properties)
+      .where(
+        and(
+          eq(properties.id, propertyId),
+          eq(properties.leadId, leadId),
+          eq(properties.orgId, orgId),
+        ),
+      )
+      .limit(1);
+    if (!location) return;
+  }
 
   const inserted = await db
     .insert(sales)
@@ -377,6 +393,7 @@ export async function createSale(formData: FormData) {
       orgId,
       leadId,
       appointmentId,
+      propertyId: location?.id ?? null,
       salesRepId: num(formData.get("salesRepId")),
       productId: num(formData.get("productId")),
       amount: amount.toString(),
@@ -405,6 +422,11 @@ export async function createSale(formData: FormData) {
       orgId,
       saleId: sale.id,
       leadId,
+      propertyId: location?.id ?? null,
+      unitNumber: location?.unitNumber ?? null,
+      customerAddress: location?.address ?? null,
+      customerCity: location?.city ?? null,
+      customerPhone: location?.contactPhone ?? null,
       status: "pending",
       milestones: "{}",
     });
@@ -418,21 +440,49 @@ export async function createSale(formData: FormData) {
 
 /* --------------------------- PRODUCTION ---------------------------- */
 
-// Manually create a production job (e.g. for existing jobs during onboarding),
-// without requiring a prior sale or lead.
+// Manually create a production job (e.g. for existing jobs during onboarding).
+// Selecting a service location automatically links the job to its parent billing
+// account instead of creating an unrelated manual customer.
 export async function createJob(formData: FormData) {
   const { orgId } = await requireUser();
+  const propertyId = num(formData.get("propertyId"));
+  let location: typeof properties.$inferSelect | null = null;
+  let account: typeof leads.$inferSelect | null = null;
 
+  if (propertyId) {
+    [location] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.orgId, orgId)))
+      .limit(1);
+    if (!location) return;
+    [account] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, location.leadId), eq(leads.orgId, orgId)))
+      .limit(1);
+    if (!account) return;
+  }
+
+  const leadId = account?.id ?? null;
   await db.insert(jobs).values({
     orgId,
     saleId: null,
-    leadId: null,
-    customerName: req(formData.get("customerName")) || "(unnamed job)",
-    customerAddress: str(formData.get("customerAddress")),
-    customerCity: str(formData.get("customerCity")),
-    customerPhone: str(formData.get("customerPhone")),
-    propertyId: num(formData.get("propertyId")),
-    unitNumber: str(formData.get("unitNumber")),
+    leadId,
+    customerName: account
+      ? accountDisplayName(
+          account.firstName,
+          account.lastName,
+          account.company,
+          account.accountType,
+          "(unnamed account)",
+        )
+      : req(formData.get("customerName")) || "(unnamed job)",
+    customerAddress: location?.address ?? str(formData.get("customerAddress")),
+    customerCity: location?.city ?? str(formData.get("customerCity")),
+    customerPhone: location?.contactPhone ?? account?.phone ?? str(formData.get("customerPhone")),
+    propertyId: location?.id ?? null,
+    unitNumber: str(formData.get("unitNumber")) ?? location?.unitNumber ?? null,
     contractAmount: (num(formData.get("contractAmount")) ?? 0).toString(),
     productName: str(formData.get("productName")),
     status: req(formData.get("status")) || "pending",
@@ -443,42 +493,209 @@ export async function createJob(formData: FormData) {
     notes: str(formData.get("notes")),
   });
 
+  if (leadId) {
+    await db
+      .update(leads)
+      .set({ stage: "production", updatedAt: new Date() })
+      .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
+    revalidatePath(`/leads/${leadId}`);
+  }
   revalidatePath("/production");
   revalidatePath("/");
 }
 
+// Add a reusable address/resident under a management-company billing account.
 export async function createProperty(formData: FormData) {
   const { orgId } = await requireUser();
   const leadId = num(formData.get("leadId"));
-  const name = req(formData.get("name"));
-  if (!leadId || !name) return;
+  const propertyName = str(formData.get("propertyName")) ?? str(formData.get("name"));
+  const contactName = str(formData.get("contactName"));
+  const address = str(formData.get("address"));
+  if (!leadId || !address) return;
 
   const [account] = await db
-    .select({ id: leads.id })
+    .select({ id: leads.id, accountType: leads.accountType })
     .from(leads)
     .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
     .limit(1);
-  if (!account) return;
+  if (!account || account.accountType !== "property_management") return;
 
+  const name = propertyName ?? contactName ?? address;
   await db.insert(properties).values({
     orgId,
     leadId,
     name,
-    address: str(formData.get("address")),
+    propertyName,
+    address,
     city: str(formData.get("city")),
     state: str(formData.get("state")),
     zip: str(formData.get("zip")),
+    unitNumber: str(formData.get("unitNumber")),
+    contactName,
+    contactPhone: str(formData.get("contactPhone")),
+    contactEmail: str(formData.get("contactEmail")),
     notes: str(formData.get("notes")),
   });
 
+  revalidatePath(`/leads/${leadId}`);
   revalidatePath("/production");
+}
+
+export async function updateProperty(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = num(formData.get("id"));
+  const leadId = num(formData.get("leadId"));
+  const propertyName = str(formData.get("propertyName"));
+  const contactName = str(formData.get("contactName"));
+  const address = str(formData.get("address"));
+  if (!id || !leadId || !address) return;
+
+  const [existing] = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(
+      and(
+        eq(properties.id, id),
+        eq(properties.leadId, leadId),
+        eq(properties.orgId, orgId),
+      ),
+    )
+    .limit(1);
+  if (!existing) return;
+
+  await db
+    .update(properties)
+    .set({
+      name: propertyName ?? contactName ?? address,
+      propertyName,
+      address,
+      city: str(formData.get("city")),
+      state: str(formData.get("state")),
+      zip: str(formData.get("zip")),
+      unitNumber: str(formData.get("unitNumber")),
+      contactName,
+      contactPhone: str(formData.get("contactPhone")),
+      contactEmail: str(formData.get("contactEmail")),
+      notes: str(formData.get("notes")),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(properties.id, id), eq(properties.orgId, orgId)));
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/production");
+  revalidatePath("/estimates");
+  revalidatePath("/invoices");
+}
+
+export async function archiveProperty(formData: FormData) {
+  const { orgId } = await requireUser();
+  const id = num(formData.get("id"));
+  const leadId = num(formData.get("leadId"));
+  if (!id || !leadId) return;
+
+  await db
+    .update(properties)
+    .set({ active: false, updatedAt: new Date() })
+    .where(
+      and(
+        eq(properties.id, id),
+        eq(properties.leadId, leadId),
+        eq(properties.orgId, orgId),
+      ),
+    );
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/production");
+}
+
+// Create an immediate work order under an existing billing account and service
+// location. No estimate is required for standing-contract work.
+export async function createAccountJob(formData: FormData) {
+  const { orgId } = await requireUser();
+  const leadId = num(formData.get("leadId"));
+  const propertyId = num(formData.get("propertyId"));
+  if (!leadId || !propertyId) return;
+
+  const [[account], [location]] = await Promise.all([
+    db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
+      .limit(1),
+    db
+      .select()
+      .from(properties)
+      .where(
+        and(
+          eq(properties.id, propertyId),
+          eq(properties.leadId, leadId),
+          eq(properties.orgId, orgId),
+          eq(properties.active, true),
+        ),
+      )
+      .limit(1),
+  ]);
+  if (!account || !location) return;
+
+  let productName = str(formData.get("productName"));
+  if (!productName && account.productId) {
+    const [product] = await db
+      .select({ name: products.name })
+      .from(products)
+      .where(and(eq(products.id, account.productId), eq(products.orgId, orgId)))
+      .limit(1);
+    productName = product?.name ?? null;
+  }
+
+  await db.insert(jobs).values({
+    orgId,
+    saleId: null,
+    leadId,
+    customerName: accountDisplayName(
+      account.firstName,
+      account.lastName,
+      account.company,
+      account.accountType,
+      "(unnamed account)",
+    ),
+    customerAddress: location.address,
+    customerCity: location.city,
+    customerPhone: location.contactPhone ?? account.phone,
+    propertyId,
+    unitNumber: str(formData.get("unitNumber")) ?? location.unitNumber,
+    contractAmount: (num(formData.get("contractAmount")) ?? 0).toString(),
+    productName,
+    status: "pending",
+    milestones: "{}",
+    notes: str(formData.get("notes")),
+  });
+
+  await db
+    .update(leads)
+    .set({ stage: "production", updatedAt: new Date() })
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/production");
+  revalidatePath("/");
 }
 
 export async function updateJob(formData: FormData) {
   const { orgId } = await requireUser();
   const id = Number(formData.get("id"));
-  const leadId = num(formData.get("leadId")); // null for manually-added jobs
+  const submittedLeadId = num(formData.get("leadId")); // null for manually-added jobs
+  const propertyId = num(formData.get("propertyId"));
   const status = req(formData.get("status"));
+  let location: typeof properties.$inferSelect | null = null;
+
+  if (propertyId) {
+    [location] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.orgId, orgId)))
+      .limit(1);
+    if (!location || (submittedLeadId && location.leadId !== submittedLeadId)) return;
+  }
+  const leadId = submittedLeadId ?? location?.leadId ?? null;
 
   // Collect milestone checkboxes
   const milestones: Record<string, boolean> = {};
@@ -489,10 +706,16 @@ export async function updateJob(formData: FormData) {
   await db
     .update(jobs)
     .set({
+      leadId,
       status,
       crew: str(formData.get("crew")),
-      propertyId: num(formData.get("propertyId")),
-      unitNumber: str(formData.get("unitNumber")),
+      propertyId: location?.id ?? null,
+      unitNumber: str(formData.get("unitNumber")) ?? location?.unitNumber ?? null,
+      customerAddress: location?.address,
+      customerCity: location?.city,
+      customerPhone: location?.contactPhone,
+      productName: str(formData.get("productName")),
+      contractAmount: (num(formData.get("contractAmount")) ?? 0).toString(),
       startDate: toDate(formData.get("startDate")),
       completionDate: toDate(formData.get("completionDate")),
       milestones: JSON.stringify(milestones),
@@ -501,9 +724,20 @@ export async function updateJob(formData: FormData) {
     })
     .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 
-  // Reflect onto the linked lead's stage (only if this job came from a lead)
+  // Reflect onto the linked lead's stage. A standing account may have many
+  // jobs, so completing one does not close the whole account while others are
+  // still active.
   if (leadId) {
-    const leadStage = status === "completed" ? "completed" : "production";
+    let leadStage = "production";
+    if (status === "completed") {
+      const otherJobs = await db
+        .select({ id: jobs.id, status: jobs.status })
+        .from(jobs)
+        .where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId)));
+      if (otherJobs.every((job) => job.id === id || job.status === "completed")) {
+        leadStage = "completed";
+      }
+    }
     await db
       .update(leads)
       .set({ stage: leadStage, updatedAt: new Date() })
@@ -594,7 +828,7 @@ export async function recordFinancingSettlement(formData: FormData) {
 export async function markJobCompleted(formData: FormData) {
   const { orgId } = await requireUser();
   const id = Number(formData.get("id"));
-  const leadId = num(formData.get("leadId"));
+  const submittedLeadId = num(formData.get("leadId"));
   if (!id) return;
 
   const [job] = await db
@@ -613,10 +847,18 @@ export async function markJobCompleted(formData: FormData) {
     })
     .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 
+  const leadId = job.leadId ?? submittedLeadId;
   if (leadId) {
+    const accountJobs = await db
+      .select({ id: jobs.id, status: jobs.status })
+      .from(jobs)
+      .where(and(eq(jobs.orgId, orgId), eq(jobs.leadId, leadId)));
+    const allCompleted = accountJobs.every(
+      (accountJob) => accountJob.id === id || accountJob.status === "completed",
+    );
     await db
       .update(leads)
-      .set({ stage: "completed", updatedAt: new Date() })
+      .set({ stage: allCompleted ? "completed" : "production", updatedAt: new Date() })
       .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
     revalidatePath(`/leads/${leadId}`);
   }

@@ -7,7 +7,7 @@ import { PageHeader, Card } from "@/components/ui";
 import { getSources, getProducts, getReps } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { updateLead } from "@/lib/actions";
-import { ACCOUNT_TYPES, personName } from "@/lib/constants";
+import { ACCOUNT_TYPES, accountDisplayName } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,10 @@ export default async function EditLeadPage({
 
   return (
     <div>
-      <PageHeader title="Edit Prospect" subtitle={personName(lead.firstName, lead.lastName)} />
+      <PageHeader
+        title={lead.accountType === "property_management" ? "Edit Property-Management Account" : "Edit Prospect"}
+        subtitle={accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType)}
+      />
       <Card className="max-w-3xl p-6">
         <form action={action} className="grid grid-cols-2 gap-4">
           <input type="hidden" name="id" value={lead.id} />

@@ -1,11 +1,11 @@
 import { db } from "@/db";
-import { invoices, leads } from "@/db/schema";
+import { invoices, leads, properties } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
-import { money, fmtDate, personName } from "@/lib/constants";
+import { money, fmtDate, accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { markInvoicePaid, sendPaymentReceipt, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists, linkQbInvoice } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
@@ -69,15 +69,25 @@ export default async function InvoiceDetailPage({
     if (linked) inv.qbInvoiceId = linked;
   }
 
-  const [lead] = await db
-    .select()
-    .from(leads)
-    .where(and(eq(leads.id, inv.leadId), eq(leads.orgId, orgId)))
-    .limit(1);
+  const [[lead], locationRows] = await Promise.all([
+    db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, inv.leadId), eq(leads.orgId, orgId)))
+      .limit(1),
+    inv.propertyId
+      ? db
+          .select()
+          .from(properties)
+          .where(and(eq(properties.id, inv.propertyId), eq(properties.orgId, orgId)))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
+  const location = locationRows[0] ?? null;
 
   const active = inv.status !== "paid" && inv.status !== "void";
   const customerName = lead
-    ? personName(lead.firstName, lead.lastName)
+    ? accountDisplayName(lead.firstName, lead.lastName, lead.company, lead.accountType)
     : "Unknown customer";
   const publicLink = `/invoice/${inv.publicToken}`;
 
@@ -146,7 +156,7 @@ export default async function InvoiceDetailPage({
           </Card>
 
           <Card className="p-6">
-            <h2 className="font-semibold text-slate-800">Customer</h2>
+            <h2 className="font-semibold text-slate-800">Billing Customer</h2>
             {lead ? (
               <div className="mt-2 text-sm text-slate-600">
                 <Link
@@ -167,6 +177,20 @@ export default async function InvoiceDetailPage({
               <p className="mt-2 text-sm text-slate-500">No linked customer record.</p>
             )}
           </Card>
+
+          {location && (
+            <Card className="border-cyan-100 bg-cyan-50/40 p-6">
+              <h2 className="font-semibold text-slate-800">Service Location</h2>
+              <div className="mt-2 text-sm text-slate-600">
+                <div className="font-semibold text-slate-800">{serviceLocationLabel(location)}</div>
+                <div>{serviceLocationAddress(location, inv.unitNumber)}</div>
+                {location.contactName && <div className="mt-1">Resident / site contact: {location.contactName}</div>}
+                {location.contactPhone && <div>{location.contactPhone}</div>}
+                {location.contactEmail && <div>{location.contactEmail}</div>}
+                {location.notes && <div className="mt-2 text-xs">Access: {location.notes}</div>}
+              </div>
+            </Card>
+          )}
 
           {inv.notes && (
             <Card className="p-6">

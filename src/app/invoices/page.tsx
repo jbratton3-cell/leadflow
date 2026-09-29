@@ -1,10 +1,10 @@
 import { db } from "@/db";
-import { invoices, leads } from "@/db/schema";
+import { invoices, leads, properties } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
-import { money, fmtDate } from "@/lib/constants";
+import { money, fmtDate, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
 import { markInvoicePaid, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import DeleteButton from "@/components/DeleteButton";
 import { ensureQbColumns } from "@/lib/quickbooks";
@@ -47,9 +47,17 @@ export default async function InvoicesPage() {
   await ensureQbColumns();
 
   const rows = await db
-    .select({ inv: invoices, firstName: leads.firstName, lastName: leads.lastName })
+    .select({
+      inv: invoices,
+      firstName: leads.firstName,
+      lastName: leads.lastName,
+      company: leads.company,
+      accountType: leads.accountType,
+      property: properties,
+    })
     .from(invoices)
     .leftJoin(leads, eq(invoices.leadId, leads.id))
+    .leftJoin(properties, eq(invoices.propertyId, properties.id))
     .where(eq(invoices.orgId, orgId))
     .orderBy(desc(invoices.createdAt));
 
@@ -132,8 +140,8 @@ export default async function InvoicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map(({ inv, firstName, lastName }) => {
-                const name = firstName ? `${firstName} ${lastName ?? ""}`.trim() : "—";
+              {rows.map(({ inv, firstName, lastName, company, accountType, property }) => {
+                const name = accountDisplayName(firstName, lastName, company, accountType, "—");
                 const active = inv.status !== "paid" && inv.status !== "void";
                 return (
                   <tr key={inv.id} className="align-top hover:bg-slate-50">
@@ -153,6 +161,11 @@ export default async function InvoicesPage() {
                       >
                         {name}
                       </Link>
+                      {property && (
+                        <div className="text-xs text-cyan-700">
+                          {serviceLocationLabel(property)}{inv.unitNumber ? ` · Unit ${inv.unitNumber}` : ""}
+                        </div>
+                      )}
                       {inv.paymentChoice === "finance" && (
                         <div className="text-xs text-amber-600">wants financing</div>
                       )}

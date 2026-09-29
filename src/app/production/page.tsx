@@ -21,7 +21,7 @@ import {
   jobStatusLabel,
   jobStatusColor,
   money,
-  fmtDate, fmtDateOnly } from "@/lib/constants";
+  fmtDate, fmtDateOnly, accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { withinContractAmount } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +68,7 @@ export default async function ProductionPage({
       or(
         ilike(leads.firstName, like),
         ilike(leads.lastName, like),
+        ilike(leads.company, like),
         ilike(leads.address, like),
         ilike(leads.city, like),
         ilike(leads.zip, like),
@@ -82,6 +83,12 @@ export default async function ProductionPage({
         ilike(jobs.status, like),
         ilike(jobs.notes, like),
         ilike(properties.name, like),
+        ilike(properties.propertyName, like),
+        ilike(properties.address, like),
+        ilike(properties.city, like),
+        ilike(properties.contactName, like),
+        ilike(properties.contactPhone, like),
+        ilike(properties.contactEmail, like),
       )!,
     );
   }
@@ -94,11 +101,13 @@ export default async function ProductionPage({
         job: jobs,
         firstName: leads.firstName,
         lastName: leads.lastName,
+        company: leads.company,
+        accountType: leads.accountType,
         city: leads.city,
         address: leads.address,
         amount: sales.amount,
         financeType: sales.financeType,
-        propertyName: properties.name,
+        property: properties,
       })
       .from(jobs)
       .leftJoin(leads, eq(jobs.leadId, leads.id))
@@ -112,16 +121,24 @@ export default async function ProductionPage({
         property: properties,
         accountFirstName: leads.firstName,
         accountLastName: leads.lastName,
+        accountCompany: leads.company,
+        accountType: leads.accountType,
       })
       .from(properties)
       .leftJoin(leads, eq(properties.leadId, leads.id))
       .where(and(eq(properties.orgId, orgId), eq(properties.active, true)))
       .orderBy(properties.name),
     db
-      .select({ id: leads.id, firstName: leads.firstName, lastName: leads.lastName })
+      .select({
+        id: leads.id,
+        firstName: leads.firstName,
+        lastName: leads.lastName,
+        company: leads.company,
+        accountType: leads.accountType,
+      })
       .from(leads)
       .where(and(eq(leads.orgId, orgId), eq(leads.accountType, "property_management")))
-      .orderBy(leads.lastName, leads.firstName),
+      .orderBy(leads.company, leads.lastName, leads.firstName),
     db
       .select({
         jobId: hcpPayments.jobId,
@@ -145,17 +162,24 @@ export default async function ProductionPage({
 
   // Resolve display fields from the linked lead/sale, or the manual job fields.
   const view = rows.map((r) => {
-    const name = r.firstName
-      ? `${r.firstName} ${r.lastName ?? ""}`.trim()
+    const name = r.job.leadId
+      ? accountDisplayName(
+          r.firstName,
+          r.lastName,
+          r.company,
+          r.accountType,
+          "(unnamed account)",
+        )
       : r.job.customerName ?? "(unnamed job)";
-    const address = r.address ?? r.job.customerAddress ?? null;
-    const city = r.city ?? r.job.customerCity ?? null;
+    const address = r.property?.address ?? r.job.customerAddress ?? r.address ?? null;
+    const city = r.property?.city ?? r.job.customerCity ?? r.city ?? null;
     const amount = r.amount ?? r.job.contractAmount ?? 0;
     return {
       ...r,
       displayName: name,
       displayAddress: address,
       displayCity: city,
+      displayLocation: r.property ? serviceLocationLabel(r.property) : null,
       displayAmount: amount,
       financeType: r.financeType,
       wisetackSettlement: settlementMap.get(r.job.id),
@@ -346,10 +370,10 @@ export default async function ProductionPage({
       <Card className="mb-6 p-5">
         <details>
           <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-            🏢 Add Property / Community
+            🏢 Add Service Location
           </summary>
           <p className="mt-2 text-xs text-slate-400">
-            Create a reusable community under a property-management account, such as Dutch Village under Albany Management.
+            Add an address under an existing property-management billing account. A property/community name is optional; a resident or street address can identify the location.
           </p>
           <form action={createProperty} className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
@@ -358,34 +382,56 @@ export default async function ProductionPage({
                 <option value="" disabled>Select an account</option>
                 {propertyAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.firstName} {account.lastName}
+                    {accountDisplayName(account.firstName, account.lastName, account.company, account.accountType)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={label}>Property / Community Name *</label>
-              <input name="name" required placeholder="Dutch Village" className={input} />
+              <label className={label}>Property / Community Name (optional)</label>
+              <input name="propertyName" placeholder="Dutch Village" className={input} />
             </div>
             <div>
-              <label className={label}>Address</label>
-              <input name="address" className={input} />
+              <label className={label}>Resident / Site Contact (optional)</label>
+              <input name="contactName" className={input} />
+            </div>
+            <div>
+              <label className={label}>Unit</label>
+              <input name="unitNumber" className={input} />
+            </div>
+            <div className="md:col-span-2">
+              <label className={label}>Street Address *</label>
+              <input name="address" required className={input} />
             </div>
             <div>
               <label className={label}>City</label>
               <input name="city" className={input} />
             </div>
-            <div>
-              <label className={label}>State</label>
-              <input name="state" className={input} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>State</label>
+                <input name="state" defaultValue="NY" className={input} />
+              </div>
+              <div>
+                <label className={label}>ZIP</label>
+                <input name="zip" className={input} />
+              </div>
             </div>
             <div>
-              <label className={label}>ZIP</label>
-              <input name="zip" className={input} />
+              <label className={label}>Site Phone</label>
+              <input name="contactPhone" className={input} />
+            </div>
+            <div>
+              <label className={label}>Site Email</label>
+              <input name="contactEmail" type="email" className={input} />
+            </div>
+            <div className="md:col-span-2">
+              <label className={label}>Access Instructions / Notes</label>
+              <textarea name="notes" rows={2} className={input} />
             </div>
             <div className="md:col-span-2">
               <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-                Add Property
+                Save Service Location
               </button>
             </div>
           </form>
@@ -403,8 +449,8 @@ export default async function ProductionPage({
           </p>
           <form action={createJob} className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label className={label}>Customer Name *</label>
-              <input name="customerName" required className={input} />
+              <label className={label}>Customer Name</label>
+              <input name="customerName" placeholder="Required only when no service location is selected" className={input} />
             </div>
             <div>
               <label className={label}>Phone</label>
@@ -423,12 +469,12 @@ export default async function ProductionPage({
               <input name="productName" placeholder="e.g. Windows, Roofing" className={input} />
             </div>
             <div>
-              <label className={label}>Property / Community</label>
+              <label className={label}>Service Location</label>
               <select name="propertyId" className={input} defaultValue="">
-                <option value="">No property selected</option>
-                {propertyRows.map(({ property, accountFirstName, accountLastName }) => (
+                <option value="">No service location selected</option>
+                {propertyRows.map(({ property, accountFirstName, accountLastName, accountCompany, accountType }) => (
                   <option key={property.id} value={property.id}>
-                    {property.name} — {accountFirstName} {accountLastName}
+                    {serviceLocationLabel(property)} — {accountDisplayName(accountFirstName, accountLastName, accountCompany, accountType)}
                   </option>
                 ))}
               </select>
@@ -542,7 +588,7 @@ export default async function ProductionPage({
                       {r.displayAddress ? `${r.displayAddress}, ` : ""}
                       {r.displayCity ?? "—"} · Contract {money(r.displayAmount ?? 0)}
                       {r.job.productName ? ` · ${r.job.productName}` : ""}
-                       {r.propertyName ? ` · ${r.propertyName}` : ""}
+                       {r.displayLocation ? ` · ${r.displayLocation}` : ""}
                        {r.job.unitNumber ? ` · Unit ${r.job.unitNumber}` : ""}
                     </div>
                   </div>
@@ -579,19 +625,39 @@ export default async function ProductionPage({
                       <input name="crew" defaultValue={r.job.crew ?? ""} className={input} />
                     </div>
                     <div>
-                      <label className={label}>Property / Community</label>
+                      <label className={label}>Service Location</label>
                       <select name="propertyId" className={input} defaultValue={r.job.propertyId ?? ""}>
-                        <option value="">No property selected</option>
-                        {propertyRows.map(({ property, accountFirstName, accountLastName }) => (
-                          <option key={property.id} value={property.id}>
-                            {property.name} — {accountFirstName} {accountLastName}
-                          </option>
-                        ))}
+                        <option value="">No service location selected</option>
+                        {propertyRows
+                          .filter(({ property }) => !r.job.leadId || property.leadId === r.job.leadId)
+                          .map(({ property, accountFirstName, accountLastName, accountCompany, accountType }) => (
+                            <option key={property.id} value={property.id}>
+                              {serviceLocationLabel(property)} — {accountDisplayName(accountFirstName, accountLastName, accountCompany, accountType)}
+                            </option>
+                          ))}
                       </select>
                     </div>
                     <div>
                       <label className={label}>Unit Number</label>
                       <input name="unitNumber" defaultValue={r.job.unitNumber ?? ""} placeholder="e.g. 2B" className={input} />
+                    </div>
+                    <div>
+                      <label className={label}>Product / Job Type</label>
+                      <input name="productName" defaultValue={r.job.productName ?? ""} className={input} />
+                    </div>
+                    <div>
+                      <label className={label}>Contract / Work Order Amount ($)</label>
+                      <input
+                        name="contractAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        defaultValue={r.job.contractAmount ?? ""}
+                        className={input}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Required before completion if LeadFlow should send a final invoice.
+                      </p>
                     </div>
                     <div>
                       <label className={label}>Start Date</label>

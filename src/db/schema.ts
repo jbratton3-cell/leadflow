@@ -182,18 +182,27 @@ export const leads = pgTable(
   ]
 );
 
-// Properties / apartment communities belonging to a customer account.
+// Reusable service locations belonging to a customer account. The historical
+// table name stays "properties" so existing jobs and imported data keep working.
 export const properties = pgTable(
   "properties",
   {
     id: serial("id").primaryKey(),
     orgId: integer("org_id").notNull(),
     leadId: integer("lead_id").notNull(),
+    // Stable display label. New records derive it from property/community,
+    // resident/site contact, or street address (in that order).
     name: varchar("name", { length: 160 }).notNull(),
+    propertyName: varchar("property_name", { length: 160 }),
     address: varchar("address", { length: 200 }),
     city: varchar("city", { length: 100 }),
     state: varchar("state", { length: 20 }),
     zip: varchar("zip", { length: 20 }),
+    unitNumber: varchar("unit_number", { length: 40 }),
+    contactName: varchar("contact_name", { length: 160 }),
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    contactEmail: varchar("contact_email", { length: 190 }),
+    // Access instructions and other site-specific notes.
     notes: text("notes"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -253,6 +262,10 @@ export const sales = pgTable(
     orgId: integer("org_id").notNull(),
     leadId: integer("lead_id").notNull(),
     appointmentId: integer("appointment_id"),
+    // A management account can accept many estimates. This identifies the
+    // exact contract instead of treating the whole account as one sale.
+    estimateId: integer("estimate_id"),
+    propertyId: integer("property_id"),
     salesRepId: integer("sales_rep_id"),
     productId: integer("product_id"),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -262,7 +275,11 @@ export const sales = pgTable(
     notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("sales_org_idx").on(t.orgId)]
+  (t) => [
+    index("sales_org_idx").on(t.orgId),
+    index("sales_property_idx").on(t.propertyId),
+    uniqueIndex("sales_estimate_unique").on(t.orgId, t.estimateId),
+  ]
 );
 
 // Production jobs — track project from sale to completion
@@ -335,6 +352,10 @@ export const estimates = pgTable(
     id: serial("id").primaryKey(),
     orgId: integer("org_id").notNull(),
     leadId: integer("lead_id").notNull(),
+    // Service location is separate from the billing customer. This lets one
+    // management company receive estimates for many addresses and residents.
+    propertyId: integer("property_id"),
+    unitNumber: varchar("unit_number", { length: 40 }),
     number: varchar("number", { length: 30 }).notNull(),
     title: varchar("title", { length: 160 }).notNull().default("Project Estimate"),
     // status: draft | sent | viewed | accepted | declined
@@ -368,7 +389,10 @@ export const estimates = pgTable(
     // cash | card | financed — set when accepted
     paymentChoice: varchar("payment_choice", { length: 20 }),
   },
-  (t) => [index("estimates_org_idx").on(t.orgId)]
+  (t) => [
+    index("estimates_org_idx").on(t.orgId),
+    index("estimates_property_idx").on(t.propertyId),
+  ]
 );
 
 // Line items belonging to an estimate
@@ -390,6 +414,10 @@ export const invoices = pgTable("invoices", {
   jobId: integer("job_id"),
   saleId: integer("sale_id"),
   estimateId: integer("estimate_id"),
+  // Snapshot the linked service location on every invoice while the lead
+  // remains the management company / billing customer.
+  propertyId: integer("property_id"),
+  unitNumber: varchar("unit_number", { length: 40 }),
   number: varchar("number", { length: 30 }).notNull(),
   // kind: deposit | final | manual
   kind: varchar("kind", { length: 20 }).notNull().default("manual"),
@@ -419,6 +447,7 @@ export const invoices = pgTable("invoices", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   index("invoices_org_idx").on(t.orgId),
+  index("invoices_property_idx").on(t.propertyId),
   uniqueIndex("invoices_paypal_order_unique").on(t.paypalOrderId),
   uniqueIndex("invoices_paypal_capture_unique").on(t.paypalCaptureId),
 ]);
@@ -587,6 +616,7 @@ export type Rep = typeof reps.$inferSelect;
 export type LeadSource = typeof leadSources.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
+export type Property = typeof properties.$inferSelect;
 export type CallLog = typeof callLogs.$inferSelect;
 
 // Email / Messenger / SMS — not counted as phone calls

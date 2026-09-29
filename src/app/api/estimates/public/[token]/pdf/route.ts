@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, estimatePhotos } from "@/db/schema";
+import { estimates, estimateItems, leads, estimatePhotos, properties } from "@/db/schema";
 import { and, eq, asc, ne } from "drizzle-orm";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 
@@ -22,7 +22,7 @@ export async function GET(
     .limit(1);
   if (!est) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [items, leadRows, photos] = await Promise.all([
+  const [items, leadRows, photos, locationRows] = await Promise.all([
     db
       .select()
       .from(estimateItems)
@@ -34,12 +34,16 @@ export async function GET(
       .from(estimatePhotos)
       .where(eq(estimatePhotos.estimateId, est.id))
       .orderBy(asc(estimatePhotos.createdAt)),
+    est.propertyId
+      ? db.select().from(properties).where(and(eq(properties.id, est.propertyId), eq(properties.orgId, est.orgId))).limit(1)
+      : Promise.resolve([]),
   ]);
 
   const pdfBytes = await buildSignedEstimatePdf({
     est,
     items,
     lead: leadRows[0] ?? null,
+    location: locationRows[0] ?? null,
     orgName: process.env.CRM_ORGANIZATION_NAME || "LeadFlow",
     photos,
   });

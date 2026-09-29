@@ -318,3 +318,65 @@ export function personName(
   const full = `${first ?? ""} ${last ?? ""}`.trim();
   return full || fallback;
 }
+
+/**
+ * Display the legal/customer account rather than accidentally presenting an
+ * on-site contact as the customer. Property-management and commercial
+ * accounts lead with the company; ordinary household leads still lead with
+ * the person's name.
+ */
+export function accountDisplayName(
+  first: string | null | undefined,
+  last: string | null | undefined,
+  company: string | null | undefined,
+  accountType: string | null | undefined,
+  fallback = "(No name)",
+): string {
+  const business = company?.trim();
+  if (business && (accountType === "property_management" || accountType === "commercial")) {
+    return business;
+  }
+  const contact = personName(first, last, "");
+  return contact || business || fallback;
+}
+
+export type ServiceLocationLike = {
+  name?: string | null;
+  propertyName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  unitNumber?: string | null;
+  contactName?: string | null;
+};
+
+/** Property/community first, then resident/site contact, then street address. */
+export function serviceLocationLabel(location: ServiceLocationLike | null | undefined): string {
+  if (!location) return "No service location";
+  return (
+    location.propertyName?.trim() ||
+    location.contactName?.trim() ||
+    location.name?.trim() ||
+    location.address?.trim() ||
+    "Unnamed service location"
+  );
+}
+
+export function serviceLocationAddress(
+  location: ServiceLocationLike | null | undefined,
+  unitOverride?: string | null,
+): string {
+  if (!location) return "";
+  const unit = unitOverride?.trim() || location.unitNumber?.trim();
+  const street = [location.address?.trim(), unit ? `Unit ${unit}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const locality = [
+    location.city?.trim(),
+    [location.state?.trim(), location.zip?.trim()].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return [street, locality].filter(Boolean).join(", ");
+}

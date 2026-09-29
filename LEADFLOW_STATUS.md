@@ -1,14 +1,39 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Sep 24, 2026*
+*Last updated: Sep 29, 2026*
 
-## CURRENT OPERATING STATE — SEP 24, 2026
+## CURRENT OPERATING STATE — SEP 29, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
 - Carry all accepted requirements forward during revisions. A new instruction is a delta, not permission to drop earlier constraints. Inspect surrounding layout/functionality and clean up obvious ripple effects without waiting to be told.
 - User gives instructions one step at a time. New branch tasks do not cancel the active task. Live rep/customer blockers take immediate priority; checkpoint the original task, resolve the blocker fully, then resume automatically.
-- Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.”
+- Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.” Founding offer wording is **“Setup fee waived—a value up to $4,000.”**
+
+### Property-management hierarchy — BUILT and end-to-end verified Sep 29
+- One management company remains the parent customer/billing account while holding any number of reusable service locations. A location supports optional property/community name, resident/site contact, unit, phone/email, required street address, city/state/ZIP, and access instructions. If no property name exists, the display label falls back to resident/site contact and then street address.
+- Both requested paths are supported from the account page: **create an estimate** for a location or **create an immediate work order** under a standing contract. Neither path creates a duplicate prospect.
+- Estimates, accepted sales, production jobs, deposit/final invoices, public customer pages, emails, estimate PDFs, payment-receipt PDFs, sales/invoice lists, TV board, and QuickBooks payloads retain the exact service location while all billing/email remains with the management company.
+- Accepted estimates are now one contract per estimate, not one sale/job per lead. Invoice balances are scoped to the exact sale/job, so one address cannot reduce another address's balance. A parent account remains In Production until all of its jobs are complete.
+- Production schema migration applied to Neon. Tracked migration: `scripts/property-management-schema.sql`. Temporary QA org/data was deleted after tests.
+- End-to-end QA covered: resident-name fallback; estimate-first path; immediate-work-order path; acceptance idempotency; two simultaneous locations under one account; isolated deposit/final balances; production stage behavior; public estimate/invoice rendering; and estimate/receipt PDF generation.
+
+### Live billing fixes — Sep 29
+- `3e8fafe`: invoice resend now shows Sending state and explicit sent/failed/missing-email/unavailable feedback; sender domain cannot become `no-reply@www...`.
+- `e3a948a`: currency displays exact cents (for example `$7,467.50`) instead of rounding to whole dollars.
+- `344c758`: estimate acceptance requires an explicit Cash/Check, Card/PayPal, or Financing choice; the public form no longer silently defaults to cash.
+- Customer `INV-1582` successfully paid the deposit after the live record was corrected. Temporary QA records for all three fixes were removed.
+
+### Payment notifications — CHECKPOINTED, NOT BUILT
+- Required: instant office email plus true browser/desktop push that can appear even when the LeadFlow tab is closed. Recipient selection must eventually support Jon, Kevin, bookkeeper, or other office users. Include customer, invoice, amount, method, fee, and link; later include ACH lifecycle events.
+
+### QuickBooks / ACH architecture — DECIDED, LIVE CONNECTION PENDING
+- LeadFlow owns and sends every customer invoice. QuickBooks sends no invoice emails. LeadFlow Card/PayPal receipts push to QuickBooks.
+- ACH plan: LeadFlow opens Intuit's hosted secure ACH/payment page; QuickBooks Payments processes it; LeadFlow reads pending/settled/failed/returned status back and must not create a duplicate ACH payment.
+- Current connection is sandbox/development only. Live implementation waits for Kevin/bookkeeper coordination and verification against the production QuickBooks Payments company.
+
+### BuildPros website — ACCESS RESPONSE PENDING
+- Kevin contacted Steve/Ocean Blue and was told access instructions will be sent. Inspect the exact message before changing anything. Verify a dedicated WordPress Administrator for `jmbalbany@gmail.com`, correct environment, backup/staging instructions, and restrictions. Do not reset passwords, change DNS, transfer hosting/domain, or bypass Steve.
 
 ### PayPal/card payments — LIVE and end-to-end verified Sep 24
 - Live customer flow: accepted estimate with **Card / PayPal** at standard/list price -> automatic 50% deposit invoice -> PayPal or card checkout -> invoice auto-marks paid -> payment/fee ledger -> QuickBooks payment -> customer PDF receipt. Final invoice repeats automatically on job completion.

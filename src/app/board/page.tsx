@@ -1,10 +1,10 @@
 import { db } from "@/db";
-import { jobs, leads, sales } from "@/db/schema";
+import { jobs, leads, sales, properties } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import AutoRefresh from "@/components/AutoRefresh";
 import { requireAccess } from "@/lib/auth";
-import { APP_NAME, JOB_MILESTONES, jobStatusLabel, money } from "@/lib/constants";
+import { APP_NAME, JOB_MILESTONES, jobStatusLabel, money, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -106,23 +106,28 @@ export default async function BoardPage({
       job: jobs,
       firstName: leads.firstName,
       lastName: leads.lastName,
+      company: leads.company,
+      accountType: leads.accountType,
       city: leads.city,
       address: leads.address,
       amount: sales.amount,
+      property: properties,
     })
     .from(jobs)
     .leftJoin(leads, eq(jobs.leadId, leads.id))
+    .leftJoin(properties, eq(jobs.propertyId, properties.id))
     .leftJoin(sales, eq(jobs.saleId, sales.id))
     .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, [...ACTIVE_STATUSES])))
     .orderBy(desc(jobs.createdAt));
 
   const view = rows
     .map((r) => {
-      const displayName = r.firstName
-        ? `${r.firstName} ${r.lastName ?? ""}`.trim()
+      const displayName = r.job.leadId
+        ? accountDisplayName(r.firstName, r.lastName, r.company, r.accountType, "(unnamed account)")
         : r.job.customerName ?? "(unnamed job)";
-      const displayAddress = r.address ?? r.job.customerAddress ?? null;
-      const displayCity = r.city ?? r.job.customerCity ?? null;
+      const displayLocation = r.property ? serviceLocationLabel(r.property) : null;
+      const displayAddress = r.property?.address ?? r.job.customerAddress ?? r.address ?? null;
+      const displayCity = r.property?.city ?? r.job.customerCity ?? r.city ?? null;
       const displayAmount = r.amount ?? r.job.contractAmount ?? 0;
       const boardDate = r.job.startDate ?? r.job.createdAt;
       const milestones = selectedMilestoneLabels(r.job.milestones);
@@ -131,6 +136,7 @@ export default async function BoardPage({
       return {
         ...r,
         displayName,
+        displayLocation,
         displayAddress,
         displayCity,
         displayAmount,
@@ -233,10 +239,14 @@ export default async function BoardPage({
 
                     <div>
                       <div className={nameCls}>
-                        {r.displayAddress ?? r.displayName}
+                        {r.displayLocation ?? r.displayAddress ?? r.displayName}
+                        {r.job.unitNumber ? ` · Unit ${r.job.unitNumber}` : ""}
                       </div>
                       <div className="mt-1 space-y-1 text-sm text-slate-300">
-                        {r.displayAddress && r.displayCity && <div>{r.displayCity}</div>}
+                        {r.displayLocation && <div>{r.displayName}</div>}
+                        {r.displayAddress && (
+                          <div>{r.displayAddress}{r.displayCity ? `, ${r.displayCity}` : ""}</div>
+                        )}
                         {r.job.productName && <div>{r.job.productName}</div>}
                         {r.job.notes && <div className="text-xs text-slate-400">{r.job.notes}</div>}
                       </div>
