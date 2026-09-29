@@ -321,8 +321,8 @@ export default async function PublicEstimatePage({
                   <input
                     type="radio"
                     name="paymentIntent"
-                    value="direct"
-                    defaultChecked
+                    value="cash"
+                    required
                     className="mt-1 h-4 w-4 accent-emerald-600"
                   />
                   <span>
@@ -342,6 +342,7 @@ export default async function PublicEstimatePage({
                       type="radio"
                       name="paymentIntent"
                       value="card"
+                      required
                       className="mt-1 h-4 w-4 accent-blue-600"
                     />
                     <span>
@@ -359,6 +360,7 @@ export default async function PublicEstimatePage({
                     type="radio"
                     name="paymentIntent"
                     value="finance"
+                    required
                     className="mt-1 h-4 w-4 accent-amber-600"
                   />
                   <span>

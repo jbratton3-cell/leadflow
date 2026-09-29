@@ -658,6 +658,12 @@ export async function respondToEstimate(formData: FormData) {
   const token = req(formData.get("token"));
   const decision = req(formData.get("decision")); // accept | decline
   const paymentIntent = req(formData.get("paymentIntent"));
+  if (
+    decision === "accept" &&
+    !["cash", "direct", "card", "finance"].includes(paymentIntent)
+  ) {
+    return;
+  }
   const paymentChoice: EstimatePaymentChoice =
     paymentIntent === "card" ? "card" : paymentIntent === "finance" ? "financed" : "cash";
   const [est] = await db
