@@ -213,8 +213,13 @@ export default async function LeadDetailPage({
           <Card className="p-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Contact</h2>
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <Info label={isPropertyAccount ? "Billing Company" : "Company"} value={lead.company} />
-              {isPropertyAccount && <Info label="Primary Contact" value={billingContact} />}
+              <Info
+                label={isPropertyAccount ? "Billing Company" : "Company"}
+                value={isPropertyAccount ? lead.company ?? billingName : lead.company}
+              />
+              {isPropertyAccount && lead.company && billingContact && billingContact !== lead.company && (
+                <Info label="Primary Contact" value={billingContact} />
+              )}
               <Info label="Phone" value={lead.phone} />
               <Info label="Alt Phone" value={lead.altPhone} />
               <Info label="Email" value={lead.email} />

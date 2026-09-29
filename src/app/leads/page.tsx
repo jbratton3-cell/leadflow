@@ -206,12 +206,16 @@ export default async function LeadsPage({
                       <Link href={`/leads/${l.id}`} className="font-semibold text-slate-800 hover:text-orange-600">
                         {accountDisplayName(l.firstName, l.lastName, l.company, l.accountType)}
                       </Link>
-                      {l.accountType === "property_management" ? (
+                      {l.accountType === "property_management" &&
+                      l.company &&
+                      personName(l.firstName, l.lastName) !== l.company ? (
                         <div className="text-xs text-slate-500">
                           Contact: {personName(l.firstName, l.lastName)}
                         </div>
                       ) : (
-                        l.company && <div className="text-xs text-slate-500">{l.company}</div>
+                        l.accountType !== "property_management" && l.company && (
+                          <div className="text-xs text-slate-500">{l.company}</div>
+                        )
                       )}
                       {l.doNotCall && (
                         <span className="ml-2 text-[10px] font-bold uppercase text-rose-600">DNC</span>
