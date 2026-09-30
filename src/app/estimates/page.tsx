@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { estimates, leads, properties } from "@/db/schema";
-import { and, desc, eq, sql, gte, ilike, or } from "drizzle-orm";
+import { and, desc, eq, sql, gte, lt, ilike, or } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState, StatCard } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
@@ -9,6 +9,7 @@ import {
   estimateStatusColor,
   money,
   fmtDate, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
+import { nyMonthBounds, nyMonthLabel } from "@/lib/ny-dates";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +21,9 @@ export default async function EstimatesPage({
   const { orgId } = await requireAccess("estimates");
   const { q } = await searchParams;
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const { start: monthStart, end: monthEnd } = nyMonthBounds(now);
+  const monthLabel = nyMonthLabel(now);
 
   const search = q?.trim();
   const estimateFilter = search
@@ -71,7 +72,13 @@ export default async function EstimatesPage({
         total: sql<string>`coalesce(sum(${estimates.total}),0)`,
       })
       .from(estimates)
-      .where(and(eq(estimates.orgId, orgId), gte(estimates.createdAt, monthStart))),
+      .where(
+        and(
+          eq(estimates.orgId, orgId),
+          gte(estimates.createdAt, monthStart),
+          lt(estimates.createdAt, monthEnd),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(estimates)
@@ -95,7 +102,11 @@ export default async function EstimatesPage({
         <StatCard label="Total Estimates" value={totalAgg[0]?.count ?? 0} />
         <StatCard label="Outstanding (Sent)" value={sent} accent="text-blue-600" />
         <StatCard label="Accepted" value={accepted} accent="text-emerald-600" />
-        <StatCard label="Value Created (MTD)" value={money(mtdValue)} sub={`${mtdCount} estimates`} />
+        <StatCard
+          label="Value Created (MTD)"
+          value={money(mtdValue)}
+          sub={`${mtdCount} estimates · ${monthLabel}`}
+        />
       </div>
 
       <Card className="mb-6 p-4">

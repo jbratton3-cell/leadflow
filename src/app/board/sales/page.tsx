@@ -3,7 +3,7 @@ import { hcpPayments, invoices, jobs, sales } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
-import { nyPeriodStarts, weekStamps } from "@/lib/ny-dates";
+import { nyMonthBounds, nyPeriodStarts, nyYearBounds, weekStamps } from "@/lib/ny-dates";
 import {
   buildRevenueContracts,
   collectedStats,
@@ -23,7 +23,10 @@ export default async function SalesBoardPage({
   const user = await requireUser();
   const { tight: tightQ } = await searchParams;
   const tight = tightQ === "1";
-  const { today, weekStart, monthStart, yearStart } = nyPeriodStarts();
+  const now = new Date();
+  const { today, weekStart, monthStart, yearStart } = nyPeriodStarts(now);
+  const { endStamp: monthEnd } = nyMonthBounds(now);
+  const { endStamp: yearEnd } = nyYearBounds(now);
 
   const [rows, jobRows, paymentRows] = await Promise.all([
     db.select().from(sales).where(eq(sales.orgId, user.orgId)),
@@ -67,17 +70,18 @@ export default async function SalesBoardPage({
       importedJobs,
     ),
   }));
-  const sold = (from: string) => soldStats(contracts, from).total;
-  const collected = (from: string) => collectedStats(contracts, revenuePayments, from).total;
+  const sold = (from: string, to?: string) => soldStats(contracts, from, to).total;
+  const collected = (from: string, to?: string) =>
+    collectedStats(contracts, revenuePayments, from, undefined, to).total;
 
   const todaySold = sold(today);
   const weekSold = sold(weekStart);
-  const monthSold = sold(monthStart);
-  const yearSold = sold(yearStart);
+  const monthSold = sold(monthStart, monthEnd);
+  const yearSold = sold(yearStart, yearEnd);
   const todayCollected = collected(today);
   const weekCollected = collected(weekStart);
-  const monthCollected = collected(monthStart);
-  const yearCollected = collected(yearStart);
+  const monthCollected = collected(monthStart, monthEnd);
+  const yearCollected = collected(yearStart, yearEnd);
 
   const weeks = weekStamps(8);
   const weekly = weeks.map((w, i) => {

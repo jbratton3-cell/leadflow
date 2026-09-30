@@ -3,7 +3,7 @@ import { reps, sales, leads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { money } from "@/lib/constants";
-import { inRange, nyPeriodStarts } from "@/lib/ny-dates";
+import { inPeriod, inRange, nyMonthBounds, nyPeriodStarts } from "@/lib/ny-dates";
 import TvBoardChrome from "@/components/TvBoardChrome";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,9 @@ export default async function RepsBoardPage({
   const user = await requireUser();
   const { tight: tightQ } = await searchParams;
   const tight = tightQ === "1";
-  const { today, weekStart, monthStart } = nyPeriodStarts();
+  const now = new Date();
+  const { today, weekStart, monthStart } = nyPeriodStarts(now);
+  const { endStamp: monthEnd } = nyMonthBounds(now);
 
   const [saleRows, repRows] = await Promise.all([
     db
@@ -40,7 +42,7 @@ export default async function RepsBoardPage({
       month: 0,
       deals: 0,
     };
-    if (inRange(when, monthStart)) {
+    if (inPeriod(when, monthStart, monthEnd)) {
       cur.month += amt;
       cur.deals += 1;
     }

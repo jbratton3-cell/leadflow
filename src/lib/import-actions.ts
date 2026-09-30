@@ -42,6 +42,38 @@ function parseMoney(v: string): string {
   return Number.isFinite(n) ? n.toString() : "0";
 }
 
+function parseImportedDate(value: string): Date | null {
+  if (!value) return null;
+
+  // Date-only imports use UTC noon so the calendar date remains stable when
+  // displayed and measured in America/New_York.
+  const ymd = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (ymd) {
+    const parsed = new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12));
+    if (
+      parsed.getUTCFullYear() === Number(ymd[1]) &&
+      parsed.getUTCMonth() === Number(ymd[2]) - 1 &&
+      parsed.getUTCDate() === Number(ymd[3])
+    ) return parsed;
+  }
+
+  const mdy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const parsed = new Date(Date.UTC(Number(mdy[3]), Number(mdy[1]) - 1, Number(mdy[2]), 12));
+    if (
+      parsed.getUTCFullYear() === Number(mdy[3]) &&
+      parsed.getUTCMonth() === Number(mdy[1]) - 1 &&
+      parsed.getUTCDate() === Number(mdy[2])
+    ) return parsed;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid Lead Date: ${value}`);
+  }
+  return parsed;
+}
+
 // Import a batch of mapped rows. Called repeatedly by the client wizard.
 export async function importLeads(payload: {
   rows: ImportRow[];
@@ -110,6 +142,7 @@ export async function importLeads(payload: {
 
       const sourceId = await resolveSource(clean(row.source));
       const productId = await resolveProduct(clean(row.product));
+      const importedCreatedAt = parseImportedDate(clean(row.createdAt));
 
       await db.insert(leads).values({
         orgId,
@@ -130,6 +163,7 @@ export async function importLeads(payload: {
         estimatedValue: parseMoney(clean(row.estimatedValue)),
         notes: clean(row.notes) || null,
         stage: "new",
+        ...(importedCreatedAt ? { createdAt: importedCreatedAt } : {}),
       });
       result.imported++;
     } catch (e) {
@@ -141,6 +175,7 @@ export async function importLeads(payload: {
   }
 
   revalidatePath("/leads");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/metrics");
   return result;
 }

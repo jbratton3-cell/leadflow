@@ -1,4 +1,4 @@
-import { inRange } from "@/lib/ny-dates";
+import { inPeriod, inRange, nyStamp } from "@/lib/ny-dates";
 
 export type RevenueContract = {
   key: string;
@@ -91,37 +91,66 @@ export function collectedStats(
   payments: RevenuePayment[],
   fromStamp: string,
   paymentType?: string,
+  toStamp?: string,
 ) {
   const contractsByKey = new Map(contracts.map((contract) => [contract.key, contract]));
-  const amountByContract = new Map<string, number>();
+  const allocatedByContract = new Map<string, number>();
   let count = 0;
+  let total = 0;
 
-  for (const payment of payments) {
-    if (paymentType && payment.paymentType !== paymentType) continue;
-    if (!inRange(payment.receivedAt, fromStamp) || payment.contractKey === null) continue;
+  const chronological = payments
+    .map((payment, index) => ({ payment, index }))
+    .filter(({ payment }) => {
+      if (paymentType && payment.paymentType !== paymentType) return false;
+      if (payment.contractKey === null || !contractsByKey.has(payment.contractKey)) return false;
+      const amount = Number(payment.amount ?? 0);
+      return Boolean(nyStamp(payment.receivedAt)) && Number.isFinite(amount) && amount > 0;
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.payment.receivedAt!).getTime();
+      const bTime = new Date(b.payment.receivedAt!).getTime();
+      return aTime - bTime || a.index - b.index;
+    });
 
-    const contract = contractsByKey.get(payment.contractKey);
-    if (!contract || !inRange(contract.soldAt, fromStamp)) continue;
-    const amount = Number(payment.amount ?? 0);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
+  for (const { payment } of chronological) {
+    const stamp = nyStamp(payment.receivedAt)!;
+    if (toStamp && stamp >= toStamp) continue;
 
-    amountByContract.set(
-      payment.contractKey,
-      (amountByContract.get(payment.contractKey) ?? 0) + amount,
+    const contractKey = payment.contractKey!;
+    const contractAmount = Math.max(
+      Number(contractsByKey.get(contractKey)?.amount ?? 0),
+      0,
     );
-    count += 1;
-  }
+    const previouslyAllocated = allocatedByContract.get(contractKey) ?? 0;
+    const amount = Number(payment.amount ?? 0);
+    const credited = Math.min(amount, Math.max(contractAmount - previouslyAllocated, 0));
+    allocatedByContract.set(contractKey, previouslyAllocated + credited);
 
-  const total = Array.from(amountByContract.entries()).reduce((sum, [key, amount]) => {
-    const contractAmount = Number(contractsByKey.get(key)?.amount ?? 0);
-    return sum + Math.min(Math.max(amount, 0), Math.max(contractAmount, 0));
-  }, 0);
+    const paymentIsInPeriod = toStamp
+      ? inPeriod(payment.receivedAt, fromStamp, toStamp)
+      : inRange(payment.receivedAt, fromStamp);
+    if (!paymentIsInPeriod) continue;
+
+    // A receipt belongs to the month in which the money arrived, even when the
+    // corresponding contract was sold earlier. Earlier receipts consume the
+    // contract cap first so period totals cannot inflate lifetime collections.
+    count += 1;
+    total += credited;
+  }
 
   return { count, total };
 }
 
-export function soldStats(contracts: RevenueContract[], fromStamp: string) {
-  const matching = contracts.filter((contract) => inRange(contract.soldAt, fromStamp));
+export function soldStats(
+  contracts: RevenueContract[],
+  fromStamp: string,
+  toStamp?: string,
+) {
+  const matching = contracts.filter((contract) =>
+    toStamp
+      ? inPeriod(contract.soldAt, fromStamp, toStamp)
+      : inRange(contract.soldAt, fromStamp),
+  );
   return {
     count: matching.length,
     total: matching.reduce((sum, contract) => sum + Number(contract.amount ?? 0), 0),

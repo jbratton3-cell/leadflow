@@ -23,6 +23,7 @@ const TARGETS: { key: string; label: string }[] = [
   { key: "zip", label: "Zip" },
   { key: "accountType", label: "Account Type" },
   { key: "standingContract", label: "Standing / Recurring Contract" },
+  { key: "createdAt", label: "Lead / Created Date" },
   { key: "source", label: "Lead Source" },
   { key: "product", label: "Product" },
   { key: "estimatedValue", label: "Estimated Value" },
@@ -75,6 +76,12 @@ const SYNONYMS: Record<string, string> = {
   standingcontract: "standingContract",
   recurringcontract: "standingContract",
   recurring: "standingContract",
+  createdat: "createdAt",
+  createddate: "createdAt",
+  datecreated: "createdAt",
+  leaddate: "createdAt",
+  leadcreated: "createdAt",
+  receiveddate: "createdAt",
   source: "source",
   leadsource: "source",
   campaign: "source",
@@ -226,13 +233,14 @@ export default function ImportWizard() {
       "Zip",
       "Account Type",
       "Standing Contract",
+      "Lead Date",
       "Lead Source",
       "Product",
       "Estimated Value",
       "Notes",
     ];
     const sample = [
-      "Jane,Doe,jane@example.com,(555) 123-4567,12 Oak St,Springfield,IL,62701,Homeowner,false,Google PPC,Roofing,18000,Wants a quote next week",
+      "Jane,Doe,jane@example.com,(555) 123-4567,12 Oak St,Springfield,IL,62701,Homeowner,false,2026-09-30,Google PPC,Roofing,18000,Wants a quote next week",
     ];
     const csv = [cols.join(","), ...sample].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

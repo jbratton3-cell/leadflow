@@ -1,14 +1,20 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Sep 29, 2026*
+*Last updated: Sep 30, 2026*
 
-## CURRENT OPERATING STATE — SEP 29, 2026
+## CURRENT OPERATING STATE — SEP 30, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
 - Carry all accepted requirements forward during revisions. A new instruction is a delta, not permission to drop earlier constraints. Inspect surrounding layout/functionality and clean up obvious ripple effects without waiting to be told.
 - User gives instructions one step at a time. New branch tasks do not cancel the active task. Live rep/customer blockers take immediate priority; checkpoint the original task, resolve the blocker fully, then resume automatically.
 - Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.” Founding offer wording is **“Setup fee waived—a value up to $4,000.”**
+
+### Calendar-month MTD reporting — CORRECTED Sep 30
+- Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.
+- Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.
+- Payments Received/Collected MTD now belongs to the month money actually arrived, even when the contract was sold earlier. Lifetime per-contract caps remain enforced chronologically. Demos Sat uses the scheduled demo date; future CSV migrations can map a Lead/Created Date so history keeps its original period.
+- Verified locally against production data: Dashboard New Leads 41, Sold $583,890 across 41 contracts/jobs, Payments Received $382,095 across 54 transactions, Estimates Created $713,124 across 55 estimates. Eastern rollover and cross-month-payment tests passed; typecheck and production build passed.
 
 ### Property-management hierarchy — BUILT and end-to-end verified Sep 29
 - One management company remains the parent customer/billing account while holding any number of reusable service locations. A location supports optional property/community name, resident/site contact, unit, phone/email, required street address, city/state/ZIP, and access instructions. If no property name exists, the display label falls back to resident/site contact and then street address.

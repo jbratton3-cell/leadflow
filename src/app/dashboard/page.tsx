@@ -8,7 +8,7 @@ import {
   jobs,
   callLogs,
 } from "@/db/schema";
-import { sql, desc, eq, gte, and, inArray } from "drizzle-orm";
+import { sql, desc, eq, gte, lt, and, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, StatCard, Card, Badge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -25,10 +25,15 @@ import {
   importedJobIds,
   linkedContractKey,
 } from "@/lib/revenue";
+import { nyMonthBounds, nyMonthLabel } from "@/lib/ny-dates";
 
 export const dynamic = "force-dynamic";
 
-async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
+async function getHcpPaymentMtd(
+  orgId: number,
+  monthStartStamp: string,
+  monthEndStamp: string,
+) {
   try {
     const [salesRows, jobRows, paymentRows] = await Promise.all([
       db
@@ -60,7 +65,6 @@ async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
         .leftJoin(invoices, eq(hcpPayments.invoiceId, invoices.id))
         .where(eq(hcpPayments.orgId, orgId)),
     ]);
-    const periodStamp = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}-01`;
     const contracts = buildRevenueContracts(salesRows, jobRows);
     const importedJobs = importedJobIds(jobRows);
     return collectedStats(
@@ -77,7 +81,9 @@ async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
           importedJobs,
         ),
       })),
-      periodStamp,
+      monthStartStamp,
+      undefined,
+      monthEndStamp,
     );
   } catch (error) {
     console.error("HCP payment reporting query failed:", error);
@@ -85,7 +91,11 @@ async function getHcpPaymentMtd(orgId: number, monthStart: Date) {
   }
 }
 
-async function getImportedJobRevenueMtd(orgId: number, monthStart: Date) {
+async function getImportedJobRevenueMtd(
+  orgId: number,
+  monthStart: Date,
+  monthEnd: Date,
+) {
   const result = await db.execute(sql`
     select
       count(*)::int as count,
@@ -94,6 +104,7 @@ async function getImportedJobRevenueMtd(orgId: number, monthStart: Date) {
     where org_id = ${orgId}
       and notes like 'Imported from Housecall Pro job %'
       and created_at >= ${monthStart}
+      and created_at < ${monthEnd}
       and coalesce(contract_amount, 0) > 0
   `);
   const row = result.rows[0] as
@@ -113,9 +124,14 @@ export default async function DashboardPage({
   const user = await requireUser();
   const orgId = user.orgId;
   const { denied } = await searchParams;
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const {
+    start: monthStart,
+    end: monthEnd,
+    startStamp: monthStartStamp,
+    endStamp: monthEndStamp,
+  } = nyMonthBounds(now);
+  const monthLabel = nyMonthLabel(now);
 
   const [
     stageCounts,
@@ -138,28 +154,55 @@ export default async function DashboardPage({
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(leads)
-      .where(and(eq(leads.orgId, orgId), gte(leads.createdAt, monthStart))),
+      .where(
+        and(
+          eq(leads.orgId, orgId),
+          gte(leads.createdAt, monthStart),
+          lt(leads.createdAt, monthEnd),
+          // Historical migration rows are customers, not new leads generated this month.
+          sql`(${leads.notes} is null or ${leads.notes} not like 'Imported from Housecall Pro customer %')`,
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(appointments)
-      .where(and(eq(appointments.orgId, orgId), gte(appointments.createdAt, monthStart))),
+      .where(
+        and(
+          eq(appointments.orgId, orgId),
+          gte(appointments.createdAt, monthStart),
+          lt(appointments.createdAt, monthEnd),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(appointments)
-      .where(and(eq(appointments.orgId, orgId), gte(appointments.createdAt, monthStart), eq(appointments.status, "sat"))),
+      .where(
+        and(
+          eq(appointments.orgId, orgId),
+          gte(appointments.scheduledAt, monthStart),
+          lt(appointments.scheduledAt, monthEnd),
+          eq(appointments.status, "sat"),
+        ),
+      ),
     db
       .select({
         count: sql<number>`count(*)::int`,
         total: sql<string>`coalesce(sum(${sales.amount}),0)`,
       })
       .from(sales)
-      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, monthStart))),
+      .where(
+        and(
+          eq(sales.orgId, orgId),
+          gte(sales.soldAt, monthStart),
+          lt(sales.soldAt, monthEnd),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
       .where(and(eq(jobs.orgId, orgId), inArray(jobs.status, ["pending", "measure", "permits", "materials_ordered", "materials_delivered", "scheduled", "in_progress", "on_hold"]))),
-    getHcpPaymentMtd(orgId, monthStart),
-    getImportedJobRevenueMtd(orgId, monthStart),
+    getHcpPaymentMtd(orgId, monthStartStamp, monthEndStamp),
+    getImportedJobRevenueMtd(orgId, monthStart, monthEnd),
     db.select().from(callLogs).where(eq(callLogs.orgId, orgId)).orderBy(desc(callLogs.createdAt)).limit(6),
     db.select().from(sales).where(eq(sales.orgId, orgId)).orderBy(desc(sales.soldAt)).limit(5),
     db
@@ -212,7 +255,7 @@ export default async function DashboardPage({
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard label="New Leads (MTD)" value={monthLeads} sub="This month" />
+        <StatCard label="New Leads (MTD)" value={monthLeads} sub={monthLabel} />
         <StatCard
           label="Appts Set (MTD)"
           value={setCount}
@@ -220,7 +263,7 @@ export default async function DashboardPage({
           accent="text-blue-600"
         />
         <StatCard
-          label="Demos Sat"
+          label="Demos Sat (MTD)"
           value={satCount}
           sub={`${closeRate}% close rate`}
           accent="text-violet-600"
@@ -234,7 +277,7 @@ export default async function DashboardPage({
         <StatCard
           label="Payments Received (MTD)"
           value={money(collectedRevenue)}
-          sub={`${hcpPaymentMtd.count} HCP transactions`}
+          sub={`${hcpPaymentMtd.count} transactions · ${monthLabel}`}
           accent="text-cyan-600"
         />
       </div>

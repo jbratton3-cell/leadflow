@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { nyMonthBounds } from "@/lib/ny-dates";
 
 // Helper: run raw SQL and return typed rows.
 async function rows<T = Record<string, unknown>>(query: ReturnType<typeof sql>) {
@@ -18,30 +19,34 @@ export function pctChange(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
-export function monthBounds() {
-  const now = new Date();
-  const thisStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return { now, thisStart, lastStart };
+export function monthBounds(now = new Date()) {
+  const current = nyMonthBounds(now);
+  const previous = nyMonthBounds(new Date(current.start.getTime() - 1));
+  return { now, thisStart: current.start, lastStart: previous.start };
 }
 
 /* ------------------------------- KPIs --------------------------------- */
 
-async function windowStats(orgId: number, startISO: string, endISO: string) {
+async function windowStats(orgId: number, start: Date, end: Date) {
   const [lead] = await rows<{ c: string }>(
-    sql`select count(*)::int c from leads where org_id = ${orgId} and created_at >= ${startISO} and created_at < ${endISO}`
+    sql`select count(*)::int c
+        from leads
+        where org_id = ${orgId}
+          and created_at >= ${start}
+          and created_at < ${end}
+          and (notes is null or notes not like 'Imported from Housecall Pro customer %')`
   );
   const [appt] = await rows<{ c: string }>(
-    sql`select count(*)::int c from appointments where org_id = ${orgId} and created_at >= ${startISO} and created_at < ${endISO}`
+    sql`select count(*)::int c from appointments where org_id = ${orgId} and created_at >= ${start} and created_at < ${end}`
   );
   const [sat] = await rows<{ c: string }>(
-    sql`select count(*)::int c from appointments where org_id = ${orgId} and created_at >= ${startISO} and created_at < ${endISO} and status = 'sat'`
+    sql`select count(*)::int c from appointments where org_id = ${orgId} and scheduled_at >= ${start} and scheduled_at < ${end} and status = 'sat'`
   );
   const [noshow] = await rows<{ c: string }>(
-    sql`select count(*)::int c from appointments where org_id = ${orgId} and created_at >= ${startISO} and created_at < ${endISO} and status = 'no_show'`
+    sql`select count(*)::int c from appointments where org_id = ${orgId} and scheduled_at >= ${start} and scheduled_at < ${end} and status = 'no_show'`
   );
   const [sale] = await rows<{ c: string; total: string }>(
-    sql`select count(*)::int c, coalesce(sum(amount),0) total from sales where org_id = ${orgId} and sold_at >= ${startISO} and sold_at < ${endISO}`
+    sql`select count(*)::int c, coalesce(sum(amount),0) total from sales where org_id = ${orgId} and sold_at >= ${start} and sold_at < ${end}`
   );
   return {
     leads: n(lead?.c),
@@ -54,12 +59,10 @@ async function windowStats(orgId: number, startISO: string, endISO: string) {
 }
 
 export async function getKpis(orgId: number) {
-  const { thisStart, lastStart } = monthBounds();
-  const thisISO = thisStart.toISOString();
-  const lastISO = lastStart.toISOString();
+  const { now, thisStart, lastStart } = monthBounds();
 
-  const cur = await windowStats(orgId, thisISO, new Date().toISOString());
-  const prev = await windowStats(orgId, lastISO, thisISO);
+  const cur = await windowStats(orgId, thisStart, now);
+  const prev = await windowStats(orgId, lastStart, thisStart);
 
   const ratios = (s: typeof cur) => ({
     ...s,
@@ -106,15 +109,38 @@ export async function getFunnel(orgId: number) {
 /* --------------------------- 6-month trend ---------------------------- */
 
 export async function getMonthlyTrend(orgId: number) {
+  const current = nyMonthBounds();
+  const [year, month] = current.startStamp.split("-").map(Number);
+  const trendAnchor = new Date(Date.UTC(year, month - 1 - 5, 15, 12));
+  const trendStart = nyMonthBounds(trendAnchor).start;
+
   const leads = await rows<{ m: string; c: string }>(sql`
-    select to_char(date_trunc('month', created_at), 'Mon') m, count(*)::int c
-    from leads where org_id = ${orgId} and created_at >= date_trunc('month', now()) - interval '5 months'
-    group by date_trunc('month', created_at) order by date_trunc('month', created_at)
+    select to_char(month_start, 'Mon') m, count(*)::int c
+    from (
+      select date_trunc(
+        'month',
+        created_at at time zone 'UTC' at time zone 'America/New_York'
+      ) month_start
+      from leads
+      where org_id = ${orgId}
+        and created_at >= ${trendStart}
+        and (notes is null or notes not like 'Imported from Housecall Pro customer %')
+    ) monthly_leads
+    group by month_start
+    order by month_start
   `);
   const sales = await rows<{ m: string; c: string; total: string }>(sql`
-    select to_char(date_trunc('month', sold_at), 'Mon') m, count(*)::int c, coalesce(sum(amount),0) total
-    from sales where org_id = ${orgId} and sold_at >= date_trunc('month', now()) - interval '5 months'
-    group by date_trunc('month', sold_at) order by date_trunc('month', sold_at)
+    select to_char(month_start, 'Mon') m, count(*)::int c, coalesce(sum(amount),0) total
+    from (
+      select amount, date_trunc(
+        'month',
+        sold_at at time zone 'UTC' at time zone 'America/New_York'
+      ) month_start
+      from sales
+      where org_id = ${orgId} and sold_at >= ${trendStart}
+    ) monthly_sales
+    group by month_start
+    order by month_start
   `);
   return {
     leads: leads.map((r) => ({ label: r.m, value: n(r.c) })),

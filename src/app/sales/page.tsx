@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { hcpPayments, invoices, jobs, sales, leads, products, reps, properties } from "@/db/schema";
-import { and, desc, eq, sql, gte, ilike, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, sql, gte, lt, ilike, or, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
 import { deleteSale } from "@/lib/delete-actions";
@@ -15,6 +15,7 @@ import {
   linkedContractKey,
   soldStats,
 } from "@/lib/revenue";
+import { nyMonthBounds, nyYearBounds } from "@/lib/ny-dates";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,13 @@ export default async function SalesPage({
   const query = rawQuery?.trim() ?? "";
 
   const now = new Date();
-  const periodStart = new Date(
-    now.getFullYear(),
-    period === "ytd" ? 0 : now.getMonth(),
-    1,
-  );
-  periodStart.setHours(0, 0, 0, 0);
+  const monthBounds = nyMonthBounds(now);
+  const yearBounds = nyYearBounds(now);
+  const periodBounds = period === "ytd" ? yearBounds : monthBounds;
+  const periodStart = periodBounds.start;
+  const periodEnd = periodBounds.end;
+  const periodStartStamp = periodBounds.startStamp;
+  const periodEndStamp = periodBounds.endStamp;
   const effectiveRepId = sql<number | null>`coalesce(${sales.salesRepId}, ${leads.assignedRepId})`;
   const saleConditions: SQL[] = [eq(sales.orgId, orgId)];
   if (query) {
@@ -102,7 +104,13 @@ export default async function SalesPage({
       })
       .from(sales)
       .leftJoin(leads, eq(sales.leadId, leads.id))
-      .where(and(eq(sales.orgId, orgId), gte(sales.soldAt, periodStart)))
+      .where(
+        and(
+          eq(sales.orgId, orgId),
+          gte(sales.soldAt, periodStart),
+          lt(sales.soldAt, periodEnd),
+        ),
+      )
       .groupBy(effectiveRepId),
     db
       .select({
@@ -141,7 +149,6 @@ export default async function SalesPage({
   const repMap = toMap(allReps);
   const prodMap = toMap(prods);
 
-  const periodStamp = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}-01`;
   const contracts = buildRevenueContracts(revenueSales, revenueJobs);
   const importedJobs = importedJobIds(revenueJobs);
   const revenuePayments = paymentRows.map((payment) => ({
@@ -156,13 +163,20 @@ export default async function SalesPage({
       importedJobs,
     ),
   }));
-  const sold = soldStats(contracts, periodStamp);
-  const collected = collectedStats(contracts, revenuePayments, periodStamp);
+  const sold = soldStats(contracts, periodStartStamp, periodEndStamp);
+  const collected = collectedStats(
+    contracts,
+    revenuePayments,
+    periodStartStamp,
+    undefined,
+    periodEndStamp,
+  );
   const wisetack = collectedStats(
     contracts,
     revenuePayments,
-    periodStamp,
+    periodStartStamp,
     "Wisetack settlement",
+    periodEndStamp,
   );
   const allWisetack = collectedStats(
     contracts,
