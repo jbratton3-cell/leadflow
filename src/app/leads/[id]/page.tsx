@@ -123,6 +123,8 @@ export default async function LeadDetailPage({
   );
   const billingContact = personName(lead.firstName, lead.lastName, "");
   const isPropertyAccount = lead.accountType === "property_management";
+  const usesJobSpecificBilling =
+    isPropertyAccount || activeLocations.length > 0 || jobRows.length > 1;
   const openAppt = appts.find((a) => a.status === "set" || a.status === "confirmed");
   const activeFinalInvoice = invoiceRows.find(
     (invoice) => invoice.kind === "final" && invoice.status !== "void",
@@ -236,14 +238,14 @@ export default async function LeadDetailPage({
             )}
           </Card>
 
-          {isPropertyAccount && (
-            <Card className="p-5">
+          <Card className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-800">Service Locations</h2>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Estimates and invoices are billed to {billingName}. Residents and site
-                    contacts identify where the work is performed and do not become separate prospects.
+                    {isPropertyAccount
+                      ? `Estimates and invoices are billed to ${billingName}. Residents and site contacts identify where the work is performed and do not become separate prospects.`
+                      : `The customer’s primary address remains the billing address. Add another service location when a job is performed at a different address.`}
                   </p>
                 </div>
                 <Badge className="bg-cyan-100 text-cyan-800">
@@ -265,8 +267,9 @@ export default async function LeadDetailPage({
               <div className="mt-4 space-y-3">
                 {activeLocations.length === 0 && (
                   <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                    Add the first address, resident, or community below. Once saved, you can
-                    create either an estimate or an immediate work order from the same location.
+                    {isPropertyAccount
+                      ? "Add the first property, resident, or address below. Once saved, you can create an estimate or immediate work order for that location."
+                      : "No additional job addresses yet. Add one below when work will be performed somewhere other than the customer’s primary address."}
                   </div>
                 )}
                 {activeLocations.map((location) => {
@@ -418,18 +421,26 @@ export default async function LeadDetailPage({
                 <form action={createProperty} className="grid gap-3 border-t border-cyan-100 p-4 sm:grid-cols-2">
                   <input type="hidden" name="leadId" value={lead.id} />
                   <div>
-                    <label className={label}>Property / Community Name (optional)</label>
-                    <input name="propertyName" placeholder="Dutch Village" className={input} />
+                    <label className={label}>
+                      {isPropertyAccount ? "Property / Community Name (optional)" : "Location Name (optional)"}
+                    </label>
+                    <input
+                      name="propertyName"
+                      placeholder={isPropertyAccount ? "Dutch Village" : "Rental property, office, etc."}
+                      className={input}
+                    />
                   </div>
                   <div>
-                    <label className={label}>Resident / Site Contact (optional)</label>
+                    <label className={label}>
+                      {isPropertyAccount ? "Resident / Site Contact (optional)" : "Site Contact (optional)"}
+                    </label>
                     <input name="contactName" placeholder="Jane Resident" className={input} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className={label}>Street Address *</label>
                     <input name="address" required placeholder="123 Main Street" className={input} />
                     <p className="mt-1 text-[11px] text-slate-500">
-                      If there is no property name, LeadFlow will label this location by the resident/site contact or address.
+                      If there is no location name, LeadFlow will label it by the site contact or street address.
                     </p>
                   </div>
                   <div>
@@ -484,8 +495,7 @@ export default async function LeadDetailPage({
                   </ul>
                 </details>
               )}
-            </Card>
-          )}
+          </Card>
 
           {/* Action: Log Call */}
           <Card className="p-5">
@@ -583,11 +593,20 @@ export default async function LeadDetailPage({
                 <form action={createSale} className="mt-4 grid grid-cols-2 gap-3">
                   <input type="hidden" name="leadId" value={lead.id} />
                   {openAppt && <input type="hidden" name="appointmentId" value={openAppt.id} />}
-                  {isPropertyAccount && (
+                  {(isPropertyAccount || activeLocations.length > 0) && (
                     <div className="col-span-2">
-                      <label className={label}>Service Location *</label>
-                      <select name="propertyId" required defaultValue="" className={input}>
-                        <option value="" disabled>Choose a service location</option>
+                      <label className={label}>
+                        Service Location {isPropertyAccount ? "*" : "(optional)"}
+                      </label>
+                      <select
+                        name="propertyId"
+                        required={isPropertyAccount}
+                        defaultValue=""
+                        className={input}
+                      >
+                        <option value="" disabled={isPropertyAccount}>
+                          {isPropertyAccount ? "Choose a service location" : "Use primary customer address"}
+                        </option>
                         {activeLocations.map((location) => (
                           <option key={location.id} value={location.id}>
                             {serviceLocationLabel(location)} — {serviceLocationAddress(location)}
@@ -746,13 +765,20 @@ export default async function LeadDetailPage({
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-700">Estimates</h2>
-              {isPropertyAccount ? (
+              {isPropertyAccount || activeLocations.length > 0 ? (
                 activeLocations.length > 0 && (
                   <form action={createEstimate} className="flex items-center gap-2">
                     <input type="hidden" name="leadId" value={lead.id} />
                     <input type="hidden" name="title" value="Project Estimate" />
-                    <select name="propertyId" required defaultValue="" className="max-w-44 rounded-lg border border-slate-300 px-2 py-1 text-xs">
-                      <option value="" disabled>Choose location…</option>
+                    <select
+                      name="propertyId"
+                      required={isPropertyAccount}
+                      defaultValue=""
+                      className="max-w-44 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                    >
+                      <option value="" disabled={isPropertyAccount}>
+                        {isPropertyAccount ? "Choose location…" : "Primary address"}
+                      </option>
                       {activeLocations.map((location) => (
                         <option key={location.id} value={location.id}>
                           {serviceLocationLabel(location)}
@@ -860,7 +886,7 @@ export default async function LeadDetailPage({
                 Choose the specific work order before creating a final invoice.
               </p>
             )}
-            {isPropertyAccount ? (
+            {usesJobSpecificBilling ? (
               jobsWithoutFinal.length > 0 && (
                 <details className="mt-4 rounded-lg border border-slate-200">
                   <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700">

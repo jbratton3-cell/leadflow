@@ -1,8 +1,8 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Sep 30, 2026*
+*Last updated: Oct 1, 2026*
 
-## CURRENT OPERATING STATE — SEP 30, 2026
+## CURRENT OPERATING STATE — OCT 1, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
@@ -15,6 +15,12 @@
 - Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.
 - Payments Received/Collected MTD now belongs to the month money actually arrived, even when the contract was sold earlier. Lifetime per-contract caps remain enforced chronologically. Demos Sat uses the scheduled demo date; future CSV migrations can map a Lead/Created Date so history keeps its original period.
 - Verified locally against production data: Dashboard New Leads 41, Sold $583,890 across 41 contracts/jobs, Payments Received $382,095 across 54 transactions, Estimates Created $713,124 across 55 estimates. Eastern rollover and cross-month-payment tests passed; typecheck and production build passed.
+
+### Additional job addresses for every customer — IMPLEMENTED Oct 1
+- Service Locations are no longer limited to property-management accounts. Any homeowner, commercial customer, or other account can retain its primary/billing address while estimates, sales, production jobs, invoices, PDFs, and QuickBooks records carry a different job address.
+- The customer page now exposes Service Locations for every account. From an added address, office staff can create an estimate or immediate work order; existing jobs can be assigned to it from Production. Regular customers may still use their primary address, while property-management accounts continue to require an explicit location.
+- Multi-job final invoicing switches to job-specific balances whenever an account has service locations or multiple jobs, preserving isolation between addresses.
+- Local QA used a normal homeowner account with `10 Primary Lane` as the bill-to address and `55 Job Site Road` as the service location. The UI-created location, estimate, and immediate work order all retained the correct separate addresses. No schema change was required.
 
 ### Property-management hierarchy — BUILT and end-to-end verified Sep 29
 - One management company remains the parent customer/billing account while holding any number of reusable service locations. A location supports optional property/community name, resident/site contact, unit, phone/email, required street address, city/state/ZIP, and access instructions. If no property name exists, the display label falls back to resident/site contact and then street address.

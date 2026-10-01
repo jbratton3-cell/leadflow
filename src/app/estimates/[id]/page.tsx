@@ -176,13 +176,25 @@ export default async function EstimateDetailPage({
                 )}
               </div>
             </div>
-            {!locked && lead?.accountType === "property_management" && (
+            {!locked &&
+              (lead?.accountType === "property_management" || activeLocations.length > 0) && (
               <form action={updateEstimateLocation} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_120px_auto] sm:items-end">
                 <input type="hidden" name="id" value={est.id} />
                 <div>
-                  <label className={label}>Service Location *</label>
-                  <select name="propertyId" required defaultValue={est.propertyId ?? ""} className={input}>
-                    <option value="" disabled>Choose a service location</option>
+                  <label className={label}>
+                    Service Location {lead?.accountType === "property_management" ? "*" : "(optional)"}
+                  </label>
+                  <select
+                    name="propertyId"
+                    required={lead?.accountType === "property_management"}
+                    defaultValue={est.propertyId ?? ""}
+                    className={input}
+                  >
+                    <option value="" disabled={lead?.accountType === "property_management"}>
+                      {lead?.accountType === "property_management"
+                        ? "Choose a service location"
+                        : "Use primary customer address"}
+                    </option>
                     {activeLocations.map((row) => (
                       <option key={row.id} value={row.id}>
                         {serviceLocationLabel(row)} — {serviceLocationAddress(row)}

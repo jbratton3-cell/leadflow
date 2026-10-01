@@ -504,7 +504,9 @@ export async function createJob(formData: FormData) {
   revalidatePath("/");
 }
 
-// Add a reusable address/resident under a management-company billing account.
+// Add a reusable job address under any customer billing account. The lead's
+// primary address remains the bill-to address; this record identifies where
+// the estimate, job, and invoice work is performed.
 export async function createProperty(formData: FormData) {
   const { orgId } = await requireUser();
   const leadId = num(formData.get("leadId"));
@@ -514,11 +516,11 @@ export async function createProperty(formData: FormData) {
   if (!leadId || !address) return;
 
   const [account] = await db
-    .select({ id: leads.id, accountType: leads.accountType })
+    .select({ id: leads.id })
     .from(leads)
     .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
     .limit(1);
-  if (!account || account.accountType !== "property_management") return;
+  if (!account) return;
 
   const name = propertyName ?? contactName ?? address;
   await db.insert(properties).values({
