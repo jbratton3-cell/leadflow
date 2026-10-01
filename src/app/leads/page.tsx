@@ -1,11 +1,22 @@
 import { db } from "@/db";
-import { leads } from "@/db/schema";
-import { count, desc, ilike, or, eq, and, type SQL } from "drizzle-orm";
+import { leads, properties } from "@/db/schema";
+import { count, desc, ilike, or, eq, and, inArray, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import { getSources, getProducts, getReps, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
-import { accountTypeLabel, STAGES, stageLabel, stageColor, money, fmtDate, accountDisplayName, personName } from "@/lib/constants";
+import {
+  accountTypeLabel,
+  STAGES,
+  stageLabel,
+  stageColor,
+  money,
+  fmtDate,
+  accountDisplayName,
+  personName,
+  serviceLocationAddress,
+  serviceLocationLabel,
+} from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +44,25 @@ export default async function LeadsPage({
         ilike(leads.address, like),
         ilike(leads.phone, like),
         ilike(leads.city, like),
-        ilike(leads.zip, like)
+        ilike(leads.zip, like),
+        sql`exists (
+          select 1
+          from ${properties}
+          where ${properties.orgId} = ${orgId}
+            and ${properties.leadId} = ${leads.id}
+            and (
+              ${properties.name} ilike ${like}
+              or ${properties.propertyName} ilike ${like}
+              or ${properties.address} ilike ${like}
+              or ${properties.city} ilike ${like}
+              or ${properties.state} ilike ${like}
+              or ${properties.zip} ilike ${like}
+              or ${properties.unitNumber} ilike ${like}
+              or ${properties.contactName} ilike ${like}
+              or ${properties.contactPhone} ilike ${like}
+              or ${properties.contactEmail} ilike ${like}
+            )
+        )`
       )!
     );
   }
@@ -53,15 +82,43 @@ export default async function LeadsPage({
   const currentPage = Math.min(requestedPage, totalPages);
   const offset = (currentPage - 1) * pageSize;
 
-  const [rows] = await Promise.all([
-    db
-      .select()
-      .from(leads)
-      .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(leads.updatedAt))
-      .limit(pageSize)
-      .offset(offset),
-  ]);
+  const rows = await db
+    .select()
+    .from(leads)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(desc(leads.updatedAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  const matchedLocationRows = search && rows.length > 0
+    ? await db
+        .select()
+        .from(properties)
+        .where(
+          and(
+            eq(properties.orgId, orgId),
+            inArray(properties.leadId, rows.map((row) => row.id)),
+            or(
+              ilike(properties.name, `%${search}%`),
+              ilike(properties.propertyName, `%${search}%`),
+              ilike(properties.address, `%${search}%`),
+              ilike(properties.city, `%${search}%`),
+              ilike(properties.state, `%${search}%`),
+              ilike(properties.zip, `%${search}%`),
+              ilike(properties.unitNumber, `%${search}%`),
+              ilike(properties.contactName, `%${search}%`),
+              ilike(properties.contactPhone, `%${search}%`),
+              ilike(properties.contactEmail, `%${search}%`),
+            ),
+          ),
+        )
+    : [];
+  const matchedLocationsByLead = new Map<number, typeof matchedLocationRows>();
+  for (const location of matchedLocationRows) {
+    const group = matchedLocationsByLead.get(location.leadId) ?? [];
+    group.push(location);
+    matchedLocationsByLead.set(location.leadId, group);
+  }
 
   const srcMap = toMap(sources);
   const prodMap = toMap(prods);
@@ -99,7 +156,7 @@ export default async function LeadsPage({
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="Search name, address, phone, city, zip…"
+            placeholder="Search customer or service address…"
             className="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-orange-400"
           />
           <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
@@ -227,7 +284,12 @@ export default async function LeadsPage({
                       <div className="text-xs text-slate-400">{l.phone ?? "—"}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {l.city ? `${l.city}, ${l.state ?? ""}` : "—"}
+                      <div>{l.city ? `${l.city}, ${l.state ?? ""}` : "—"}</div>
+                      {matchedLocationsByLead.get(l.id)?.map((location) => (
+                        <div key={location.id} className="mt-1 text-xs text-cyan-700">
+                          Service: {serviceLocationLabel(location)} — {serviceLocationAddress(location)}
+                        </div>
+                      ))}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {l.productId ? prodMap.get(l.productId)?.name ?? "—" : "—"}
