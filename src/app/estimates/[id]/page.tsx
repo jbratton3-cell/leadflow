@@ -78,6 +78,9 @@ export default async function EstimateDetailPage({
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
+  const canUpdateLocation =
+    !locked ||
+    (est.status === "accepted" && (user.role === "admin" || user.role === "manager"));
   const canDelete = est.status !== "accepted" || user.role === "admin";
   const cardPaymentsEnabled = Boolean(paypalPublicClientId());
   const billingName = lead
@@ -176,10 +179,16 @@ export default async function EstimateDetailPage({
                 )}
               </div>
             </div>
-            {!locked &&
+            {canUpdateLocation &&
               (lead?.accountType === "property_management" || activeLocations.length > 0) && (
               <form action={updateEstimateLocation} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_120px_auto] sm:items-end">
                 <input type="hidden" name="id" value={est.id} />
+                {est.status === "accepted" && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 sm:col-span-3">
+                    Correcting an accepted estimate also updates its linked sale, production job,
+                    and LeadFlow invoices. Financial amounts and payment status do not change.
+                  </p>
+                )}
                 <div>
                   <label className={label}>
                     Service Location {lead?.accountType === "property_management" ? "*" : "(optional)"}
@@ -207,7 +216,7 @@ export default async function EstimateDetailPage({
                   <input name="unitNumber" defaultValue={est.unitNumber ?? location?.unitNumber ?? ""} className={input} />
                 </div>
                 <button className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">
-                  Save Location
+                  {est.status === "accepted" ? "Update Linked Location" : "Save Location"}
                 </button>
               </form>
             )}

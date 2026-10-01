@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { db } from "@/db";
 import { estimates, estimateItems, leads, jobs, sales, products, properties, estimatePhotos, organizations, invoices } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, sql, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAccess } from "@/lib/auth";
@@ -183,7 +183,8 @@ export async function updateEstimate(formData: FormData) {
 }
 
 export async function updateEstimateLocation(formData: FormData) {
-  const { orgId } = await requireAccess("estimates");
+  const user = await requireAccess("estimates");
+  const { orgId } = user;
   const id = Number(formData.get("id"));
   const propertyId = Number(formData.get("propertyId")) || null;
   if (!id) return;
@@ -193,10 +194,15 @@ export async function updateEstimateLocation(formData: FormData) {
     .from(estimates)
     .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)))
     .limit(1);
-  if (!est || est.status === "accepted" || est.status === "declined") return;
+  if (!est || est.status === "declined") return;
+  if (
+    est.status === "accepted" &&
+    user.role !== "admin" &&
+    user.role !== "manager"
+  ) return;
 
   const [lead] = await db
-    .select({ accountType: leads.accountType })
+    .select()
     .from(leads)
     .where(and(eq(leads.id, est.leadId), eq(leads.orgId, orgId)))
     .limit(1);
@@ -220,18 +226,126 @@ export async function updateEstimateLocation(formData: FormData) {
   }
   if (lead.accountType === "property_management" && !location) return;
 
-  await db
-    .update(estimates)
-    .set({
+  const unitNumber =
+    str(formData.get("unitNumber")) ?? location?.unitNumber ?? null;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(estimates)
+      .set({
+        propertyId: location?.id ?? null,
+        unitNumber,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
+
+    if (est.status !== "accepted") return;
+
+    // Accepted estimates may already have a sale, production job, and paid
+    // deposit invoice. Correct the factual job location everywhere without
+    // changing any contract amounts or payment statuses.
+    const [directSales, invoiceLinks] = await Promise.all([
+      tx
+        .select({ id: sales.id })
+        .from(sales)
+        .where(and(eq(sales.orgId, orgId), eq(sales.estimateId, id))),
+      tx
+        .select({ saleId: invoices.saleId, jobId: invoices.jobId })
+        .from(invoices)
+        .where(and(eq(invoices.orgId, orgId), eq(invoices.estimateId, id))),
+    ]);
+
+    const saleIds = Array.from(
+      new Set([
+        ...directSales.map((sale) => sale.id),
+        ...invoiceLinks
+          .map((invoice) => invoice.saleId)
+          .filter((saleId): saleId is number => saleId !== null),
+      ]),
+    );
+
+    if (saleIds.length > 0) {
+      await tx
+        .update(sales)
+        .set({ propertyId: location?.id ?? null })
+        .where(and(eq(sales.orgId, orgId), inArray(sales.id, saleIds)));
+    }
+
+    // Repair the legacy accepted-estimate link when one unambiguous sale was
+    // found through its invoice. This enables future corrections to stay linked.
+    if (saleIds.length === 1) {
+      const [claimedSale] = await tx
+        .select({ id: sales.id })
+        .from(sales)
+        .where(and(eq(sales.orgId, orgId), eq(sales.estimateId, id)))
+        .limit(1);
+      if (!claimedSale || claimedSale.id === saleIds[0]) {
+        await tx
+          .update(sales)
+          .set({ estimateId: id })
+          .where(and(eq(sales.orgId, orgId), eq(sales.id, saleIds[0])));
+      }
+    }
+
+    const linkedJobs = saleIds.length > 0
+      ? await tx
+          .select({ id: jobs.id })
+          .from(jobs)
+          .where(and(eq(jobs.orgId, orgId), inArray(jobs.saleId, saleIds)))
+      : [];
+    const jobIds = Array.from(
+      new Set([
+        ...linkedJobs.map((job) => job.id),
+        ...invoiceLinks
+          .map((invoice) => invoice.jobId)
+          .filter((jobId): jobId is number => jobId !== null),
+      ]),
+    );
+
+    if (jobIds.length > 0) {
+      await tx
+        .update(jobs)
+        .set({
+          propertyId: location?.id ?? null,
+          unitNumber,
+          customerAddress: location?.address ?? lead.address,
+          customerCity: location?.city ?? lead.city,
+          customerPhone: location?.contactPhone ?? lead.phone,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(jobs.orgId, orgId), inArray(jobs.id, jobIds)));
+    }
+
+    const invoicePatch = {
       propertyId: location?.id ?? null,
-      unitNumber: str(formData.get("unitNumber")) ?? location?.unitNumber ?? null,
+      unitNumber,
       updatedAt: new Date(),
-    })
-    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId)));
+    };
+    await tx
+      .update(invoices)
+      .set(invoicePatch)
+      .where(and(eq(invoices.orgId, orgId), eq(invoices.estimateId, id)));
+    if (saleIds.length > 0) {
+      await tx
+        .update(invoices)
+        .set(invoicePatch)
+        .where(and(eq(invoices.orgId, orgId), inArray(invoices.saleId, saleIds)));
+    }
+    if (jobIds.length > 0) {
+      await tx
+        .update(invoices)
+        .set(invoicePatch)
+        .where(and(eq(invoices.orgId, orgId), inArray(invoices.jobId, jobIds)));
+    }
+  });
 
   revalidatePath(`/estimates/${id}`);
   revalidatePath(`/leads/${est.leadId}`);
   revalidatePath("/estimates");
+  revalidatePath("/sales");
+  revalidatePath("/production");
+  revalidatePath("/invoices");
+  revalidatePath("/board");
 }
 
 // Correct the financial terms of an accepted paper estimate after the office
