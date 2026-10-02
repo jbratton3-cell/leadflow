@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SignupForm from "@/app/signup/SignupForm";
 import { copyright, APP_NAME } from "@/lib/constants";
+import { FoundingOfferCard } from "@/components/FoundingOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,8 @@ export default function TourPage() {
           </p>
           <SignupForm />
         </div>
+
+        <FoundingOfferCard compact className="mt-5" />
 
         <p className="mt-4 text-center text-sm text-slate-400">
           Already have an account?{" "}

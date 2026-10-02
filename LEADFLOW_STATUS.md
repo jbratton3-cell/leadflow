@@ -1,8 +1,8 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Oct 1, 2026*
+*Last updated: Oct 2, 2026*
 
-## CURRENT OPERATING STATE — OCT 1, 2026
+## CURRENT OPERATING STATE — OCT 2, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
@@ -15,6 +15,12 @@
 - Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.
 - Payments Received/Collected MTD now belongs to the month money actually arrived, even when the contract was sold earlier. Lifetime per-contract caps remain enforced chronologically. Demos Sat uses the scheduled demo date; future CSV migrations can map a Lead/Created Date so history keeps its original period.
 - Verified locally against production data: Dashboard New Leads 41, Sold $583,890 across 41 contracts/jobs, Payments Received $382,095 across 54 transactions, Estimates Created $713,124 across 55 estimates. Eastern rollover and cross-month-payment tests passed; typecheck and production build passed.
+
+### Founding-customer conversion offer — IMPLEMENTED Oct 2
+- The public marketing path now treats the founding offer as a sales conversion incentive rather than a passing caption: a sitewide offer strip appears across marketing pages, and full offer cards appear on the homepage, Pricing, Contact, and guided-tour entry.
+- Source-of-truth wording is centralized in `src/lib/founding-offer.ts`: **“Setup fee waived—a value up to $4,000.”** Only five companies receive the waiver; the monthly subscription still applies. The offer includes agreed data migration, complete workflow setup, and live team training.
+- A founding spot is secured only after the agreement is signed and the first monthly subscription payment is received. Demo requests and trial signups do not hold spots. Current display is **5 of 5 spots available**; manually reduce `FOUNDING_SPOTS_REMAINING` only after a customer meets the booking rule.
+- The same language now appears inside both trial guides so high-intent trial users see accurate terms. Desktop and 390px mobile browser QA passed on Homepage, Pricing, Contact, and Tour.
 
 ### Additional job addresses for every customer — IMPLEMENTED Oct 1
 - Service Locations are no longer limited to property-management accounts. Any homeowner, commercial customer, or other account can retain its primary/billing address while estimates, sales, production jobs, invoices, PDFs, and QuickBooks records carry a different job address.

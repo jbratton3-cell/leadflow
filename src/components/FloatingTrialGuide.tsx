@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { loadSampleData, clearSampleData } from "@/lib/trial-actions";
+import {
+  FOUNDING_OFFER_HEADLINE,
+  FOUNDING_OFFER_RESERVATION,
+} from "@/lib/founding-offer";
 
 // The guide that follows you: a docked card showing the CURRENT step with its
 // instructions on every CRM page. Advances automatically as steps complete.
@@ -124,8 +128,9 @@ export default function FloatingTrialGuide({
               See plans
             </Link>
           </div>
-          <p className="text-[10px] text-slate-400">
-            Founding-customer offer: setup fee waived for the first five companies.
+          <p className="text-[10px] leading-relaxed text-slate-400">
+            <strong>Founding customer offer:</strong> {FOUNDING_OFFER_HEADLINE}{" "}
+            {FOUNDING_OFFER_RESERVATION}
           </p>
         </div>
       ),

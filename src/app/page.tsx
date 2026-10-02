@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { APP_NAME } from "@/lib/constants";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
+import { FoundingOfferCard } from "@/components/FoundingOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,10 @@ export default async function LandingPage() {
         <p className="mt-4 text-xs text-slate-500">
           A focused walkthrough of how LeadFlow keeps your team aligned from the first call through the final payment.
         </p>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-16">
+        <FoundingOfferCard />
       </section>
 
       <section className="border-t border-slate-800 bg-slate-900/50 py-16">

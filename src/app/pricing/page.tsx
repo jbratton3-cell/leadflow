@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { APP_NAME } from "@/lib/constants";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
+import { FoundingOfferCard } from "@/components/FoundingOffer";
+import {
+  FOUNDING_OFFER_HEADLINE,
+  FOUNDING_OFFER_RESERVATION,
+} from "@/lib/founding-offer";
 
 export const dynamic = "force-dynamic";
 
@@ -70,12 +75,7 @@ export default function PricingPage() {
 
       {/* Tiers */}
       <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="mx-auto mb-8 max-w-2xl rounded-2xl bg-orange-500/10 px-6 py-4 text-center ring-1 ring-orange-500/40">
-          <span className="font-bold text-orange-300">Founding Customer Offer:</span>{" "}
-          <span className="text-slate-200">
-            setup fee waived for our first five customers — a value of up to $4,000.
-          </span>
-        </div>
+        <FoundingOfferCard className="mx-auto mb-10 max-w-4xl" />
         <div className="grid gap-6 lg:grid-cols-3">
           {TIERS.map((tier) => (
             <div
@@ -230,11 +230,15 @@ export default function PricingPage() {
             {[
               {
                 q: "How much does LeadFlow cost?",
-                a: "It's on this page: $149 / $399 / $749 a month depending on seats — month-to-month. For most roofing shops that's less than one missed job. Setup is a one-time fee; founding customers get it waived.",
+                a: `It's on this page: $149 / $399 / $749 a month depending on seats — month-to-month. Setup is a one-time fee. For the five founding customers, ${FOUNDING_OFFER_HEADLINE} The monthly subscription still applies.`,
               },
               {
                 q: "What's included in setup?",
                 a: "Our team configures LeadFlow around your complete workflow, loads your lead sources and products, migrates your existing leads and jobs, sets up your users, and trains your team — so you start on a finished, ready-to-use account.",
+              },
+              {
+                q: "How is a founding-customer spot secured?",
+                a: `${FOUNDING_OFFER_RESERVATION} A demo request or trial signup does not reserve one of the five spots.`,
               },
               {
                 q: "What's your cancellation policy?",

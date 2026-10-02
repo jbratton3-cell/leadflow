@@ -1,33 +1,37 @@
 import Link from "next/link";
 import { APP_NAME, BUSINESS_NAME, copyright } from "@/lib/constants";
+import { FoundingOfferStrip } from "@/components/FoundingOffer";
 
 export function MarketingNav({ cta = "Book a demo" }: { cta?: string }) {
   return (
-    <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-      <Link href="/" className="flex items-center gap-2">
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-orange-500 text-lg font-bold text-white">
-          {APP_NAME.slice(0, 1)}
-        </div>
-        <span className="text-lg font-bold">{APP_NAME}</span>
-      </Link>
-      <nav className="flex flex-wrap items-center justify-end gap-3 text-sm">
-        <Link href="/tour" className="font-medium text-slate-300 hover:text-white">
-          Guided tour
+    <>
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-orange-500 text-lg font-bold text-white">
+            {APP_NAME.slice(0, 1)}
+          </div>
+          <span className="text-lg font-bold">{APP_NAME}</span>
         </Link>
-        <Link href="/pricing" className="font-medium text-slate-300 hover:text-white">
-          Pricing
-        </Link>
-        <Link href="/login" className="font-medium text-slate-300 hover:text-white">
-          Sign In
-        </Link>
-        <Link
-          href="/contact"
-          className="rounded-lg bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600"
-        >
-          {cta}
-        </Link>
-      </nav>
-    </header>
+        <nav className="flex flex-wrap items-center justify-end gap-3 text-sm">
+          <Link href="/tour" className="font-medium text-slate-300 hover:text-white">
+            Guided tour
+          </Link>
+          <Link href="/pricing" className="font-medium text-slate-300 hover:text-white">
+            Pricing
+          </Link>
+          <Link href="/login" className="font-medium text-slate-300 hover:text-white">
+            Sign In
+          </Link>
+          <Link
+            href="/contact"
+            className="rounded-lg bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600"
+          >
+            {cta}
+          </Link>
+        </nav>
+      </header>
+      <FoundingOfferStrip />
+    </>
   );
 }
 

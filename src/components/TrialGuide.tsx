@@ -3,6 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loadSampleData, clearSampleData } from "@/lib/trial-actions";
+import {
+  FOUNDING_OFFER_HEADLINE,
+  FOUNDING_OFFER_RESERVATION,
+} from "@/lib/founding-offer";
 
 // The guided trial: five steps that teach the lead-to-cash flow by doing it.
 // Progress comes from the server (real data), steps expand into full lessons.
@@ -136,8 +140,9 @@ export default function TrialGuide({
               See plans
             </Link>
           </div>
-          <p className="text-xs text-slate-400">
-            Founding-customer offer: setup fee waived for the first five companies.
+          <p className="text-xs leading-relaxed text-slate-400">
+            <strong>Founding customer offer:</strong> {FOUNDING_OFFER_HEADLINE}{" "}
+            {FOUNDING_OFFER_RESERVATION}
           </p>
         </div>
       ),

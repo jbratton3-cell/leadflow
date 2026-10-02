@@ -1,5 +1,6 @@
 import ContactForm from "./ContactForm";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
+import { FoundingOfferCard } from "@/components/FoundingOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default function ContactPage() {
               </li>
             ))}
           </ul>
+          <FoundingOfferCard compact showCta={false} className="mt-8" />
         </div>
 
         <div>
