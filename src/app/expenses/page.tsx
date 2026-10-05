@@ -77,12 +77,33 @@ export default async function ExpensesPage({
   });
 
   const costsByJob = new Map<number, number>();
+  const latestExpenseByJob = new Map<number, number>();
   for (const row of expenseRows) {
     costsByJob.set(
       row.expense.jobId,
       (costsByJob.get(row.expense.jobId) ?? 0) + Number(row.expense.amount ?? 0),
     );
+    const purchasedAt = row.expense.purchaseDate?.getTime() ?? 0;
+    latestExpenseByJob.set(
+      row.expense.jobId,
+      Math.max(latestExpenseByJob.get(row.expense.jobId) ?? 0, purchasedAt),
+    );
   }
+
+  // Keep active cost tracking visible instead of burying older jobs far down
+  // the profitability table. Within each group, newest activity stays first.
+  const profitabilityRows = [...jobRows].sort((a, b) => {
+    const aHasCosts = costsByJob.has(a.job.id);
+    const bHasCosts = costsByJob.has(b.job.id);
+    if (aHasCosts !== bHasCosts) return aHasCosts ? -1 : 1;
+    if (aHasCosts && bHasCosts) {
+      return (
+        (latestExpenseByJob.get(b.job.id) ?? 0) -
+        (latestExpenseByJob.get(a.job.id) ?? 0)
+      );
+    }
+    return b.job.createdAt.getTime() - a.job.createdAt.getTime();
+  });
 
   const revenueTotal = jobRows.reduce(
     (sum, row) => sum + Number(row.saleAmount ?? row.job.contractAmount ?? 0),
@@ -144,7 +165,7 @@ export default async function ExpensesPage({
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="font-semibold text-slate-800">Job Profitability</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Revenue uses the contract or sale amount. Profit is revenue minus recorded expenses.
+            Revenue uses the contract or sale amount. Profit is revenue minus recorded expenses. Jobs with recorded costs are shown first.
           </p>
         </div>
         {jobRows.length === 0 ? (
@@ -164,7 +185,7 @@ export default async function ExpensesPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {jobRows.map((row) => {
+              {profitabilityRows.map((row) => {
                 const revenue = Number(row.saleAmount ?? row.job.contractAmount ?? 0);
                 const cost = costsByJob.get(row.job.id) ?? 0;
                 const profit = revenue - cost;

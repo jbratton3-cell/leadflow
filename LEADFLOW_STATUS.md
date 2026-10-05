@@ -38,6 +38,17 @@
 - Live QA passed across the lead, estimate, production, invoice, Job Costs, Receipt Inbox, and authenticated receipt PDF. Receipt Inbox is now 2 imported / 8 review. No QA records or temporary sessions remain.
 - Import is idempotently tracked in `migration_records` under `paper_estimate_pdf` and `paper_estimate_followup`; do not duplicate any of these records if the same PDF or decision is supplied again.
 
+### Green Springs Capital / Blue Spruce — PARENT STRUCTURE CORRECTED Oct 5
+- Jon clarified that the existing 58 Lincoln and 3093 US-9 Green Springs records were separate legacy job/site entries created before parent-account support; neither is the true parent account.
+- New parent Lead #1279 is **Green Springs Capital**, account type property management, with no invented billing address or contact. Blue Spruce Motel is service location/property #16 at 3093 US-9, Valatie, NY 12184. Greg Green was not assumed to be the parent billing contact or site contact.
+- Existing $84,800 draft `EST-1002` / Estimate #7 moved from legacy Lead #5 to parent Lead #1279 and Blue Spruce property #16. The old 58 Lincoln historical jobs were left untouched; legacy Lead #1187 was corrected from property-management parent status back to an unclassified site record.
+- Home Depot order `H1263-304078` for **$215.46** remains in Receipt Inbox review. No sale, production job, deposit, invoice, or expense was created. When sale status is approved, create the job under parent Lead #1279 at property #16 and attach the receipt to that **site-specific job**, never to the parent account itself.
+- The restructure is idempotently tracked under `property_management_restructure`.
+
+### Job profitability visibility — BUILT Oct 5, deployment pending
+- Rhonda Nicholson Expense #5 was already correctly linked to Job #13 and live profitability was $10,800 contract / $603.78 costs / $10,196.22 profit / 94.4% margin. She appeared buried because Job Costs sorted hundreds of jobs by job-creation date.
+- Job Profitability now sorts jobs with recorded costs first, then by latest expense date. Local QA puts 63 Westchester first and Rhonda immediately second with both exact cost/profit figures; jobs without costs follow afterward.
+
 ### Calendar-month MTD reporting — CORRECTED Sep 30
 - Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.
 - Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.
