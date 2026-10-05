@@ -82,7 +82,13 @@ export async function deleteExpense(formData: FormData) {
     .limit(1);
   if (!expense) return;
 
-  if (expense.receiptUrl) {
+  // Parser-imported receipts live in PostgreSQL and are detached automatically
+  // when their expense is deleted. Only external Blob URLs need Blob cleanup.
+  if (
+    expense.receiptUrl &&
+    !expense.receiptUrl.startsWith("/api/expense-receipts/") &&
+    !expense.receiptUrl.startsWith("data:")
+  ) {
     try {
       await del(expense.receiptUrl);
     } catch (error) {

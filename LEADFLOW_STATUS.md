@@ -1,14 +1,24 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Oct 2, 2026*
+*Last updated: Oct 5, 2026*
 
-## CURRENT OPERATING STATE — OCT 2, 2026
+## CURRENT OPERATING STATE — OCT 5, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
 - Carry all accepted requirements forward during revisions. A new instruction is a delta, not permission to drop earlier constraints. Inspect surrounding layout/functionality and clean up obvious ripple effects without waiting to be told.
 - User gives instructions one step at a time. New branch tasks do not cancel the active task. Live rep/customer blockers take immediate priority; checkpoint the original task, resolve the blocker fully, then resume automatically.
+- **Ledger discipline is mandatory:** read the relevant ledger decisions before resuming a task, update both ledger copies after every material decision or completed action, and never substitute a newly invented workflow for an already agreed one.
 - Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.” Founding offer wording is **“Setup fee waived—a value up to $4,000.”**
+
+### Home Depot receipt automation — ACTIVE Oct 5
+- **Non-negotiable user workflow:** Jon does not download and re-upload individual receipts. The receipt parser must ingest the supplied Gmail mailbox export, extract each original PDF, read the order/date/amount/items/PO label, match it to the correct LeadFlow production job, create the `materials_purchase` expense, and attach that same PDF automatically.
+- High-confidence, unique matches may import automatically. Ambiguous or unmatched receipts go to an exception-only review queue; the importer must never guess. Deduplicate before every write using available Gmail message ID, Home Depot order number, receipt filename/hash, job, date, and amount.
+- Current ten-email test source: `/home/user/uploads/Home Depot Test 10.txt`; parser: `/home/user/home_depot_receipt_parser.py`; extracted/review artifacts are under `/home/user/receipts_test_20261005/` plus `Home_Depot_Receipt_Test_Review_2026-10-05.html/.csv`.
+- Confirmed mapping: `836 Harris` = Rhonda Nicholson, active Job #13. The Oct 1 Home Depot receipt/order `H1259-337901` for **$603.78** was approved and recorded as production expense #5 with the exact source PDF bytes preserved. It must be carried into the permanent automated attachment path rather than treated as a manual-upload model.
+- Dutch Village receipts remain on hold until Kevin maps dates to units/jobs. Kevin acknowledged Jon's instruction that future Dutch Village receipt PO labels must include the unit number. Do not guess based on `Dutch Village` alone.
+- Still unresolved: `63 Westchester`; `Blue Spruce` (customer/site exists but no production job); Sep 30 untagged in-store receipt. No other test receipts have approval to import.
+- The existing generic Vercel Blob upload path is not configured (`BLOB_READ_WRITE_TOKEN` absent). Fixing storage is an implementation detail, not a new user step: the automated importer must persist and link extracted PDFs without requiring Jon to download or re-upload them.
 
 ### Calendar-month MTD reporting — CORRECTED Sep 30
 - Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.

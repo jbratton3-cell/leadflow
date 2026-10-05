@@ -9,7 +9,14 @@ import {
   numeric,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // Inbound "contact us / request pricing" leads from the public marketing site.
 export const demoRequests = pgTable("demo_requests", {
@@ -342,6 +349,46 @@ export const expenses = pgTable(
   (t) => [
     index("expenses_org_idx").on(t.orgId),
     index("expenses_job_idx").on(t.jobId),
+  ],
+);
+
+// Receipt parser inbox and audit trail. The original file stays private in
+// PostgreSQL while imported expenses point to an authenticated download route.
+export const receiptImports = pgTable(
+  "receipt_imports",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    expenseId: integer("expense_id").references(() => expenses.id, {
+      onDelete: "set null",
+    }),
+    jobId: integer("job_id"),
+    source: varchar("source", { length: 50 }).notNull().default("home_depot_gmail"),
+    messageId: text("message_id"),
+    emailSubject: text("email_subject"),
+    orderNumber: varchar("order_number", { length: 80 }),
+    receiptSha256: varchar("receipt_sha256", { length: 64 }).notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    mimeType: varchar("mime_type", { length: 120 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    fileData: bytea("file_data").notNull(),
+    purchaseDate: timestamp("purchase_date"),
+    vendor: varchar("vendor", { length: 160 }),
+    subtotal: numeric("subtotal", { precision: 12, scale: 2 }),
+    tax: numeric("tax", { precision: 12, scale: 2 }),
+    total: numeric("total", { precision: 12, scale: 2 }),
+    poJobName: varchar("po_job_name", { length: 240 }),
+    itemsJson: text("items_json"),
+    status: varchar("status", { length: 30 }).notNull().default("review"),
+    matchReason: text("match_reason"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("receipt_imports_org_hash_uidx").on(t.orgId, t.receiptSha256),
+    index("receipt_imports_org_status_idx").on(t.orgId, t.status),
+    index("receipt_imports_expense_idx").on(t.expenseId),
+    index("receipt_imports_order_idx").on(t.orgId, t.orderNumber),
   ],
 );
 
