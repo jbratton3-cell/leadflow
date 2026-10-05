@@ -22,6 +22,12 @@
 - Test source/artifacts: `/home/user/uploads/Home Depot Test 10.txt`, `/home/user/receipts_pipeline_e2e_dryrun/`, and `Home_Depot_Receipt_Test_Review_2026-10-05.html/.csv`. Approved mappings remain outside the public repository in `/home/user/approved_receipt_job_overrides.json`.
 - Generic Vercel Blob uploads still lack `BLOB_READ_WRITE_TOKEN`, but the automated receipt pipeline does not depend on Blob and requires no per-receipt user upload.
 
+### Production Receipt Inbox — BUILT Oct 5, deployment pending
+- New admin-only `/receipts` page makes the complete parser workflow visible in LeadFlow: Needs Review, Imported, and All views; live counts; order/PO/date/vendor/amount/match reason/items; and authenticated access to every original PDF.
+- Review exceptions can be searched against production jobs by customer, property, unit, or address. **Assign Receipt & Create Expense** atomically links the stored PDF, creates the `materials_purchase` expense, and immediately updates job profitability—no receipt download or re-upload.
+- Imported receipts display the assigned job and link to Job Costs. Receipt Inbox is linked in the main navigation and from Job Costs. Both imported and pending PDF routes require job-financial access and organization ownership.
+- Local production-data QA passed on desktop and 390px mobile: nine real review cards and one imported card rendered; both PDF types matched stored bytes; a temporary review receipt was assigned through the actual browser UI to Job #13, created a $0.01 expense and secure link, and displayed no mobile overflow. All temporary receipt, expense, and session records were removed; production returned to 9 review / 1 imported / 1 real expense.
+
 ### Calendar-month MTD reporting — CORRECTED Sep 30
 - Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.
 - Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.

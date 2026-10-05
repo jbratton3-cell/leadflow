@@ -18,6 +18,7 @@ const NAV: { href: string; label: string; icon: string; perm: Permission }[] = [
   { href: "/production", label: "Production", icon: "🏗️", perm: "production" },
   { href: "/materials", label: "Materials", icon: "🧱", perm: "production" },
   { href: "/expenses", label: "Job Costs", icon: "🧮", perm: "job_financials" },
+  { href: "/receipts", label: "Receipt Inbox", icon: "📬", perm: "job_financials" },
   { href: "/marketing", label: "Marketing", icon: "📈", perm: "marketing" },
   { href: "/metrics", label: "Metrics", icon: "🎯", perm: "reports" },
   { href: "/reports", label: "Reports", icon: "📑", perm: "reports" },

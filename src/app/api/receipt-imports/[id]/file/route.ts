@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { expenses, receiptImports } from "@/db/schema";
+import { receiptImports } from "@/db/schema";
 import { getSessionUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 
@@ -35,8 +35,8 @@ export async function GET(
   }
 
   const { id: rawId } = await params;
-  const expenseId = Number(rawId);
-  if (!Number.isInteger(expenseId) || expenseId <= 0) {
+  const receiptImportId = Number(rawId);
+  if (!Number.isInteger(receiptImportId) || receiptImportId <= 0) {
     return new Response("Receipt not found", { status: 404 });
   }
 
@@ -47,12 +47,10 @@ export async function GET(
       mimeType: receiptImports.mimeType,
     })
     .from(receiptImports)
-    .innerJoin(expenses, eq(expenses.id, receiptImports.expenseId))
     .where(
       and(
-        eq(receiptImports.expenseId, expenseId),
-        eq(receiptImports.status, "imported"),
-        eq(expenses.orgId, user.orgId),
+        eq(receiptImports.id, receiptImportId),
+        eq(receiptImports.orgId, user.orgId),
       ),
     )
     .limit(1);

@@ -99,12 +99,20 @@ export default async function ExpensesPage({
         title="Job Costs"
         subtitle="Admin-only expense entry and profitability tracking."
         action={
-          <Link
-            href="/production"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            View Production
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/receipts"
+              className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100"
+            >
+              Receipt Inbox
+            </Link>
+            <Link
+              href="/production"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              View Production
+            </Link>
+          </div>
         }
       />
 
