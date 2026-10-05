@@ -29,6 +29,13 @@
 - Imported receipts display the assigned job and link to Job Costs. Receipt Inbox is linked in the main navigation and from Job Costs. Both imported and pending PDF routes require job-financial access and organization ownership.
 - End-to-end local QA assigned a temporary review receipt through the actual browser UI to Job #13, created a $0.01 expense and secure link, then removed every temporary receipt, expense, and session record. Live production QA then confirmed nine review cards, one imported card, exact PDF bytes for both statuses, working job search controls, mobile navigation, and no 390px horizontal overflow. Production remains 9 review / 1 imported / 1 real expense.
 
+### 63 Westchester paper estimate — IMPORTED CONSERVATIVELY Oct 5
+- Source PDF: `/home/user/uploads/Build Pros Roof estimate for 63 Westchester.pdf` (3 pages; SHA-256 `9fcccafc0d051aea879e71c0fb8bd4f427dd110725ad0f6e30a21448acd5cbc5`). It contains no customer name/contact and has a blank acceptance line.
+- Jon is unsure whether it sold. LeadFlow now has address-only Lead #1278 and sent Estimate #243 / `EST-1197`, dated Aug 26, 2026, for a complete Owens Corning roof replacement at 63 Westchester Drive, Clifton Park, NY 12065.
+- Source price is **$8,250 cash/check**. Structured estimate stores cash price $8,250 and standard/list total $9,166.67 under BuildPros' existing 10% cash-discount rule. Full scope and 50%-deposit/completion terms were preserved.
+- Safety checkpoint: **no sale, production job, invoice, or receipt expense was created**. Home Depot order `H1269-247797` remains in Receipt Inbox review with a note that the estimate exists but sale status is unconfirmed. If Kevin confirms the sale, convert the estimate through the accepted workflow, then assign the receipt to the resulting job. If not sold, leave it as an estimate only.
+- Import is idempotently tracked in `migration_records` under source `paper_estimate_pdf`; do not create a duplicate if the same PDF is supplied again.
+
 ### Calendar-month MTD reporting — CORRECTED Sep 30
 - Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.
 - Root cause of the misleading lead count: 1,144 historical Housecall Pro customers were bulk-migrated on Sep 10 and carried the migration timestamp, so they appeared as September new leads. Historical HCP customer rows are now excluded from new-lead KPIs; local QA changed BuildPros New Leads MTD from 1,185 to 41 without altering customer records.
