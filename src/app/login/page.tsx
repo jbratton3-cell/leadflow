@@ -4,7 +4,12 @@ import { copyright, APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
+  const { reset } = await searchParams;
   return (
     <main className="grid min-h-screen place-items-center bg-slate-900 px-4">
       <div className="w-full max-w-sm">
@@ -17,6 +22,11 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-xl">
+          {reset === "success" && (
+            <div className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+              Password updated. Sign in with your new password.
+            </div>
+          )}
           <LoginForm />
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { login } from "@/lib/auth-actions";
@@ -37,9 +38,17 @@ export default function LoginForm() {
         <input id="email" name="email" type="email" required autoComplete="email" className={input} />
       </div>
       <div>
-        <label className={label} htmlFor="password">
-          Password
-        </label>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <label className="block text-xs font-medium text-slate-600" htmlFor="password">
+            Password
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-orange-600 hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

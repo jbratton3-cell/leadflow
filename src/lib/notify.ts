@@ -206,6 +206,33 @@ export function inviteEmailHtml(name: string, link: string): string {
   </div>`;
 }
 
+export function passwordResetEmailHtml(name: string, link: string): string {
+  return `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f97316;color:#fff;
+        display:grid;place-items:center;font-weight:700;font-size:20px">${APP_NAME.slice(0, 1)}</div>
+      <strong style="font-size:18px;color:#0f172a">LeadFlow</strong>
+    </div>
+    <h2 style="color:#0f172a;font-size:20px">Reset your password</h2>
+    <p style="color:#334155;line-height:1.5">
+      Hi ${name}, we received a request to reset your LeadFlow password.
+    </p>
+    <a href="${link}" style="display:inline-block;margin:16px 0;padding:12px 20px;
+      background:#f97316;color:#fff;text-decoration:none;border-radius:10px;font-weight:600">
+      Choose a New Password
+    </a>
+    <p style="color:#94a3b8;font-size:13px">
+      Or paste this link into your browser:<br>
+      <span style="color:#475569">${link}</span>
+    </p>
+    <p style="color:#94a3b8;font-size:12px;margin-top:24px">
+      This link expires in 60 minutes and can be used only once. If you did not request it,
+      you can safely ignore this email; your current password will remain unchanged.
+    </p>
+  </div>`;
+}
+
 export function invoiceEmailHtml(opts: {
   customerName: string;
   companyName: string;

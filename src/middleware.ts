@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 // intentionally not advertised anywhere on the public marketing pages.
 const PUBLIC_PATHS = [
   "/login",
+  "/forgot-password",
+  "/reset-password",
   "/signup",
   "/tour",
   "/invite",

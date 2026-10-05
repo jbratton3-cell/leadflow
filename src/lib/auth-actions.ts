@@ -1,8 +1,15 @@
 "use server";
 
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { db } from "@/db";
-import { users, invitations, organizations, sessions, reps } from "@/db/schema";
+import {
+  users,
+  invitations,
+  organizations,
+  sessions,
+  reps,
+  passwordResetTokens,
+} from "@/db/schema";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -18,6 +25,7 @@ import {
   sendEmail,
   sendSms,
   inviteEmailHtml,
+  passwordResetEmailHtml,
   getBaseUrl,
 } from "@/lib/notify";
 import { ROLE_PERMISSIONS, type Role } from "@/lib/permissions";
@@ -64,6 +72,162 @@ export async function login(
 export async function logout() {
   await destroySession();
   redirect("/login");
+}
+
+/* --------------------------- password reset ---------------------------- */
+
+const RESET_MINUTES = 60;
+const RESET_COOLDOWN_MINUTES = 5;
+const RESET_RESPONSE =
+  "If an active LeadFlow account exists for that email, a password reset link has been sent.";
+
+function resetTokenHash(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function validResetTokenFormat(token: string): boolean {
+  return /^[a-f0-9]{64}$/i.test(token);
+}
+
+export async function requestPasswordReset(
+  _prev: { message?: string; error?: string } | undefined,
+  formData: FormData,
+): Promise<{ message?: string; error?: string }> {
+  const email = str(formData.get("email")).toLowerCase();
+  if (!email) return { error: "Enter your account email." };
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.email, email), eq(users.active, true)))
+    .limit(1);
+
+  // Always return the same public response so this form cannot reveal whether
+  // an email address has a LeadFlow account.
+  if (!user || !user.passwordHash) return { message: RESET_RESPONSE };
+
+  const cooldown = new Date(Date.now() - RESET_COOLDOWN_MINUTES * 60_000);
+  const [recent] = await db
+    .select({ id: passwordResetTokens.id })
+    .from(passwordResetTokens)
+    .where(
+      and(
+        eq(passwordResetTokens.userId, user.id),
+        isNull(passwordResetTokens.usedAt),
+        gt(passwordResetTokens.createdAt, cooldown),
+      ),
+    )
+    .limit(1);
+  if (recent) return { message: RESET_RESPONSE };
+
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = resetTokenHash(token);
+  const expiresAt = new Date(Date.now() + RESET_MINUTES * 60_000);
+
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+  await db.insert(passwordResetTokens).values({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
+  });
+
+  const link = `${getBaseUrl()}/reset-password/${token}`;
+  const sent = await sendEmail({
+    to: user.email,
+    subject: "Reset your LeadFlow password",
+    html: passwordResetEmailHtml(user.name, link),
+  });
+  if (!sent) {
+    // Let the user try again immediately if delivery infrastructure failed.
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.tokenHash, tokenHash));
+  }
+
+  return { message: RESET_RESPONSE };
+}
+
+async function validPasswordReset(token: string) {
+  if (!validResetTokenFormat(token)) return null;
+  const tokenHash = resetTokenHash(token);
+  const [row] = await db
+    .select({
+      id: passwordResetTokens.id,
+      userId: passwordResetTokens.userId,
+    })
+    .from(passwordResetTokens)
+    .innerJoin(users, eq(users.id, passwordResetTokens.userId))
+    .where(
+      and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        isNull(passwordResetTokens.usedAt),
+        gt(passwordResetTokens.expiresAt, new Date()),
+        eq(users.active, true),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getPasswordResetStatus(token: string): Promise<boolean> {
+  return Boolean(await validPasswordReset(token));
+}
+
+export async function resetPassword(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const token = str(formData.get("token"));
+  const password = str(formData.get("password"));
+  const confirm = str(formData.get("confirm"));
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password.length > 128) {
+    return { error: "Password must be 128 characters or fewer." };
+  }
+  if (password !== confirm) {
+    return { error: "Passwords do not match." };
+  }
+
+  const reset = await validPasswordReset(token);
+  if (!reset) return { error: "This reset link is invalid or has expired." };
+
+  const completed = await db.transaction(async (tx) => {
+    const now = new Date();
+    const [claimed] = await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(passwordResetTokens.id, reset.id),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, now),
+        ),
+      )
+      .returning({ userId: passwordResetTokens.userId });
+    if (!claimed) return false;
+
+    await tx
+      .update(users)
+      .set({ passwordHash: hashPassword(password) })
+      .where(and(eq(users.id, claimed.userId), eq(users.active, true)));
+    await tx.delete(sessions).where(eq(sessions.userId, claimed.userId));
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(passwordResetTokens.userId, claimed.userId),
+          isNull(passwordResetTokens.usedAt),
+        ),
+      );
+    return true;
+  });
+
+  if (!completed) return { error: "This reset link is invalid or has expired." };
+  redirect("/login?reset=success");
 }
 
 /* ------------------------------ invitations ---------------------------- */

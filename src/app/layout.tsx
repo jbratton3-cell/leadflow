@@ -42,6 +42,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     pathname.startsWith("/contact/") ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/forgot-password/") ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/reset-password/") ||
     pathname === "/signup" ||
     pathname.startsWith("/signup/") ||
     pathname === "/tour" ||
