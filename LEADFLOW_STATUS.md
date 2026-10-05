@@ -45,9 +45,10 @@
 - Home Depot order `H1263-304078` for **$215.46** remains in Receipt Inbox review. No sale, production job, deposit, invoice, or expense was created. When sale status is approved, create the job under parent Lead #1279 at property #16 and attach the receipt to that **site-specific job**, never to the parent account itself.
 - The restructure is idempotently tracked under `property_management_restructure`.
 
-### Job profitability visibility — BUILT Oct 5, deployment pending
-- Rhonda Nicholson Expense #5 was already correctly linked to Job #13 and live profitability was $10,800 contract / $603.78 costs / $10,196.22 profit / 94.4% margin. She appeared buried because Job Costs sorted hundreds of jobs by job-creation date.
-- Job Profitability now sorts jobs with recorded costs first, then by latest expense date. Local QA puts 63 Westchester first and Rhonda immediately second with both exact cost/profit figures; jobs without costs follow afterward.
+### Job profitability visibility — LIVE Oct 5
+- Commit `59b78e3` passed typecheck, production build, both Vercel deployments, and authenticated live QA.
+- Rhonda Nicholson Expense #5 was already correctly linked to Job #13 and live profitability is $10,800 contract / $603.78 costs / $10,196.22 profit / 94.4% margin. She appeared buried because Job Costs sorted hundreds of jobs by job-creation date.
+- Job Profitability now sorts jobs with recorded costs first, then by latest expense date. Live production puts 63 Westchester first and Rhonda immediately second with both exact cost/profit figures; jobs without costs follow afterward.
 
 ### Calendar-month MTD reporting — CORRECTED Sep 30
 - Dashboard, Sales, Estimates, Metrics, sold/collected TV board, and rep board now use explicit current-calendar-month boundaries in `America/New_York`, including the exclusive next-month boundary. They reset at midnight Eastern instead of following the deployment server's UTC month.
