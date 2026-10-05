@@ -29,12 +29,13 @@
 - Imported receipts display the assigned job and link to Job Costs. Receipt Inbox is linked in the main navigation and from Job Costs. Both imported and pending PDF routes require job-financial access and organization ownership.
 - End-to-end QA covered review assignment, expense creation, exact PDF delivery, duplicate prevention, job search, mobile navigation, and 390px overflow. All temporary QA records were removed. Current production state is **7 review / 3 imported / 3 real receipt expenses**.
 
-### Password recovery and Kevin access — BUILT Oct 5, deployment pending
-- Root cause of Kevin's failed login: there is currently **no Kevin user row**. His original invitation for `albanybuildpros@gmail.com` expired Sep 16 without being accepted, so he never created a password; a reset request alone cannot repair that missing account.
+### Password recovery and Kevin access — LIVE Oct 5
+- Root cause of Kevin's failed login: there was **no Kevin user row**. His original invitation for `albanybuildpros@gmail.com` expired Sep 16 without being accepted, so he never created a password; a reset request alone could not repair that missing account.
+- Commit `353ba1c` passed typecheck, targeted lint, production build, both Vercel deployments, local end-to-end QA, and live production end-to-end QA.
 - Login now includes **Forgot your password?** Existing active users can request a generic, non-enumerating reset email. Reset tokens are random, stored only as SHA-256 hashes, expire after 60 minutes, are single-use, have a five-minute request cooldown, and invalidate every existing session after a successful password change.
-- New public `/forgot-password` and `/reset-password/[token]` pages include validation, expired/used-link handling, success feedback, and mobile-safe layouts. Production schema `password_reset_tokens` is live via `scripts/password-reset-schema.sql`.
-- End-to-end local QA passed: generic unknown-email response, mismatch protection without consuming the token, successful reset, old-password rejection/new-password login, old-session invalidation, reuse blocking, no raw token stored, and 390px no-overflow. All QA users, tokens, and sessions were removed.
-- After deployment, create and email Kevin a fresh **administrator** invitation; never ask for or set his password. He must choose it through the invitation link.
+- Public `/forgot-password` and `/reset-password/[token]` pages include validation, expired/used-link handling, success feedback, and mobile-safe layouts. Production schema `password_reset_tokens` is live via `scripts/password-reset-schema.sql`.
+- Live QA passed: successful reset, new-password login, old-session invalidation, used-token blocking, no raw token storage, and 390px no-overflow. Separate validation QA confirmed generic unknown-email responses and mismatch protection without consuming the token. All QA users, tokens, and sessions were removed.
+- A fresh **administrator** invitation was issued to Kevin M O'Connell at `albanybuildpros@gmail.com` and successfully delivered by email. It is valid for seven days. Kevin still has no user row until he opens that email and chooses his own password; never ask for or set it on his behalf. Once activated, future forgot-password requests will work normally.
 
 ### 63 Westchester paper estimate and job — LIVE Oct 5
 - Source PDF: `/home/user/uploads/Build Pros Roof estimate for 63 Westchester.pdf` (3 pages; SHA-256 `9fcccafc0d051aea879e71c0fb8bd4f427dd110725ad0f6e30a21448acd5cbc5`). It contains no customer name/contact and has a blank acceptance line. Address-only Lead #1278 remains unnamed; do not invent a name.
