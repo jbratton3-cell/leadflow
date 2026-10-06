@@ -14,6 +14,9 @@ export const metadata: Metadata = {
     "Reduce administrative work and keep every job moving with one workflow for leads, appointments, estimates, signatures, payments, materials, and production.",
   manifest: "/manifest.webmanifest",
   applicationName: "LeadFlow",
+  verification: {
+    google: "WQW0zOJVG1ROosKwnnnpdfkCWHsyPJI2PDWZH7qqp7w",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black",

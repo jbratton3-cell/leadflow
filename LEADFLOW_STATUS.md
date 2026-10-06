@@ -19,6 +19,7 @@
 - Every page has unique title/description/canonical metadata, visible answer-first AEO copy, outcomes, workflow steps, FAQs, internal next/previous links, `WebPage`/`HowTo`/`FAQPage` structured data, interactive sample controls, and Book Demo / Start Trial conversion paths. No production or customer data is exposed.
 - Added public `sitemap.xml` containing all tour pages and `robots.txt` that advertises the sitemap while blocking private CRM/auth/customer-token routes. Homepage and marketing navigation now describe the route as an interactive public tour.
 - Local and live production QA passed all six tour URLs on desktop and 390px mobile: no login redirects, no horizontal overflow, interactive controls, canonical tags, JSON-LD, sitemap coverage, robots protection, and no signup inputs on the public overview. Visual QA passed for overview and feature pages.
+- Google Search Console URL-prefix property for `https://www.leadflowcrm.info/` entered verification setup Oct 6. Site-wide Google verification metadata is added in code; deployment/live verification is the active checkpoint.
 
 ### Front-end content, founder case study, blog, and legal pages — LIVE Oct 5
 - Commit `3265322` passed typecheck, targeted lint, production build, both Vercel deployments, local visual/functional QA, and live production desktop/mobile QA.
