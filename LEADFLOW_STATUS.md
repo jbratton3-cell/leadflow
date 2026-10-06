@@ -20,6 +20,15 @@
 - Added public `sitemap.xml` containing all tour pages and `robots.txt` that advertises the sitemap while blocking private CRM/auth/customer-token routes. Homepage and marketing navigation now describe the route as an interactive public tour.
 - Local and live production QA passed all six tour URLs on desktop and 390px mobile: no login redirects, no horizontal overflow, interactive controls, canonical tags, JSON-LD, sitemap coverage, robots protection, and no signup inputs on the public overview. Visual QA passed for overview and feature pages.
 
+### Front-end content, founder case study, blog, and legal pages — BUILT Oct 5, deployment pending
+- Added public `/about`, `/case-studies`, founder case study `/case-studies/from-operational-friction-to-leadflow`, `/blog`, three starter article URLs, `/terms`, `/privacy`, and `/cookies`. Existing `/contact` now has unique metadata and remains the primary demo-conversion page.
+- The founder story is integrated into an anonymized first-implementation case study: months of planning/building/testing, real home-improvement handoff problems, connected workflow decisions, verified operational outcomes, and no invented customer quote or public BuildPros attribution.
+- Starter blog articles cover connected workflow CRM, site-specific receipt/job costing, and property-management parent accounts versus service locations. Every article has unique metadata, canonical URL, Article/FAQ structured data, internal links, and author attribution to Jon Bratton. `/blog` now exists for the planned Rank Authority headless blog base.
+- Marketing navigation is now responsive with desktop links and a mobile menu. The footer groups Product, Resources, Company, and Legal links. Homepage now links directly to the case study, blog, and About page. Sitemap includes all new public pages and articles.
+- No separate surviving Terms/Privacy draft was found in the workspace or Git history. Tailored LeadFlow policies were reconstructed from the prior legal/IP decisions: Customer owns Customer Data; JMB retains LeadFlow/platform/reusable implementation IP; month-to-month terms, acceptable use, third-party integrations, confidentiality, export/termination, warranty and liability provisions, New York law, privacy roles, and current essential-cookie practices. These published business documents should still receive attorney review when budget permits.
+- New signup and invitation users must explicitly agree to Terms and acknowledge Privacy. Production users schema now records `terms_accepted_at`, `privacy_accepted_at`, and legal version `2026-10-05` via `scripts/legal-acceptance-schema.sql`; existing users are not interrupted.
+- Local QA passed all new URLs, canonical tags, sitemap inclusion, desktop/mobile layouts, responsive navigation, footer/legal links, signup acceptance UI, and the real invitation acceptance flow. A temporary invite/user proved legal acceptance timestamps/version are stored; every QA user, rep, session, and invitation was removed.
+
 ### Home Depot receipt automation — LIVE Oct 5
 - **Non-negotiable user workflow:** Jon does not download and re-upload individual receipts. One Gmail mailbox export enters the pipeline; it extracts every original PDF, reads the order/date/amount/items/PO label, matches safe receipts to LeadFlow jobs, creates `materials_purchase` expenses, and attaches those same PDFs automatically.
 - Commit `0182729` deployed successfully to both Vercel projects. Production schema `receipt_imports` is live. The one-command pipeline is `scripts/process_home_depot_receipts.py`; parser and importer are separate scripts for testing. Original PDFs are stored privately in PostgreSQL and served only through an authenticated, organization-scoped route.
@@ -223,7 +232,7 @@ Facebook launch posts (aggressive + polished + captions), LeadFlow monetization,
 2. Self-serve signup creating new orgs automatically
 3. Stripe Billing (user prefers Stripe for his own SaaS)
 4. Custom domain + real email delivery (replace Gmail SMTP) + paid infra (Vercel Pro, Neon paid, backups)
-5. Terms of Service + Privacy pages
+5. ✅ Terms of Service + Privacy + Cookie pages live in code Oct 5; explicit acceptance/version tracking added for new signup and invited users
 
 **Shared foundation:** repo + Vercel + Neon + token push access (all changes go through me: build → commit → push → user tests)
 

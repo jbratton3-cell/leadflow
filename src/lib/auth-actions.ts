@@ -29,6 +29,7 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { ROLE_PERMISSIONS, type Role } from "@/lib/permissions";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 function str(v: FormDataEntryValue | null): string {
   return (v ?? "").toString().trim();
@@ -180,7 +181,11 @@ export async function resetPassword(
   const token = str(formData.get("token"));
   const password = str(formData.get("password"));
   const confirm = str(formData.get("confirm"));
+  const legalAccepted = formData.get("legalAccepted") === "on";
 
+  if (!legalAccepted) {
+    return { error: "You must agree to the Terms of Service and acknowledge the Privacy Policy." };
+  }
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
   }
@@ -490,6 +495,7 @@ export async function acceptInvite(
     return { error: "An account with this email already exists. Please sign in." };
   }
 
+  const legalAcceptedAt = new Date();
   const inserted = await db
     .insert(users)
     .values({
@@ -500,6 +506,9 @@ export async function acceptInvite(
       role: inv.role,
       passwordHash: hashPassword(password),
       active: true,
+      termsAcceptedAt: legalAcceptedAt,
+      privacyAcceptedAt: legalAcceptedAt,
+      legalVersion: LEGAL_VERSION,
     })
     .returning();
 
@@ -624,12 +633,16 @@ export async function signup(
   const name = str(formData.get("name"));
   const email = str(formData.get("email")).toLowerCase();
   const password = str(formData.get("password"));
+  const legalAccepted = formData.get("legalAccepted") === "on";
 
   if (!company || !name || !email || !password) {
     return { error: "All fields are required." };
   }
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
+  }
+  if (!legalAccepted) {
+    return { error: "You must agree to the Terms of Service and acknowledge the Privacy Policy." };
   }
 
   const dup = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -642,6 +655,7 @@ export async function signup(
     .values({ name: company, plan: "trial" })
     .returning();
 
+  const legalAcceptedAt = new Date();
   const [user] = await db
     .insert(users)
     .values({
@@ -651,6 +665,9 @@ export async function signup(
       role: "admin",
       passwordHash: hashPassword(password),
       active: true,
+      termsAcceptedAt: legalAcceptedAt,
+      privacyAcceptedAt: legalAcceptedAt,
+      legalVersion: LEGAL_VERSION,
     })
     .returning();
 

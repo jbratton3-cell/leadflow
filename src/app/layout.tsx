@@ -38,6 +38,18 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     pathname === "/" ||
     pathname === "/pricing" ||
     pathname.startsWith("/pricing/") ||
+    pathname === "/about" ||
+    pathname.startsWith("/about/") ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
+    pathname === "/case-studies" ||
+    pathname.startsWith("/case-studies/") ||
+    pathname === "/terms" ||
+    pathname.startsWith("/terms/") ||
+    pathname === "/privacy" ||
+    pathname.startsWith("/privacy/") ||
+    pathname === "/cookies" ||
+    pathname.startsWith("/cookies/") ||
     pathname === "/contact" ||
     pathname.startsWith("/contact/") ||
     pathname === "/login" ||

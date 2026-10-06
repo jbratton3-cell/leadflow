@@ -66,6 +66,9 @@ export const users = pgTable(
     // role: admin | manager | agent | production
     role: varchar("role", { length: 30 }).notNull().default("agent"),
     active: boolean("active").notNull().default(true),
+    termsAcceptedAt: timestamp("terms_accepted_at"),
+    privacyAcceptedAt: timestamp("privacy_accepted_at"),
+    legalVersion: varchar("legal_version", { length: 20 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("users_org_idx").on(t.orgId)]

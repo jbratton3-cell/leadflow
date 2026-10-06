@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { signup } from "@/lib/auth-actions";
@@ -63,6 +64,25 @@ export default function SignupForm() {
         />
         <p className="mt-1 text-xs text-slate-400">At least 8 characters.</p>
       </div>
+      <label className="flex items-start gap-2 text-xs leading-relaxed text-slate-500">
+        <input
+          name="legalAccepted"
+          type="checkbox"
+          required
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-orange-500"
+        />
+        <span>
+          I agree to the{" "}
+          <Link href="/terms" target="_blank" className="font-semibold text-orange-600 hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and acknowledge the{" "}
+          <Link href="/privacy" target="_blank" className="font-semibold text-orange-600 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </span>
+      </label>
       <SubmitButton label="Create Trial Workspace" pendingLabel="Creating workspace…" />
     </form>
   );

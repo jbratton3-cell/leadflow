@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import ContactForm from "./ContactForm";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 import { FoundingOfferCard } from "@/components/FoundingOffer";
+
+export const metadata: Metadata = {
+  title: "Contact LeadFlow — Book a Personalized CRM Demo",
+  description:
+    "Tell us how your home improvement company works and book a personalized LeadFlow workflow CRM demonstration.",
+  alternates: { canonical: "https://www.leadflowcrm.info/contact" },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +41,8 @@ export default function ContactPage() {
         </div>
 
         <div>
+          {/* Anti-spam timing value must be generated for this server-rendered request. */}
+          {/* eslint-disable-next-line react-hooks/purity */}
           <ContactForm formStartedAt={Date.now()} />
         </div>
       </section>

@@ -126,6 +126,44 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      <section className="border-t border-slate-800 bg-slate-900/45 py-16">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-400">Stories and practical guides</p>
+            <h2 className="mt-2 text-3xl font-bold">Understand the thinking behind the workflow</h2>
+          </div>
+          <div className="mt-9 grid gap-5 md:grid-cols-3">
+            {[
+              {
+                href: "/case-studies/from-operational-friction-to-leadflow",
+                icon: "🔄",
+                title: "The founder implementation story",
+                body: "How operational handoff problems became a connected CRM built and tested against a real home improvement workflow.",
+              },
+              {
+                href: "/blog/connected-workflow-crm-home-improvement",
+                icon: "📚",
+                title: "What is a connected workflow CRM?",
+                body: "A practical explanation of how one job should move from first inquiry through production without restarting at every department.",
+              },
+              {
+                href: "/about",
+                icon: "👤",
+                title: "About LeadFlow and Jon Bratton",
+                body: "Why founder-led implementation, workflow customization, migration, and team training are part of the product.",
+              },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-2xl border border-slate-800 bg-slate-900 p-6 hover:border-orange-500/50">
+                <span className="text-3xl">{item.icon}</span>
+                <h3 className="mt-4 text-xl font-bold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.body}</p>
+                <span className="mt-5 inline-flex text-sm font-bold text-orange-400">Read more →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-slate-800 py-16">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="text-3xl font-bold">See how LeadFlow fits your workflow.</h2>

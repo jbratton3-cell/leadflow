@@ -39,6 +39,11 @@ export default async function LoginPage({
         <p className="mt-3 text-center text-xs text-slate-500">
           Home Improvement Sales &amp; Production Suite
         </p>
+        <div className="mt-2 flex justify-center gap-3 text-[11px] text-slate-500">
+          <Link href="/terms" className="hover:text-slate-300">Terms</Link>
+          <Link href="/privacy" className="hover:text-slate-300">Privacy</Link>
+          <Link href="/cookies" className="hover:text-slate-300">Cookies</Link>
+        </div>
         <p className="mt-1 text-center text-[11px] text-slate-600">{copyright()}</p>
       </div>
     </main>
