@@ -72,11 +72,11 @@ export default async function LandingPage() {
             href="/tour"
             className="rounded-lg border border-slate-700 px-7 py-3 text-base font-semibold text-slate-200 hover:bg-slate-800"
           >
-            Take the guided tour
+            Explore the interactive tour
           </Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
-          A focused walkthrough of how LeadFlow keeps your team aligned from the first call through the final payment.
+          Public sample workflow · no login required · no real customer data.
         </p>
       </section>
 

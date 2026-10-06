@@ -63,7 +63,7 @@ export default function SignupForm() {
         />
         <p className="mt-1 text-xs text-slate-400">At least 8 characters.</p>
       </div>
-      <SubmitButton label="Start the Tour" pendingLabel="Starting…" />
+      <SubmitButton label="Create Trial Workspace" pendingLabel="Creating workspace…" />
     </form>
   );
 }

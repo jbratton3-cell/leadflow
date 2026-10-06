@@ -12,9 +12,9 @@ export default function SignupPage() {
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-orange-500 text-2xl font-bold text-white">
             {APP_NAME.slice(0, 1)}
           </div>
-          <h1 className="text-xl font-bold text-white">Get started with {APP_NAME}</h1>
+          <h1 className="text-xl font-bold text-white">Create a {APP_NAME} trial workspace</h1>
           <p className="text-sm text-slate-400">
-            Create your company account.
+            Ready to work with sample data? Create an account after exploring the public tour.
           </p>
         </div>
 
@@ -23,6 +23,12 @@ export default function SignupPage() {
         </div>
 
         <p className="mt-4 text-center text-sm text-slate-400">
+          Not ready to create an account?{" "}
+          <Link href="/tour" className="font-semibold text-orange-400 hover:underline">
+            Explore the public tour
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-slate-400">
           Already have an account?{" "}
           <Link href="/login" className="font-semibold text-orange-400 hover:underline">
             Sign in

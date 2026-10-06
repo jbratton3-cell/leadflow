@@ -14,7 +14,7 @@ export function MarketingNav({ cta = "Book a demo" }: { cta?: string }) {
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-3 text-sm">
           <Link href="/tour" className="font-medium text-slate-300 hover:text-white">
-            Guided tour
+            Interactive tour
           </Link>
           <Link href="/pricing" className="font-medium text-slate-300 hover:text-white">
             Pricing
@@ -53,7 +53,7 @@ export function MarketingFooter() {
             Cash vs finance
           </Link>
           <Link href="/tour" className="hover:text-slate-300">
-            Guided tour
+            Interactive tour
           </Link>
           <Link href="/pricing" className="hover:text-slate-300">
             Pricing

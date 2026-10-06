@@ -17,6 +17,8 @@ const PUBLIC_PATHS = [
   "/api/email-check",
   "/api/jmb-contact",
   "/api/paypal",
+  "/robots.txt",
+  "/sitemap.xml",
   "/sw.js",
   "/icons",
 ];
