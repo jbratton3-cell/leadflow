@@ -1,8 +1,8 @@
 # LeadFlow CRM — Project Status
 *THE SHARED LEDGER — committed to repo root for ALL agents. Conventions: (1) read end-to-end before starting work, (2) update after any significant change, in the same commit. Workspace copy + repo copy must stay in sync.*
-*Last updated: Oct 5, 2026*
+*Last updated: Oct 7, 2026*
 
-## CURRENT OPERATING STATE — OCT 5, 2026
+## CURRENT OPERATING STATE — OCT 7, 2026
 
 ### Standing execution protocol
 - A code/site change is **not done** until it is tested, committed as `jbratton3-cell <jbratton3@gmail.com>`, pushed, both Vercel deployments succeed, and the live URL is checked. Never leave completed work only in the local workspace.
@@ -11,9 +11,18 @@
 - **Ledger discipline is mandatory:** read the relevant ledger decisions before resuming a task, update both ledger copies after every material decision or completed action, and never substitute a newly invented workflow for an already agreed one.
 - Marketing rules remain: no named competitors, no AI angle, no “built in a week”; use months of planning/building/testing. Approved lines include “LeadFlow does everything but the installation” and “their floor doesn’t reach our ceiling.” Founding offer wording is **“Setup fee waived—a value up to $4,000.”**
 
+
+### Rank Authority Edge SEO + Blog DNS integration — ACTIVATING Oct 7
+- Jon selected Rank Authority's **Edge SEO + Blog** mode after Bryan confirmed the DNS integration operates only on LeadFlow's public front end and does not optimize or alter pages behind the login wall. Headless delivery was evaluated but is not configured; no Rank Authority API key, `SEO_DELIVERY_KEY`, or deploy hook was created.
+- Approved boundary: Rank Authority may deliver public-page SEO changes and the public `/blog` route only. GitHub, Vercel, database, customer data, authenticated CRM pages, APIs, webhooks, admin access, credentials, and secrets remain protected. Never request or expose the hidden `X-Content-Proxy-Key`, API keys, signed bundle URLs, or deploy hooks.
+- Rank Authority assigned `deb.ns.cloudflare.com` and `kurt.ns.cloudflare.com`. Its zone contains all **13** pre-change LeadFlow records, including both previously missing Resend records (`rsend` and `send`). Direct authoritative queries to both assigned servers returned the complete expected web, forwarding-mail, SPF, DMARC, DKIM, Resend, Brevo, and tracking records. Rollback snapshot: `/home/user/LeadFlow_DNS_Pre_RankAuthority_2026-10-07.md`; uploaded zone: `/home/user/leadflowcrm-info-zone-pre-ra-20261007.txt`.
+- Porkbun now displays only the two assigned Cloudflare nameservers. The `.info` registry accepted the delegation change at **2026-10-07 16:14:11 UTC (12:14:11 PM EDT)** and registry RDAP now lists `deb` and `kurt`. DNSSEC remains unsigned/no parent DS.
+- At 12:22 PM EDT, Google and Cloudflare recursive resolvers still returned the former Porkbun nameservers from cache, which is expected during the old NS TTL window. No further registrar change is needed. The apex redirect, `www` site, SSL, public tour, blog, login, and health endpoint remained available with no observed outage.
+- Active next step: monitor recursive rollover and Rank Authority's Cloudflare/SSL/Edge/Blog statuses, then perform controlled public-site, authenticated-CRM, API, webhook, payment, cross-site JMB endpoint, and complete email-DNS QA. Do not begin JMB's Rank Authority delegation until LeadFlow passes.
+
 ### Rank Authority integration and public product tour — LIVE Oct 5
 - Commit `8c1e193` passed typecheck, targeted lint, production build, both Vercel deployments, local visual/interactive QA, and live authenticated-free desktop/mobile QA.
-- Rank Authority offers **Headless delivery**, the preferred integration: approved SEO/AEO fixes arrive as clean JSON from a private signed URL; LeadFlow keeps all code and deployment control. Never grant Rank Authority GitHub, Vercel, DNS, database, customer/admin, or password access. Treat each signed URL as a secret and store it only as a revocable deployment environment variable. Planned blog base is `https://www.leadflowcrm.info/blog` once the renderer is implemented.
+- Rank Authority Headless delivery was evaluated first, but the current approved integration is **Edge SEO + Blog** under the Oct 7 public-front-end-only boundary above. No Headless API key, signed-bundle environment variable, or deploy hook was configured.
 - Rank Authority's first finding: `/tour` was a signup gate, which hid the product from prospects and search engines. It has been rebuilt as a public, crawlable, no-login product tour using synthetic data only. The authenticated trial guide remains available after `/signup`; signup now clearly creates a trial workspace instead of claiming to start the public tour.
 - Public overview `/tour` links five indexable feature pages: `/tour/lead-management`, `/tour/estimates-and-signatures`, `/tour/payments-and-invoices`, `/tour/materials-and-production`, and `/tour/job-costing-and-reports`.
 - Every page has unique title/description/canonical metadata, visible answer-first AEO copy, outcomes, workflow steps, FAQs, internal next/previous links, `WebPage`/`HowTo`/`FAQPage` structured data, interactive sample controls, and Book Demo / Start Trial conversion paths. No production or customer data is exposed.
@@ -25,7 +34,7 @@
 - Commit `3265322` passed typecheck, targeted lint, production build, both Vercel deployments, local visual/functional QA, and live production desktop/mobile QA.
 - Added public `/about`, `/case-studies`, founder case study `/case-studies/from-operational-friction-to-leadflow`, `/blog`, three starter article URLs, `/terms`, `/privacy`, and `/cookies`. Existing `/contact` now has unique metadata and remains the primary demo-conversion page.
 - The founder story is integrated into an anonymized first-implementation case study: months of planning/building/testing, real home-improvement handoff problems, connected workflow decisions, verified operational outcomes, and no invented customer quote or public BuildPros attribution.
-- Starter blog articles cover connected workflow CRM, site-specific receipt/job costing, and property-management parent accounts versus service locations. Every article has unique metadata, canonical URL, Article/FAQ structured data, internal links, and author attribution to Jon Bratton. `/blog` now exists for the planned Rank Authority headless blog base.
+- Starter blog articles cover connected workflow CRM, site-specific receipt/job costing, and property-management parent accounts versus service locations. Every article has unique metadata, canonical URL, Article/FAQ structured data, internal links, and author attribution to Jon Bratton. `/blog` is the public base now being connected through Rank Authority's Edge SEO + Blog route.
 - Marketing navigation is now responsive with desktop links and a mobile menu. The footer groups Product, Resources, Company, and Legal links. Homepage now links directly to the case study, blog, and About page. Sitemap includes all new public pages and articles.
 - No separate surviving Terms/Privacy draft was found in the workspace or Git history. Tailored LeadFlow policies were reconstructed from the prior legal/IP decisions: Customer owns Customer Data; JMB retains LeadFlow/platform/reusable implementation IP; month-to-month terms, acceptable use, third-party integrations, confidentiality, export/termination, warranty and liability provisions, New York law, privacy roles, and current essential-cookie practices. These published business documents should still receive attorney review when budget permits.
 - New signup and invitation users must explicitly agree to Terms and acknowledge Privacy. Production users schema now records `terms_accepted_at`, `privacy_accepted_at`, and legal version `2026-10-05` via `scripts/legal-acceptance-schema.sql`; existing users are not interrupted.
