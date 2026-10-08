@@ -171,6 +171,9 @@
 ### Prospecting / Craigslist
 - First five personalized LeadFlow emails were scheduled for Thu Sep 24 in recipient-local morning windows. Contact records were independently checked; Mac Wright corrected to `mwright@vbrinc.com`, Justin Gier corrected to `justin@cabinetiq.com`. Emails name/link LeadFlow, assume no CRM status, and rely on Gmail’s saved LeadFlow signature (no JMB in body/signature copy).
 - 11 AM Sep 24 CL scan: clean—no verified, reply-worthy lead. Nationwide actual-post pages were pulled; local-only, low-quality, duplicated harvesting templates, and suspicious video/resume requests were rejected. Next scan remains ~5:30 PM under CL protocol v2.
+- Oct 7 morning scan reviewed 1,501 deduplicated results and 44 newly verified full pages. The only actionable lead was a $100 Squarespace request to add Spotify/Apple Music links (post `7979307153`); Jon sent the prepared reply. Do not chase.
+- Oct 8 morning scan reviewed **1,534** deduplicated results, **83** newly verified full pages, and **69** usable contact paths. One actionable JMB lead remains: Cincinnati post `7979804718`, **Website Search Feature Setup**, requesting search configuration/testing on a small site with compensation unspecified. The post was independently reloaded live. Reply draft: `/home/user/JMB_Craigslist_Reply_Website_Search_Feature_2026-10-08.md`; scan summary: `/home/user/Craigslist_Morning_Scan_2026-10-08.md`; raw audit: `/home/user/.cl_scan_morning_20261008.json`. Ask for URL, platform/CMS, searchable content, budget, and timeline before quoting or requesting access.
+
 
 ### BuildPros website
 - Kevin approved all audit fixes that do not need his input. Work is blocked only on access.
