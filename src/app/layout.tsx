@@ -9,6 +9,7 @@ import Sidebar from "@/components/Sidebar";
 import { getSessionUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.leadflowcrm.info"),
   title: "LeadFlow — Workflow CRM for Home Improvement Companies",
   description:
     "Reduce administrative work and keep every job moving with one workflow for leads, appointments, estimates, signatures, payments, materials, and production.",
