@@ -19,6 +19,8 @@ const PUBLIC_PATHS = [
   "/privacy",
   "/cookies",
   "/contact",
+  "/roofing-estimate-photos",
+  "/cash-vs-finance-roofing-quote",
   "/api/health",
   "/api/email-check",
   "/api/jmb-contact",

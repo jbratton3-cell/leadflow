@@ -3,7 +3,7 @@ import { BLOG_POSTS } from "@/lib/blog-posts";
 import { PUBLIC_TOUR_STEPS } from "@/lib/public-tour";
 
 const BASE_URL = "https://www.leadflowcrm.info";
-const LAST_MODIFIED = new Date("2026-10-05T00:00:00-04:00");
+const LAST_MODIFIED = new Date("2026-10-08T00:00:00-04:00");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const core: MetadataRoute.Sitemap = [
@@ -17,7 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/blog`, lastModified: LAST_MODIFIED, changeFrequency: "weekly", priority: 0.85 },
     { url: `${BASE_URL}/roofing-estimate-photos`, lastModified: LAST_MODIFIED, changeFrequency: "monthly", priority: 0.75 },
     { url: `${BASE_URL}/cash-vs-finance-roofing-quote`, lastModified: LAST_MODIFIED, changeFrequency: "monthly", priority: 0.75 },
-    { url: `${BASE_URL}/housecall-pro-alternative`, lastModified: LAST_MODIFIED, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/terms`, lastModified: LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/privacy`, lastModified: LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/cookies`, lastModified: LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },

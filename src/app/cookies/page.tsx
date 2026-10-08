@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import { LegalPage, LegalSection } from "@/components/LegalPage";
 import { LEGAL_CONTACT_EMAIL, PRODUCT_NAME, PROVIDER_NAME } from "@/lib/legal";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "Cookie Policy | LeadFlow",
   description: "How LeadFlow uses essential cookies and similar technologies for authentication, security, and website operation.",
-  alternates: { canonical: "https://www.leadflowcrm.info/cookies" },
-};
+  path: "/cookies",
+  type: "website",
+});
 
 export default function CookiePolicyPage() {
   return (

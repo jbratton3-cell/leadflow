@@ -56,6 +56,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     pathname.startsWith("/cookies/") ||
     pathname === "/contact" ||
     pathname.startsWith("/contact/") ||
+    pathname === "/roofing-estimate-photos" ||
+    pathname.startsWith("/roofing-estimate-photos/") ||
+    pathname === "/cash-vs-finance-roofing-quote" ||
+    pathname.startsWith("/cash-vs-finance-roofing-quote/") ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname === "/forgot-password" ||

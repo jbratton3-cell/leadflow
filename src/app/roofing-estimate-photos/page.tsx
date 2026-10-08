@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 
-export const metadata: Metadata = {
-  title: "Roofing estimates with photos | LeadFlow",
-  description:
-    "Put damage photos on the estimate so homeowners don't climb the roof. Built for insurance and hail jobs. LeadFlow by JMB Business Solutions.",
-};
+export const metadata = createPublicMetadata({
+  title: "Roofing Estimates with Photos | LeadFlow",
+  description: "Keep roofing damage photos connected to estimates, signatures, and production so homeowners and teams see the same job record.",
+  path: "/roofing-estimate-photos",
+  type: "website",
+});
 
 export default function EstimatePhotosPage() {
   return (

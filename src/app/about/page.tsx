@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingFooter, MarketingNav } from "@/components/MarketingChrome";
 import { APP_NAME, BUSINESS_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "About LeadFlow and Founder Jon Bratton",
-  description:
-    "Learn why Jon Bratton and JMB Business Solutions built LeadFlow as a connected workflow CRM for home improvement companies.",
-  alternates: { canonical: "https://www.leadflowcrm.info/about" },
-};
+  description: "Learn why Jon Bratton and JMB Business Solutions built LeadFlow as a connected workflow CRM for home improvement companies.",
+  path: "/about",
+  type: "website",
+});
 
 const structuredData = {
   "@context": "https://schema.org",

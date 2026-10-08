@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import { LegalPage, LegalSection } from "@/components/LegalPage";
 import { LEGAL_CONTACT_EMAIL, PRODUCT_NAME, PROVIDER_NAME } from "@/lib/legal";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "Terms of Service | LeadFlow",
   description: "Terms governing access to and use of the LeadFlow workflow CRM provided by JMB Business Solutions.",
-  alternates: { canonical: "https://www.leadflowcrm.info/terms" },
-};
+  path: "/terms",
+  type: "website",
+});
 
 export default function TermsPage() {
   return (

@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingFooter, MarketingNav } from "@/components/MarketingChrome";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "From Operational Friction to LeadFlow — Founder Case Study",
-  description:
-    "How founder Jon Bratton turned real home improvement workflow problems into a connected CRM spanning leads, estimates, payments, production, materials, and job costs.",
-  alternates: {
-    canonical: "https://www.leadflowcrm.info/case-studies/from-operational-friction-to-leadflow",
-  },
-};
+  description: "How founder Jon Bratton turned real home improvement workflow problems into a connected CRM spanning leads, estimates, payments, production, materials, and job costs.",
+  path: "/case-studies/from-operational-friction-to-leadflow",
+  type: "article",
+});
 
 const structuredData = {
   "@context": "https://schema.org",

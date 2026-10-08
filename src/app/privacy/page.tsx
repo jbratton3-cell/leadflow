@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import { LegalPage, LegalSection } from "@/components/LegalPage";
 import { LEGAL_CONTACT_EMAIL, PRODUCT_NAME, PROVIDER_NAME } from "@/lib/legal";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "Privacy Policy | LeadFlow",
   description: "How LeadFlow and JMB Business Solutions collect, use, protect, and share personal information and customer CRM data.",
-  alternates: { canonical: "https://www.leadflowcrm.info/privacy" },
-};
+  path: "/privacy",
+  type: "website",
+});
 
 export default function PrivacyPage() {
   return (

@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import ContactForm from "./ContactForm";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 import { FoundingOfferCard } from "@/components/FoundingOffer";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "Contact LeadFlow — Book a Personalized CRM Demo",
-  description:
-    "Tell us how your home improvement company works and book a personalized LeadFlow workflow CRM demonstration.",
-  alternates: { canonical: "https://www.leadflowcrm.info/contact" },
-};
+  description: "Tell us how your home improvement company works and book a personalized LeadFlow workflow CRM demonstration.",
+  path: "/contact",
+  type: "website",
+});
 
 export const dynamic = "force-dynamic";
 

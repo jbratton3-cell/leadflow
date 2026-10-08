@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingFooter, MarketingNav } from "@/components/MarketingChrome";
 import { BLOG_POSTS } from "@/lib/blog-posts";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "LeadFlow Blog — Home Improvement CRM and Workflow Guides",
-  description:
-    "Practical guides about connected CRM workflows, estimates, payments, service locations, production, receipts, job costing, and profitability.",
-  alternates: { canonical: "https://www.leadflowcrm.info/blog" },
-};
+  description: "Practical guides about connected CRM workflows, estimates, payments, service locations, production, receipts, job costing, and profitability.",
+  path: "/blog",
+  type: "website",
+});
 
 export default function BlogPage() {
   return (

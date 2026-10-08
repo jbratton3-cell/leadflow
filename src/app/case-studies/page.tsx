@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingFooter, MarketingNav } from "@/components/MarketingChrome";
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
   title: "LeadFlow Case Studies — Founder Story and Implementation",
-  description:
-    "Read how operational frustration led Jon Bratton to build LeadFlow and implement a connected CRM workflow for a growing home improvement company.",
-  alternates: { canonical: "https://www.leadflowcrm.info/case-studies" },
-};
+  description: "Read how operational friction led Jon Bratton to build LeadFlow and implement a connected CRM workflow for a growing home improvement company.",
+  path: "/case-studies",
+  type: "website",
+});
 
 export default function CaseStudiesPage() {
   return (

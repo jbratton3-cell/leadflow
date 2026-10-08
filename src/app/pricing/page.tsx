@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import { APP_NAME } from "@/lib/constants";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 import { FoundingOfferCard } from "@/components/FoundingOffer";
@@ -6,6 +7,13 @@ import {
   FOUNDING_OFFER_HEADLINE,
   FOUNDING_OFFER_RESERVATION,
 } from "@/lib/founding-offer";
+
+export const metadata = createPublicMetadata({
+  title: "LeadFlow Pricing — Workflow CRM Plans for Contractors",
+  description:
+    "Compare LeadFlow Starter, Pro, and Business plans for home improvement companies, including configurable workflows, estimates, production tracking, and reporting.",
+  path: "/pricing",
+});
 
 export const dynamic = "force-dynamic";
 

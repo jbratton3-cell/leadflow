@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { createPublicMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { MarketingNav, MarketingFooter } from "@/components/MarketingChrome";
 
-export const metadata: Metadata = {
-  title: "Cash vs finance on a roofing quote | LeadFlow",
-  description:
-    "Show list/financed price and cash price (50/50) on the same estimate — including what they save. LeadFlow by JMB Business Solutions.",
-};
+export const metadata = createPublicMetadata({
+  title: "Cash vs. Finance on a Roofing Quote | LeadFlow",
+  description: "Show cash and financed pricing choices on one roofing estimate and carry the customer’s selection into the signed sale and job record.",
+  path: "/cash-vs-finance-roofing-quote",
+  type: "website",
+});
 
 export default function CashVsFinancePage() {
   return (
@@ -19,20 +20,20 @@ export default function CashVsFinancePage() {
           A lot of shops bake financing fees into the price, then only show one total. Homeowners can&apos;t choose what they can&apos;t see.
         </p>
         <p className="mt-3 text-slate-300">
-          LeadFlow puts <strong className="text-white">list / financed</strong> and <strong className="text-white">cash</strong> on every estimate — with the dollars they save if they put 50% down and 50% at completion.
+          LeadFlow can be configured to present a <strong className="text-white">standard card or financing price</strong> alongside a <strong className="text-white">cash or check price</strong>. The choices, discounts, and payment milestones follow the company&apos;s approved workflow instead of forcing every contractor into one payment structure.
         </p>
 
         <h2 className="mt-12 text-2xl font-bold">How it reduces duplicate work</h2>
         <ul className="mt-4 space-y-3 text-slate-300">
-          <li>Pricebook builds the financed (list) total — the honest contract if they finance.</li>
-          <li>Rep types the cash price in dollars (or you set a company %). Cash can&apos;t go above list.</li>
-          <li>Customer sees both, plus “save $X by putting 50% down.” They pick on the same page. Sign on the phone.</li>
-          <li>Sale, job, and deposit follow the number they actually chose.</li>
+          <li>The pricebook builds the standard total consistently from approved products and services.</li>
+          <li>The company can configure its cash or check option, permitted discount, and required payment milestones.</li>
+          <li>The customer reviews the available choices and selects one before signing the estimate.</li>
+          <li>The selected contract amount and payment structure carry into the sale, invoices, job, and production record.</li>
         </ul>
 
         <h2 className="mt-12 text-2xl font-bold">One decision, one connected record</h2>
         <p className="mt-3 text-slate-300">
-          Once the customer chooses and signs, LeadFlow carries the selected amount into the sale, deposit, job, and production workflow. The owner and rep do not have to re-enter or reconcile it later.
+          Once the customer chooses and signs, LeadFlow carries the selected amount and configured payment milestones into the sale, invoices, job, and production workflow. The owner and rep do not have to re-enter or reconcile the decision later.
         </p>
         <p className="mt-3 text-slate-400">
           LeadFlow is built by JMB Business Solutions in Albany.
