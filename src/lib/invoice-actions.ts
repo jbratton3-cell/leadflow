@@ -748,7 +748,7 @@ export async function resendInvoice(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) redirect("/invoices");
 
-  const [inv] = await db
+  let [inv] = await db
     .select()
     .from(invoices)
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
@@ -764,6 +764,84 @@ export async function resendInvoice(formData: FormData) {
     .limit(1);
   if (!lead?.email) {
     redirect(`/invoices/${id}?email=missing-email`);
+  }
+
+  const requestedRouteRaw = (formData.get("paymentChoice") ?? "").toString();
+  const requestedRoute =
+    requestedRouteRaw === "cash" || requestedRouteRaw === "card"
+      ? requestedRouteRaw
+      : null;
+
+  if (requestedRoute && requestedRoute !== inv.paymentChoice) {
+    // Once an online order exists, changing the route risks conflicting with a
+    // payment already in progress. The office must resolve that payment first.
+    if (inv.paypalOrderId || inv.paypalCaptureId) {
+      redirect(`/invoices/${id}?email=route-locked`);
+    }
+
+    // Cash/check and Card/PayPal may have different contract prices. Resend is
+    // allowed to change the route only when the accepted dollar amounts remain
+    // exactly the same; price corrections use their dedicated workflow.
+    if (inv.estimateId) {
+      const [estimate] = await db
+        .select()
+        .from(estimates)
+        .where(
+          and(
+            eq(estimates.id, inv.estimateId),
+            eq(estimates.orgId, orgId),
+          ),
+        )
+        .limit(1);
+      if (estimate) {
+        const expectedContractTotal = contractPrice(
+          estimate.total,
+          estimate.cashDiscountPercent,
+          requestedRoute === "card",
+          estimate.cashPrice,
+        );
+        if (Math.abs(expectedContractTotal - Number(inv.contractTotal)) > 0.009) {
+          redirect(`/invoices/${id}?email=route-price-change`);
+        }
+      }
+    }
+
+    const changedAt = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(invoices)
+        .set({
+          paymentChoice: requestedRoute,
+          choiceAt: changedAt,
+          updatedAt: changedAt,
+        })
+        .where(and(eq(invoices.id, inv.id), eq(invoices.orgId, orgId)));
+
+      if (inv.estimateId) {
+        await tx
+          .update(estimates)
+          .set({ paymentChoice: requestedRoute, updatedAt: changedAt })
+          .where(
+            and(
+              eq(estimates.id, inv.estimateId),
+              eq(estimates.orgId, orgId),
+            ),
+          );
+      }
+      if (inv.saleId) {
+        await tx
+          .update(sales)
+          .set({ financeType: requestedRoute })
+          .where(and(eq(sales.id, inv.saleId), eq(sales.orgId, orgId)));
+      }
+    });
+    inv = {
+      ...inv,
+      paymentChoice: requestedRoute,
+      choiceAt: changedAt,
+      updatedAt: changedAt,
+    };
+    revalidatePath(`/invoice/${inv.publicToken}`);
   }
 
   const [location] = inv.propertyId
@@ -807,5 +885,6 @@ export async function resendInvoice(formData: FormData) {
   }
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
+  revalidatePath(`/invoice/${inv.publicToken}`);
   redirect(`/invoices/${id}?email=${sent ? "sent" : "failed"}`);
 }

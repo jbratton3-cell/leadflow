@@ -334,8 +334,22 @@ export default async function InvoiceDetailPage({
                   This invoice cannot be resent because it is paid, void, or no longer available.
                 </p>
               )}
-              <form action={markInvoicePaid} className="mt-3 space-y-2">
+              {q.email === "route-price-change" && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  That payment-route change would alter the accepted contract price, so it was not applied. Use the contract-correction workflow before resending.
+                </p>
+              )}
+              {q.email === "route-locked" && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  The payment route cannot change because an online payment has already started. Resolve that payment first.
+                </p>
+              )}
+
+              <form action={markInvoicePaid} className="mt-4 space-y-2 rounded-lg border border-slate-200 p-3">
                 <input type="hidden" name="id" value={inv.id} />
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Payment already received by
+                </label>
                 <select
                   name="method"
                   defaultValue="card"
@@ -352,18 +366,33 @@ export default async function InvoiceDetailPage({
                   Mark Paid
                 </button>
               </form>
-              <div className="mt-3 flex gap-2">
-                <form action={resendInvoice} className="flex-1">
-                  <input type="hidden" name="id" value={inv.id} />
-                  <InvoiceResendButton />
-                </form>
-                <form action={voidInvoice} className="flex-1">
-                  <input type="hidden" name="id" value={inv.id} />
-                  <button className="w-full rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50">
-                    Void
-                  </button>
-                </form>
-              </div>
+
+              <form action={resendInvoice} className="mt-3 space-y-2 rounded-lg border border-orange-200 bg-orange-50/50 p-3">
+                <input type="hidden" name="id" value={inv.id} />
+                <label className="block text-xs font-semibold uppercase tracking-wide text-orange-800">
+                  Customer payment route on resend
+                </label>
+                <select
+                  name="paymentChoice"
+                  defaultValue={inv.paymentChoice ?? ""}
+                  className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Keep current route</option>
+                  <option value="card">Card / PayPal</option>
+                  <option value="cash">Cash / Check</option>
+                </select>
+                <p className="text-xs text-slate-500">
+                  This controls the message and payment option on the customer invoice page. It does not mark the invoice paid.
+                </p>
+                <InvoiceResendButton />
+              </form>
+
+              <form action={voidInvoice} className="mt-3">
+                <input type="hidden" name="id" value={inv.id} />
+                <button className="w-full rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50">
+                  Void
+                </button>
+              </form>
             </Card>
           )}
 
