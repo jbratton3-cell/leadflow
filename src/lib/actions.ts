@@ -828,7 +828,8 @@ export async function recordFinancingSettlement(formData: FormData) {
 
 // One-click completion: sets status + stamps today's date, leaves everything else.
 export async function markJobCompleted(formData: FormData) {
-  const { orgId } = await requireUser();
+  const user = await requireUser();
+  const { orgId } = user;
   const id = Number(formData.get("id"));
   const submittedLeadId = num(formData.get("leadId"));
   if (!id) return;
@@ -839,6 +840,43 @@ export async function markJobCompleted(formData: FormData) {
     .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
     .limit(1);
   if (!job || job.status === "completed") return;
+
+  if (user.role === "agent") {
+    // Sales reps may complete only jobs tied to their own sale. Older sales can
+    // fall back to the lead's assigned rep, matching the Sales-page ownership
+    // logic. Login users and rep records are linked by organization + email.
+    const [sale] = job.saleId
+      ? await db
+          .select({ salesRepId: sales.salesRepId })
+          .from(sales)
+          .where(and(eq(sales.id, job.saleId), eq(sales.orgId, orgId)))
+          .limit(1)
+      : [undefined];
+    const [lead] = job.leadId
+      ? await db
+          .select({ assignedRepId: leads.assignedRepId })
+          .from(leads)
+          .where(and(eq(leads.id, job.leadId), eq(leads.orgId, orgId)))
+          .limit(1)
+      : [undefined];
+    const ownerRepId = sale?.salesRepId ?? lead?.assignedRepId ?? null;
+    const [ownerRep] = ownerRepId
+      ? await db
+          .select({ email: reps.email, active: reps.active })
+          .from(reps)
+          .where(and(eq(reps.id, ownerRepId), eq(reps.orgId, orgId)))
+          .limit(1)
+      : [undefined];
+    if (
+      !ownerRep?.active ||
+      !ownerRep.email ||
+      ownerRep.email.trim().toLowerCase() !== user.email.trim().toLowerCase()
+    ) {
+      return;
+    }
+  } else if (!['admin', 'manager', 'production'].includes(user.role)) {
+    return;
+  }
 
   await db
     .update(jobs)
@@ -879,6 +917,7 @@ export async function markJobCompleted(formData: FormData) {
   revalidatePath("/production");
   revalidatePath("/board");
   revalidatePath("/invoices");
+  revalidatePath("/sales");
   revalidatePath("/");
 }
 

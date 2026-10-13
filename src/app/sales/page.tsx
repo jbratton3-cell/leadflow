@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeader, Card, EmptyState, StatCard } from "@/components/ui";
 import { deleteSale } from "@/lib/delete-actions";
 import DeleteButton from "@/components/DeleteButton";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
+import { markJobCompleted } from "@/lib/actions";
 import { getReps, getProducts, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, accountDisplayName, serviceLocationLabel } from "@/lib/constants";
@@ -24,7 +26,8 @@ export default async function SalesPage({
 }: {
   searchParams: Promise<{ period?: string; q?: string }>;
 }) {
-  const { orgId } = await requireAccess("sales");
+  const user = await requireAccess("sales");
+  const { orgId } = user;
   const { period: periodParam, q: rawQuery } = await searchParams;
   const period = periodParam === "ytd" ? "ytd" : "mtd";
   const periodLabel = period.toUpperCase();
@@ -124,6 +127,9 @@ export default async function SalesPage({
       .select({
         id: jobs.id,
         saleId: jobs.saleId,
+        leadId: jobs.leadId,
+        status: jobs.status,
+        completionDate: jobs.completionDate,
         contractAmount: jobs.contractAmount,
         createdAt: jobs.createdAt,
         notes: jobs.notes,
@@ -148,6 +154,23 @@ export default async function SalesPage({
 
   const repMap = toMap(allReps);
   const prodMap = toMap(prods);
+  const userRepIds = new Set(
+    allReps
+      .filter(
+        (rep) =>
+          rep.active &&
+          rep.email?.trim().toLowerCase() === user.email.trim().toLowerCase(),
+      )
+      .map((rep) => rep.id),
+  );
+  const jobBySaleId = new Map<number, (typeof revenueJobs)[number]>();
+  for (const job of revenueJobs) {
+    if (!job.saleId) continue;
+    const existing = jobBySaleId.get(job.saleId);
+    if (!existing || (existing.status === "completed" && job.status !== "completed")) {
+      jobBySaleId.set(job.saleId, job);
+    }
+  }
 
   const contracts = buildRevenueContracts(revenueSales, revenueJobs);
   const importedJobs = importedJobIds(revenueJobs);
@@ -328,47 +351,84 @@ export default async function SalesPage({
                     <th className="px-4 py-3 font-medium">Finance</th>
                     <th className="px-4 py-3 text-right font-medium">Amount</th>
                     <th className="px-4 py-3 font-medium">Date</th>
-                    <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
+                    <th className="px-4 py-3 font-medium">Production</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {rows.map((r) => (
-                    <tr key={r.sale.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/leads/${r.sale.leadId}`}
-                          className="font-semibold text-slate-800 hover:text-orange-600"
-                        >
-                          {accountDisplayName(r.firstName, r.lastName, r.company, r.accountType)}
-                        </Link>
-                        <div className="text-xs text-slate-400">
-                          {r.property ? serviceLocationLabel(r.property) : r.city ?? "—"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {r.sale.productId ? prodMap.get(r.sale.productId)?.name ?? "—" : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {(r.sale.salesRepId ?? r.assignedRepId)
-                          ? repMap.get(r.sale.salesRepId ?? r.assignedRepId!)?.name ?? "—"
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 capitalize text-slate-600">{r.sale.financeType}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-emerald-600">
-                        {money(r.sale.amount)}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(r.sale.soldAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <form action={deleteSale}>
-                          <input type="hidden" name="id" value={r.sale.id} />
-                          <DeleteButton
-                            label="Delete"
-                            confirmText={`Delete the ${money(r.sale.amount)} sale record? This cannot be undone.`}
-                          />
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((r) => {
+                    const displayName = accountDisplayName(
+                      r.firstName,
+                      r.lastName,
+                      r.company,
+                      r.accountType,
+                    );
+                    const effectiveSaleRepId = r.sale.salesRepId ?? r.assignedRepId;
+                    const linkedJob = jobBySaleId.get(r.sale.id);
+                    const repOwnsSale =
+                      user.role === "agent" &&
+                      Boolean(effectiveSaleRepId && userRepIds.has(effectiveSaleRepId));
+                    const canDeleteSale = user.role === "admin" || user.role === "manager";
+
+                    return (
+                      <tr key={r.sale.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/leads/${r.sale.leadId}`}
+                            className="font-semibold text-slate-800 hover:text-orange-600"
+                          >
+                            {displayName}
+                          </Link>
+                          <div className="text-xs text-slate-400">
+                            {r.property ? serviceLocationLabel(r.property) : r.city ?? "—"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {r.sale.productId ? prodMap.get(r.sale.productId)?.name ?? "—" : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {effectiveSaleRepId
+                            ? repMap.get(effectiveSaleRepId)?.name ?? "—"
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 capitalize text-slate-600">{r.sale.financeType}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-emerald-600">
+                          {money(r.sale.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(r.sale.soldAt)}</td>
+                        <td className="px-4 py-3">
+                          {linkedJob ? (
+                            <div className="space-y-2">
+                              <div className="text-xs font-medium capitalize text-slate-500">
+                                Job #{linkedJob.id} · {linkedJob.status.replaceAll("_", " ")}
+                              </div>
+                              {repOwnsSale && linkedJob.status !== "completed" && (
+                                <form action={markJobCompleted}>
+                                  <input type="hidden" name="id" value={linkedJob.id} />
+                                  <input type="hidden" name="leadId" value={linkedJob.leadId ?? ""} />
+                                  <ConfirmSubmitButton
+                                    label="Mark Job Complete"
+                                    confirmText={`Mark Job #${linkedJob.id} for ${displayName} complete? This will automatically create and email the final invoice for a non-financed job.`}
+                                    className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                                  />
+                                </form>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">No production job</span>
+                          )}
+                          {canDeleteSale && (
+                            <form action={deleteSale} className="mt-2">
+                              <input type="hidden" name="id" value={r.sale.id} />
+                              <DeleteButton
+                                label="Delete"
+                                confirmText={`Delete the ${money(r.sale.amount)} sale record? This cannot be undone.`}
+                              />
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
