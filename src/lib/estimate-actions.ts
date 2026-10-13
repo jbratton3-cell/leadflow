@@ -521,6 +521,57 @@ export async function addEstimateItem(formData: FormData) {
   revalidatePath(`/estimates/${estimateId}`);
 }
 
+export async function updateEstimateItem(formData: FormData) {
+  const { orgId } = await requireAccess("estimates");
+  // BuildPros-specific editable estimate snapshots. Other organizations keep
+  // the standard add/remove behavior until this workflow is explicitly enabled.
+  if (orgId !== 1) return;
+
+  const id = Number(formData.get("id"));
+  const estimateId = Number(formData.get("estimateId"));
+  const description = req(formData.get("description"));
+  const quantity = num(formData.get("quantity"));
+  const unitPrice = num(formData.get("unitPrice"));
+  if (
+    !id ||
+    !estimateId ||
+    !description ||
+    quantity === null ||
+    quantity <= 0 ||
+    unitPrice === null ||
+    unitPrice < 0
+  ) {
+    return;
+  }
+
+  const [estimate] = await db
+    .select({ id: estimates.id, status: estimates.status })
+    .from(estimates)
+    .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, orgId)))
+    .limit(1);
+  if (!estimate || estimate.status === "accepted" || estimate.status === "declined") return;
+
+  const amount = +(quantity * unitPrice).toFixed(2);
+  await db
+    .update(estimateItems)
+    .set({
+      description,
+      quantity: quantity.toString(),
+      unitPrice: unitPrice.toFixed(2),
+      amount: amount.toFixed(2),
+    })
+    .where(
+      and(
+        eq(estimateItems.id, id),
+        eq(estimateItems.estimateId, estimateId),
+        eq(estimateItems.orgId, orgId),
+      ),
+    );
+
+  await recalcTotals(estimateId);
+  revalidatePath(`/estimates/${estimateId}`);
+}
+
 export async function deleteEstimateItem(formData: FormData) {
   const { orgId } = await requireAccess("estimates");
   const id = Number(formData.get("id"));

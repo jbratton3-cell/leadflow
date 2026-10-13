@@ -146,6 +146,12 @@
 - Production schema migration applied to Neon. Tracked migration: `scripts/property-management-schema.sql`. Temporary QA org/data was deleted after tests.
 - End-to-end QA covered: resident-name fallback; estimate-first path; immediate-work-order path; acceptance idempotency; two simultaneous locations under one account; isolated deposit/final balances; production stage behavior; public estimate/invoice rendering; and estimate/receipt PDF generation.
 
+### BuildPros estimate-item editing — READY TO DEPLOY Oct 13
+- BuildPros-specific workflow: after a price-book package is added to an unaccepted estimate, reps can edit that estimate copy's description/included scope, quantity, and unit price. The master price book is never changed.
+- Removing an included component line from a package description does not reduce the package price unless the rep deliberately changes quantity or unit price. Replacement/additional material is added separately through the existing price-book form at its priced quantity, increasing the estimate total normally. Example: remove the included 2-sheet plywood text from Owens Corning roofing while leaving its roof price fixed, then add a separate 10-sheet plywood item whose price increases the overall estimate.
+- Editing is scoped to BuildPros organization #1 and blocked after an estimate is accepted or declined. The server action independently verifies organization ownership, editable status, positive quantity, nonnegative unit price, recalculates line amount, and recalculates estimate subtotal/tax/total.
+- Typecheck, targeted lint, production build, frozen-public-file diff review, and local authenticated UI assertions passed: viewed Estimate #254 showed edit controls for all four items, while accepted Estimate #253 showed none. Temporary QA session data was removed. Deployment/live edit QA remains pending.
+
 ### Sales-rep job completion — READY TO DEPLOY Oct 13
 - BuildPros-specific decision: login users with the Sales / Call Agent role may mark complete only production jobs tied to their own sales. Ownership uses the sale's sales rep, with the lead's assigned rep as the legacy fallback, and maps login users to active rep records by organization + email.
 - The Sales page now shows each linked production job and a confirmed **Mark Job Complete** button only to the owning sales rep. The confirmation explicitly warns that completion automatically creates and emails the final invoice for non-financed jobs. Reps cannot see the existing Delete Sale action; admins/managers retain it.

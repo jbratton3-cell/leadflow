@@ -21,6 +21,7 @@ import {
 import {
   updateEstimate,
   updateEstimateLocation,
+  updateEstimateItem,
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
@@ -78,6 +79,7 @@ export default async function EstimateDetailPage({
   ]);
 
   const locked = est.status === "accepted" || est.status === "declined";
+  const canEditBuildProsLineItems = orgId === 1 && !locked;
   const canUpdateLocation =
     !locked ||
     (est.status === "accepted" && (user.role === "admin" || user.role === "manager"));
@@ -244,7 +246,60 @@ export default async function EstimateDetailPage({
                   <tbody className="divide-y divide-slate-100">
                     {items.map((it) => (
                       <tr key={it.id}>
-                        <td className="max-w-[420px] whitespace-pre-wrap px-2 py-2 text-slate-700">{it.description}</td>
+                        <td className="max-w-[520px] whitespace-pre-wrap px-2 py-2 text-slate-700">
+                          {it.description}
+                          {canEditBuildProsLineItems && (
+                            <details className="mt-2 whitespace-normal rounded-lg border border-slate-200 bg-slate-50 p-2">
+                              <summary className="cursor-pointer text-xs font-semibold text-cyan-700">
+                                Edit this estimate item
+                              </summary>
+                              <form action={updateEstimateItem} className="mt-3 space-y-3">
+                                <input type="hidden" name="id" value={it.id} />
+                                <input type="hidden" name="estimateId" value={est.id} />
+                                <div>
+                                  <label className={label}>Description / included scope</label>
+                                  <textarea
+                                    name="description"
+                                    required
+                                    rows={8}
+                                    defaultValue={it.description}
+                                    className={input}
+                                  />
+                                  <p className="mt-1 text-[11px] text-slate-500">
+                                    Edit only this estimate copy. Removing included scope text does not change the package price unless quantity or unit price is changed below.
+                                  </p>
+                                </div>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <div>
+                                    <label className={label}>Quantity</label>
+                                    <input
+                                      name="quantity"
+                                      type="number"
+                                      min="0.01"
+                                      step="0.01"
+                                      defaultValue={String(it.quantity)}
+                                      className={input}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className={label}>Unit price</label>
+                                    <input
+                                      name="unitPrice"
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      defaultValue={String(it.unitPrice)}
+                                      className={input}
+                                    />
+                                  </div>
+                                </div>
+                                <button className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white hover:bg-cyan-800">
+                                  Save Item Changes
+                                </button>
+                              </form>
+                            </details>
+                          )}
+                        </td>
                         <td className="px-2 py-2 text-right text-slate-600">{Number(it.quantity)}</td>
                         <td className="px-2 py-2 text-right text-slate-600">{money(it.unitPrice)}</td>
                         <td className="px-2 py-2 text-right font-medium text-slate-700">{money(it.amount)}</td>
