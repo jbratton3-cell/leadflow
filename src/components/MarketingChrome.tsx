@@ -73,6 +73,21 @@ export function MarketingFooter() {
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-slate-500">
             A connected workflow CRM for home improvement companies—from first inquiry through final profit.
           </p>
+          <a
+            href="https://www.facebook.com/profile.php?id=61593625694864"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit LeadFlow on Facebook"
+            title="LeadFlow on Facebook"
+            className="mt-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+              <path
+                fill="currentColor"
+                d="M22 12.073C22 6.505 17.523 2 12 2S2 6.505 2 12.073C2 17.1 5.657 21.27 10.438 22v-7.026H7.898v-2.901h2.54V9.86c0-2.515 1.492-3.904 3.777-3.904 1.094 0 2.238.196 2.238.196v2.47h-1.26c-1.242 0-1.63.776-1.63 1.572v1.89h2.773l-.443 2.89h-2.33V22C18.343 21.27 22 17.1 22 12.073z"
+              />
+            </svg>
+          </a>
         </div>
         <FooterColumn
           title="Product"
