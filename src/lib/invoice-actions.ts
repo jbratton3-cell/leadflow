@@ -2,7 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { hcpPayments, invoices, leads, sales, estimates, jobs, properties } from "@/db/schema";
+import { hcpPayments, invoiceAmountAdjustments, invoices, leads, sales, estimates, jobs, properties } from "@/db/schema";
 import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/notify";
 import { money, personName, contractPrice, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
 import { syncInvoiceToQb } from "@/lib/qb-actions";
+import { ensureInvoiceAmountAdjustmentsTable } from "@/lib/invoice-adjustments";
 import { buildPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
 
 /* ---------------------------- helpers (internal) ---------------------------- */
@@ -663,12 +664,12 @@ export async function markInvoicePaid(formData: FormData) {
 }
 
 /**
- * Correct the amount of a manually recorded paid deposit. This is a financial
- * correction, not a contract-price edit: contractTotal remains unchanged and
- * the final invoice is recomputed from the corrected deposit amount. QuickBooks
- * is intentionally not modified here; the bookkeeper reconciles that ledger.
+ * Correct an active deposit invoice amount. For paid manual deposits, the
+ * linked LeadFlow payment record is updated too. The contract total remains
+ * unchanged and any unpaid final invoice is recalculated. QuickBooks is
+ * intentionally not modified here; the bookkeeper reconciles that ledger.
  */
-export async function correctPaidDepositAmount(formData: FormData) {
+export async function adjustDepositInvoiceAmount(formData: FormData) {
   const user = await requireAccess("invoices");
   const id = Number(formData.get("id"));
   const rawAmount = (formData.get("actualAmount") ?? "").toString().trim();
@@ -681,6 +682,8 @@ export async function correctPaidDepositAmount(formData: FormData) {
   const newAmount = Number(normalizedAmount);
   if (!Number.isFinite(newAmount) || newAmount <= 0) return fail("invalid");
 
+  await ensureInvoiceAmountAdjustmentsTable();
+
   const result = await db.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
@@ -688,14 +691,17 @@ export async function correctPaidDepositAmount(formData: FormData) {
       .where(and(eq(invoices.id, id), eq(invoices.orgId, user.orgId)))
       .limit(1);
     if (!invoice) return { error: "not-found" as const };
-    if (invoice.kind !== "deposit" || invoice.status !== "paid") {
+    if (
+      invoice.kind !== "deposit" ||
+      !["draft", "sent", "viewed", "paid"].includes(invoice.status)
+    ) {
       return { error: "not-eligible" as const };
     }
+    const paymentAlreadyRecorded = invoice.status === "paid";
     if (
       invoice.paypalOrderId ||
       invoice.paypalCaptureId ||
-      invoice.paymentMethod === "paypal" ||
-      invoice.paymentMethod === "card"
+      (paymentAlreadyRecorded && (invoice.paymentMethod === "paypal" || invoice.paymentMethod === "card"))
     ) {
       return { error: "processor-payment" as const };
     }
@@ -727,7 +733,7 @@ export async function correctPaidDepositAmount(formData: FormData) {
     const finalInvoice = liveFinals[0];
     if (
       finalInvoice &&
-      (finalInvoice.status === "paid" ||
+      (!(["draft", "sent", "viewed"].includes(finalInvoice.status)) ||
         finalInvoice.paypalOrderId ||
         finalInvoice.paypalCaptureId ||
         finalInvoice.qbPaymentId)
@@ -743,15 +749,21 @@ export async function correctPaidDepositAmount(formData: FormData) {
     const recalculatedFinal = Number(
       (contractTotal - newAmount - otherNonFinalAmount).toFixed(2),
     );
-    if (recalculatedFinal < 0) return { error: "exceeds-contract" as const };
+    if (recalculatedFinal < 0 || (finalInvoice && recalculatedFinal <= 0)) {
+      return { error: "exceeds-contract" as const };
+    }
 
     const paymentRows = await tx
       .select()
       .from(hcpPayments)
       .where(and(eq(hcpPayments.orgId, user.orgId), eq(hcpPayments.invoiceId, invoice.id)));
-    if (paymentRows.length !== 1) return { error: "payment-record" as const };
-    if (!String(paymentRows[0].paymentType || "").toLowerCase().startsWith("leadflow")) {
-      return { error: "external-ledger" as const };
+    if (paymentAlreadyRecorded) {
+      if (paymentRows.length !== 1) return { error: "payment-record" as const };
+      if (!String(paymentRows[0].paymentType || "").toLowerCase().startsWith("leadflow")) {
+        return { error: "external-ledger" as const };
+      }
+    } else if (paymentRows.length > 0) {
+      return { error: "payment-record" as const };
     }
 
     const now = new Date();
@@ -764,14 +776,16 @@ export async function correctPaidDepositAmount(formData: FormData) {
       .set({ amount: newAmount.toFixed(2), updatedAt: now })
       .where(and(eq(invoices.id, invoice.id), eq(invoices.orgId, user.orgId)));
 
-    const existingNotes = paymentRows[0].notes?.trim();
-    await tx
-      .update(hcpPayments)
-      .set({
-        amount: newAmount.toFixed(2),
-        notes: existingNotes ? `${existingNotes}\n${auditLine}` : auditLine,
-      })
-      .where(and(eq(hcpPayments.id, paymentRows[0].id), eq(hcpPayments.orgId, user.orgId)));
+    if (paymentAlreadyRecorded) {
+      const existingNotes = paymentRows[0].notes?.trim();
+      await tx
+        .update(hcpPayments)
+        .set({
+          amount: newAmount.toFixed(2),
+          notes: existingNotes ? `${existingNotes}\n${auditLine}` : auditLine,
+        })
+        .where(and(eq(hcpPayments.id, paymentRows[0].id), eq(hcpPayments.orgId, user.orgId)));
+    }
 
     if (finalInvoice) {
       await tx
@@ -779,6 +793,21 @@ export async function correctPaidDepositAmount(formData: FormData) {
         .set({ amount: recalculatedFinal.toFixed(2), updatedAt: now })
         .where(and(eq(invoices.id, finalInvoice.id), eq(invoices.orgId, user.orgId)));
     }
+
+    await tx.insert(invoiceAmountAdjustments).values({
+      orgId: user.orgId,
+      invoiceId: invoice.id,
+      adjustmentType: paymentAlreadyRecorded ? "paid_deposit_amount" : "unpaid_deposit_amount",
+      invoiceStatus: invoice.status,
+      oldAmount: oldAmount.toFixed(2),
+      newAmount: newAmount.toFixed(2),
+      finalAmountAfter: recalculatedFinal.toFixed(2),
+      reason,
+      changedById: user.id,
+      changedByName: user.name,
+      changedByEmail: user.email,
+      createdAt: now,
+    });
 
     return {
       oldAmount,

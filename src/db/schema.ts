@@ -522,6 +522,31 @@ export const invoices = pgTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 
+// Auditable office corrections to deposit invoice amounts. These records are
+// separate from customer-facing invoice notes and never change the contract total.
+export const invoiceAmountAdjustments = pgTable(
+  "invoice_amount_adjustments",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull(),
+    invoiceId: integer("invoice_id").notNull(),
+    adjustmentType: varchar("adjustment_type", { length: 32 }).notNull(),
+    invoiceStatus: varchar("invoice_status", { length: 20 }).notNull(),
+    oldAmount: numeric("old_amount", { precision: 12, scale: 2 }).notNull(),
+    newAmount: numeric("new_amount", { precision: 12, scale: 2 }).notNull(),
+    finalAmountAfter: numeric("final_amount_after", { precision: 12, scale: 2 }).notNull(),
+    reason: text("reason").notNull(),
+    changedById: integer("changed_by_id").notNull(),
+    changedByName: varchar("changed_by_name", { length: 120 }).notNull(),
+    changedByEmail: varchar("changed_by_email", { length: 190 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("invoice_amount_adjustments_org_invoice_idx").on(t.orgId, t.invoiceId),
+    index("invoice_amount_adjustments_created_idx").on(t.orgId, t.createdAt),
+  ],
+);
+
 // Housecall Pro payment transactions preserved during historical migrations.
 export const hcpPayments = pgTable(
   "hcp_payments",
