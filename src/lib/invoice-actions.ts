@@ -7,7 +7,7 @@ import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireAccess, requireUser } from "@/lib/auth";
 import {
   sendEmail,
   invoiceEmailHtml,
@@ -660,6 +660,143 @@ export async function markInvoicePaid(formData: FormData) {
   revalidatePath("/invoices");
   revalidatePath("/sales");
   revalidatePath("/reports");
+}
+
+/**
+ * Correct the amount of a manually recorded paid deposit. This is a financial
+ * correction, not a contract-price edit: contractTotal remains unchanged and
+ * the final invoice is recomputed from the corrected deposit amount. QuickBooks
+ * is intentionally not modified here; the bookkeeper reconciles that ledger.
+ */
+export async function correctPaidDepositAmount(formData: FormData) {
+  const user = await requireAccess("invoices");
+  const id = Number(formData.get("id"));
+  const rawAmount = (formData.get("actualAmount") ?? "").toString().trim();
+  const reason = (formData.get("reason") ?? "").toString().trim();
+  const fail = (code: string) => redirect(`/invoices/${id || ""}?correction=${code}`);
+
+  if (user.role !== "admin") return fail("admin-only");
+  if (!id || !reason || reason.length < 8 || reason.length > 500) return fail("invalid");
+  const normalizedAmount = rawAmount.replace(/[$,\s]/g, "");
+  const newAmount = Number(normalizedAmount);
+  if (!Number.isFinite(newAmount) || newAmount <= 0) return fail("invalid");
+
+  const result = await db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.id, id), eq(invoices.orgId, user.orgId)))
+      .limit(1);
+    if (!invoice) return { error: "not-found" as const };
+    if (invoice.kind !== "deposit" || invoice.status !== "paid") {
+      return { error: "not-eligible" as const };
+    }
+    if (
+      invoice.paypalOrderId ||
+      invoice.paypalCaptureId ||
+      invoice.paymentMethod === "paypal" ||
+      invoice.paymentMethod === "card"
+    ) {
+      return { error: "processor-payment" as const };
+    }
+
+    const contractTotal = Number(invoice.contractTotal);
+    if (!Number.isFinite(contractTotal) || contractTotal <= 0 || newAmount > contractTotal) {
+      return { error: "invalid" as const };
+    }
+    const oldAmount = Number(invoice.amount);
+    if (Math.abs(oldAmount - newAmount) < 0.005) {
+      return { error: "unchanged" as const };
+    }
+
+    const relation = invoice.saleId != null
+      ? eq(invoices.saleId, invoice.saleId)
+      : invoice.jobId != null
+        ? eq(invoices.jobId, invoice.jobId)
+        : invoice.estimateId != null
+          ? eq(invoices.estimateId, invoice.estimateId)
+          : eq(invoices.id, invoice.id);
+    const relatedInvoices = await tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.orgId, user.orgId), relation));
+    const liveFinals = relatedInvoices.filter(
+      (row) => row.kind === "final" && row.status !== "void",
+    );
+    if (liveFinals.length > 1) return { error: "multiple-finals" as const };
+    const finalInvoice = liveFinals[0];
+    if (
+      finalInvoice &&
+      (finalInvoice.status === "paid" ||
+        finalInvoice.paypalOrderId ||
+        finalInvoice.paypalCaptureId ||
+        finalInvoice.qbPaymentId)
+    ) {
+      return { error: "final-locked" as const };
+    }
+
+    const otherNonFinalAmount = relatedInvoices
+      .filter((row) =>
+        row.id !== invoice.id && row.kind !== "final" && row.status !== "void",
+      )
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const recalculatedFinal = Number(
+      (contractTotal - newAmount - otherNonFinalAmount).toFixed(2),
+    );
+    if (recalculatedFinal < 0) return { error: "exceeds-contract" as const };
+
+    const paymentRows = await tx
+      .select()
+      .from(hcpPayments)
+      .where(and(eq(hcpPayments.orgId, user.orgId), eq(hcpPayments.invoiceId, invoice.id)));
+    if (paymentRows.length !== 1) return { error: "payment-record" as const };
+    if (!String(paymentRows[0].paymentType || "").toLowerCase().startsWith("leadflow")) {
+      return { error: "external-ledger" as const };
+    }
+
+    const now = new Date();
+    const auditLine =
+      `LeadFlow amount correction ${now.toISOString()} by ${user.name} (${user.email}): ` +
+      `${money(oldAmount)} → ${money(newAmount)}. Reason: ${reason}`;
+
+    await tx
+      .update(invoices)
+      .set({ amount: newAmount.toFixed(2), updatedAt: now })
+      .where(and(eq(invoices.id, invoice.id), eq(invoices.orgId, user.orgId)));
+
+    const existingNotes = paymentRows[0].notes?.trim();
+    await tx
+      .update(hcpPayments)
+      .set({
+        amount: newAmount.toFixed(2),
+        notes: existingNotes ? `${existingNotes}\n${auditLine}` : auditLine,
+      })
+      .where(and(eq(hcpPayments.id, paymentRows[0].id), eq(hcpPayments.orgId, user.orgId)));
+
+    if (finalInvoice) {
+      await tx
+        .update(invoices)
+        .set({ amount: recalculatedFinal.toFixed(2), updatedAt: now })
+        .where(and(eq(invoices.id, finalInvoice.id), eq(invoices.orgId, user.orgId)));
+    }
+
+    return {
+      oldAmount,
+      newAmount,
+      finalInvoiceId: finalInvoice?.id ?? null,
+      finalAmount: recalculatedFinal,
+    };
+  });
+
+  if ("error" in result && result.error) return fail(result.error);
+  revalidatePath(`/invoices/${id}`);
+  revalidatePath("/invoices");
+  revalidatePath("/estimates");
+  revalidatePath("/sales");
+  revalidatePath("/reports");
+  revalidatePath("/production");
+  if (result.finalInvoiceId) revalidatePath(`/invoices/${result.finalInvoiceId}`);
+  redirect(`/invoices/${id}?correction=updated`);
 }
 
 export async function sendPaymentReceipt(formData: FormData) {

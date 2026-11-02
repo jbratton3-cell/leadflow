@@ -1,12 +1,12 @@
 import { db } from "@/db";
-import { invoices, leads, properties } from "@/db/schema";
+import { hcpPayments, invoices, leads, properties } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import { requireAccess } from "@/lib/auth";
 import { money, fmtDate, accountDisplayName, serviceLocationAddress, serviceLocationLabel } from "@/lib/constants";
-import { markInvoicePaid, sendPaymentReceipt, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
+import { correctPaidDepositAmount, markInvoicePaid, sendPaymentReceipt, voidInvoice, resendInvoice } from "@/lib/invoice-actions";
 import { pushInvoiceToQuickBooks, recordQbPayment, rememberQbInvoiceIfExists, linkQbInvoice } from "@/lib/qb-actions";
 import { ensureQbColumns } from "@/lib/quickbooks";
 import InvoiceResendButton from "@/components/InvoiceResendButton";
@@ -48,9 +48,10 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ qb?: string; receipt?: string; email?: string }>;
+  searchParams: Promise<{ qb?: string; receipt?: string; email?: string; correction?: string }>;
 }) {
-  const { orgId } = await requireAccess("invoices");
+  const user = await requireAccess("invoices");
+  const { orgId } = user;
   await ensureQbColumns();
   const { id: raw } = await params;
   const q = await searchParams;
@@ -84,6 +85,13 @@ export default async function InvoiceDetailPage({
       : Promise.resolve([]),
   ]);
   const location = locationRows[0] ?? null;
+  const paymentRecords = await db
+    .select({ amount: hcpPayments.amount, notes: hcpPayments.notes, receivedAt: hcpPayments.receivedAt })
+    .from(hcpPayments)
+    .where(and(eq(hcpPayments.orgId, orgId), eq(hcpPayments.invoiceId, inv.id)));
+  const paymentCorrectionNotes = paymentRecords
+    .map((record) => record.notes)
+    .filter((notes): notes is string => Boolean(notes?.includes("LeadFlow amount correction")));
 
   const active = inv.status !== "paid" && inv.status !== "void";
   const customerName = lead
@@ -110,6 +118,28 @@ export default async function InvoiceDetailPage({
           </div>
         }
       />
+
+      {q.correction === "updated" && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          LeadFlow deposit amount corrected to {money(inv.amount)}. The contract total was not changed, and any unpaid final invoice was recalculated. QuickBooks was not changed; have the bookkeeper reconcile its invoice/payment. If a final invoice was already emailed, resend the updated invoice.
+        </div>
+      )}
+      {q.correction && q.correction !== "updated" && (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {q.correction === "admin-only" && "Only an administrator can correct a paid deposit amount."}
+          {q.correction === "invalid" && "Enter a valid actual amount and a reason for the correction."}
+          {q.correction === "not-found" && "Invoice not found in this account."}
+          {q.correction === "not-eligible" && "Only a paid deposit invoice can be corrected here."}
+          {q.correction === "processor-payment" && "This invoice is tied to an online card or PayPal payment. Correct it through the payment processor and bookkeeper instead."}
+          {q.correction === "unchanged" && "The entered amount matches the current invoice amount; no change was made."}
+          {q.correction === "multiple-finals" && "More than one active final invoice is linked. No changes were made; review the invoice history first."}
+          {q.correction === "final-locked" && "A final invoice has already been paid or has an active payment. No changes were made; reconcile it with the bookkeeper first."}
+          {q.correction === "payment-record" && "A single LeadFlow payment record could not be confirmed for this invoice. No changes were made; review the payment ledger first."}
+          {q.correction === "external-ledger" && "The linked payment record is not a LeadFlow-recorded payment. No changes were made; reconcile it with the bookkeeper."}
+          {q.correction === "exceeds-contract" && "The corrected deposit would exceed the remaining contract balance. No changes were made."}
+          {!['admin-only','invalid','not-found','not-eligible','processor-payment','unchanged','multiple-finals','final-locked','payment-record','external-ledger','exceeds-contract'].includes(q.correction) && "The deposit correction could not be completed. No changes were made; contact an administrator."}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column */}
@@ -308,6 +338,63 @@ export default async function InvoiceDetailPage({
               <p className="mt-2 text-xs text-slate-500">
                 Sends a payment summary with a PDF receipt attached.
               </p>
+            </Card>
+          )}
+
+          {inv.kind === "deposit" && inv.status === "paid" && user.role === "admin" && (
+            <Card className="border-amber-200 bg-amber-50/60 p-5">
+              <h2 className="font-semibold text-amber-900">Correct paid deposit amount</h2>
+              <p className="mt-2 text-xs leading-5 text-amber-800">
+                Use only to correct the actual amount received when a deposit was recorded as fully paid for the wrong amount. This keeps the contract total unchanged and recalculates any unpaid final invoice. It updates LeadFlow only; it does not change QuickBooks or the payment processor.
+              </p>
+              {inv.paypalOrderId || inv.paypalCaptureId || inv.paymentMethod === "paypal" || inv.paymentMethod === "card" ? (
+                <p className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900">
+                  This invoice is associated with an online payment route. Resolve any processor-side payment first; this correction form is for manually recorded payments such as cash or check.
+                </p>
+              ) : (
+                <form action={correctPaidDepositAmount} className="mt-3 space-y-2">
+                  <input type="hidden" name="id" value={inv.id} />
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Actual amount received
+                  </label>
+                  <input
+                    name="actualAmount"
+                    type="text"
+                    inputMode="decimal"
+                    defaultValue={Number(inv.amount).toFixed(2)}
+                    aria-label="Actual deposit amount received"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    required
+                  />
+                  <label className="block pt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Reason for correction
+                  </label>
+                  <textarea
+                    name="reason"
+                    minLength={8}
+                    required
+                    rows={2}
+                    placeholder="Example: $6,000 cash received; amount confirmed with the sales representative and Kevin."
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                  <button className="w-full rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">
+                    Correct deposit &amp; recalculate final balance
+                  </button>
+                </form>
+              )}
+              {paymentCorrectionNotes.length > 0 && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
+                  <p className="text-xs font-semibold text-slate-700">Correction history</p>
+                  {paymentCorrectionNotes.map((note, index) => (
+                    <p key={index} className="mt-1 whitespace-pre-line text-xs text-slate-600">{note}</p>
+                  ))}
+                </div>
+              )}
+              {(inv.qbInvoiceId || inv.qbPaymentId) && (
+                <p className="mt-3 text-xs text-amber-900">
+                  QuickBooks is linked. Coordinate the matching correction with the bookkeeper; this action will not update QuickBooks.
+                </p>
+              )}
             </Card>
           )}
 
