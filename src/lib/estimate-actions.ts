@@ -2,9 +2,9 @@
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { estimates, estimateItems, leads, jobs, sales, products, properties, estimatePhotos, organizations, invoices } from "@/db/schema";
+import { estimates, estimateItems, leads, jobs, sales, products, properties, estimatePhotos, organizations, invoices, invoiceAmountAdjustments } from "@/db/schema";
 import type { Estimate, Lead } from "@/db/schema";
-import { eq, and, asc, sql, inArray } from "drizzle-orm";
+import { eq, and, asc, sql, inArray, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAccess } from "@/lib/auth";
@@ -14,6 +14,7 @@ import {
   getBaseUrl,
 } from "@/lib/notify";
 import { handleEstimateAccepted } from "@/lib/invoice-actions";
+import { ensureInvoiceAmountAdjustmentsTable } from "@/lib/invoice-adjustments";
 import { buildSignedEstimatePdf } from "@/lib/estimate-pdf";
 import { signedEstimateEmailHtml } from "@/lib/notify";
 
@@ -346,6 +347,136 @@ export async function updateEstimateLocation(formData: FormData) {
   revalidatePath("/production");
   revalidatePath("/invoices");
   revalidatePath("/board");
+}
+
+
+// Correct the accepted payment option when the original choice was entered
+// incorrectly. The saved estimate pricing determines the corrected contract;
+// the actual deposit amount is corrected separately on the invoice.
+export async function correctAcceptedPaymentChoice(formData: FormData) {
+  const user = await requireAccess("estimates");
+  if (user.role !== "admin") return;
+  const estimateId = Number(formData.get("estimateId"));
+  const paymentChoice = req(formData.get("paymentChoice"));
+  const reason = req(formData.get("reason"));
+  const fail = (code: string) => redirect(`/estimates/${estimateId || ""}?paymentCorrection=${code}`);
+  if (!estimateId || !["cash", "card"].includes(paymentChoice) || reason.length < 8 || reason.length > 500) {
+    return fail("invalid");
+  }
+
+  await ensureInvoiceAmountAdjustmentsTable();
+  const result = await db.transaction(async (tx) => {
+    const [est] = await tx
+      .select()
+      .from(estimates)
+      .where(and(eq(estimates.id, estimateId), eq(estimates.orgId, user.orgId)))
+      .limit(1);
+    if (!est || est.status !== "accepted") return { error: "not-accepted" as const };
+
+    const depositRows = await tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.orgId, user.orgId), eq(invoices.estimateId, est.id), eq(invoices.kind, "deposit")));
+    if (depositRows.length !== 1 || depositRows[0].status === "void" || depositRows[0].status === "financed") {
+      return { error: "deposit-missing" as const };
+    }
+    const deposit = depositRows[0];
+    if (deposit.paypalOrderId || deposit.paypalCaptureId) {
+      return { error: "processor-payment" as const };
+    }
+
+    const [finalInvoice] = await tx
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(and(eq(invoices.orgId, user.orgId), eq(invoices.estimateId, est.id), eq(invoices.kind, "final"), ne(invoices.status, "void")))
+      .limit(1);
+    if (finalInvoice) return { error: "final-exists" as const };
+
+    const correctedTotal = contractPrice(
+      est.total,
+      est.cashDiscountPercent,
+      paymentChoice === "card",
+      est.cashPrice,
+    );
+    if (!Number.isFinite(correctedTotal) || correctedTotal <= 0) return { error: "invalid" as const };
+    if (est.paymentChoice === paymentChoice && Math.abs(Number(deposit.contractTotal) - correctedTotal) < 0.005) {
+      return { error: "unchanged" as const };
+    }
+
+    const relatedInvoices = await tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.orgId, user.orgId), eq(invoices.estimateId, est.id)));
+    const otherInvoiced = relatedInvoices
+      .filter((row) => row.id !== deposit.id && row.status !== "void")
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const remaining = Number((correctedTotal - Number(deposit.amount) - otherInvoiced).toFixed(2));
+    if (remaining < 0) return { error: "exceeds-contract" as const };
+
+    const saleRows = await tx
+      .select()
+      .from(sales)
+      .where(and(eq(sales.orgId, user.orgId), eq(sales.estimateId, est.id)));
+    if (saleRows.length > 1) return { error: "multiple-sales" as const };
+    const sale = saleRows[0];
+    const linkedJobs = sale
+      ? await tx.select().from(jobs).where(and(eq(jobs.orgId, user.orgId), eq(jobs.saleId, sale.id)))
+      : [];
+    if (linkedJobs.length > 1) return { error: "multiple-jobs" as const };
+
+    const now = new Date();
+    await tx
+      .update(estimates)
+      .set({ paymentChoice, updatedAt: now })
+      .where(and(eq(estimates.id, est.id), eq(estimates.orgId, user.orgId)));
+    if (sale) {
+      await tx
+        .update(sales)
+        .set({ amount: correctedTotal.toFixed(2), financeType: paymentChoice })
+        .where(and(eq(sales.id, sale.id), eq(sales.orgId, user.orgId)));
+    }
+    if (linkedJobs[0]) {
+      await tx
+        .update(jobs)
+        .set({ contractAmount: correctedTotal.toFixed(2), updatedAt: now })
+        .where(and(eq(jobs.id, linkedJobs[0].id), eq(jobs.orgId, user.orgId)));
+    }
+    await tx
+      .update(leads)
+      .set({ estimatedValue: correctedTotal.toFixed(2), updatedAt: now })
+      .where(and(eq(leads.id, est.leadId), eq(leads.orgId, user.orgId)));
+    await tx
+      .update(invoices)
+      .set({ contractTotal: correctedTotal.toFixed(2), paymentChoice, updatedAt: now })
+      .where(and(eq(invoices.id, deposit.id), eq(invoices.orgId, user.orgId)));
+
+    await tx.insert(invoiceAmountAdjustments).values({
+      orgId: user.orgId,
+      invoiceId: deposit.id,
+      adjustmentType: "accepted_payment_route",
+      invoiceStatus: deposit.status,
+      oldAmount: Number(deposit.contractTotal).toFixed(2),
+      newAmount: correctedTotal.toFixed(2),
+      finalAmountAfter: remaining.toFixed(2),
+      reason: `Accepted payment option corrected to ${paymentChoice === "cash" ? "Cash/Check" : "Card/PayPal"}. ${reason}`,
+      changedById: user.id,
+      changedByName: user.name,
+      changedByEmail: user.email,
+      createdAt: now,
+    });
+
+    return { correctedTotal, paymentChoice, depositInvoiceId: deposit.id, remaining };
+  });
+
+  if ("error" in result && result.error) return fail(result.error);
+  revalidatePath(`/estimates/${estimateId}`);
+  revalidatePath(`/invoices/${result.depositInvoiceId}`);
+  revalidatePath("/estimates");
+  revalidatePath("/leads");
+  revalidatePath("/sales");
+  revalidatePath("/production");
+  revalidatePath("/reports");
+  redirect(`/estimates/${estimateId}?paymentCorrection=updated`);
 }
 
 // Correct the financial terms of an accepted paper estimate after the office

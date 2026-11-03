@@ -157,6 +157,14 @@ export default async function InvoiceDetailPage({
                 <div className="mt-1 text-sm text-slate-500">
                   of {money(inv.contractTotal)} project total
                 </div>
+                {inv.estimateId && (
+                  <Link
+                    href={`/estimates/${inv.estimateId}`}
+                    className="mt-2 inline-block text-sm font-medium text-orange-600 hover:underline"
+                  >
+                    Open linked estimate ↗
+                  </Link>
+                )}
               </div>
               <div className="text-sm text-slate-500">
                 {inv.paidAt && (
@@ -415,7 +423,7 @@ export default async function InvoiceDetailPage({
                   {invoiceAdjustments.map((adjustment) => (
                     <div key={adjustment.id} className="mt-2 border-t border-amber-100 pt-2 text-xs text-slate-600">
                       <p className="font-medium">
-                        {adjustment.adjustmentType === "paid_deposit_amount" ? "Paid amount" : "Invoice amount"}: {money(adjustment.oldAmount)} → {money(adjustment.newAmount)} · {fmtDate(adjustment.createdAt)}
+                        {adjustment.adjustmentType === "paid_deposit_amount" ? "Paid amount" : adjustment.adjustmentType === "accepted_payment_route" ? "Accepted contract total" : "Invoice amount"}: {money(adjustment.oldAmount)} → {money(adjustment.newAmount)} · {fmtDate(adjustment.createdAt)}
                       </p>
                       <p>Final balance after adjustment: {money(adjustment.finalAmountAfter)}</p>
                       <p>By {adjustment.changedByName}: {adjustment.reason}</p>

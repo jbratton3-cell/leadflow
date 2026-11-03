@@ -25,6 +25,7 @@ import {
   deleteEstimateItem,
   deleteEstimate,
   markEstimateStatus,
+  correctAcceptedPaymentChoice,
   correctPaperEstimateContract,
 } from "@/lib/estimate-actions";
 import { deleteEstimatePhoto } from "@/lib/estimate-photo-actions";
@@ -48,12 +49,12 @@ export default async function EstimateDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ deleteError?: string }>;
+  searchParams: Promise<{ deleteError?: string; paymentCorrection?: string }>;
 }) {
   const user = await requireAccess("estimates");
   const { orgId } = user;
   const { id } = await params;
-  const { deleteError } = await searchParams;
+  const { deleteError, paymentCorrection } = await searchParams;
   const estId = Number(id);
 
   const [est] = await db
@@ -141,6 +142,25 @@ export default async function EstimateDetailPage({
       {deleteError === "admin" && (
         <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Only an admin can delete an accepted estimate.
+        </div>
+      )}
+      {paymentCorrection === "updated" && (
+        <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Accepted payment option corrected to {est.paymentChoice === "cash" ? "Cash/Check" : "Card/PayPal"} at {money(contractTotal)}. The deposit amount was not changed; adjust the linked invoice separately to the actual amount received. QuickBooks was not changed.
+        </div>
+      )}
+      {paymentCorrection && paymentCorrection !== "updated" && (
+        <div className="mb-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {paymentCorrection === "invalid" && "Select Cash/Check or Card/PayPal and enter a reason."}
+          {paymentCorrection === "not-accepted" && "Only an accepted estimate can have its payment option corrected here."}
+          {paymentCorrection === "deposit-missing" && "A single active deposit invoice could not be found for this estimate."}
+          {paymentCorrection === "processor-payment" && "A PayPal payment is in progress or captured. Resolve it with the payment processor before changing the accepted option."}
+          {paymentCorrection === "final-exists" && "A final invoice already exists. Review it before changing the accepted contract option."}
+          {paymentCorrection === "multiple-sales" && "Multiple sales are linked to this estimate. No changes were made; review the contract records first."}
+          {paymentCorrection === "multiple-jobs" && "Multiple jobs are linked to this sale. No changes were made; review the contract records first."}
+          {paymentCorrection === "exceeds-contract" && "The saved cash/card price is below amounts already invoiced. No changes were made."}
+          {paymentCorrection === "unchanged" && "The estimate already matches that payment option and contract amount."}
+          {!['invalid','not-accepted','deposit-missing','processor-payment','final-exists','multiple-sales','multiple-jobs','exceeds-contract','unchanged'].includes(paymentCorrection) && "The payment-option correction could not be completed. No changes were made; contact an administrator."}
         </div>
       )}
 
@@ -508,18 +528,57 @@ export default async function EstimateDetailPage({
             )}
           </Card>
 
+          {est.status === "accepted" && depositInv && user.role === "admin" && (
+            <Card className="border-indigo-200 bg-indigo-50/60 p-5">
+              <h2 className="mb-2 text-sm font-semibold text-indigo-900">Correct accepted payment option</h2>
+              <p className="mb-3 text-xs leading-5 text-indigo-800">
+                Use when the accepted estimate recorded the wrong Cash/Check or Card/PayPal choice. LeadFlow will recalculate the contract from this estimate’s saved prices and update its linked sale, job, and deposit contract total. It will not change the deposit amount or QuickBooks.
+              </p>
+              <form action={correctAcceptedPaymentChoice} className="space-y-2">
+                <input type="hidden" name="estimateId" value={est.id} />
+                <label className={label}>Correct accepted payment option</label>
+                <select
+                  name="paymentChoice"
+                  defaultValue={est.paymentChoice ?? ""}
+                  required
+                  className={input}
+                >
+                  <option value="" disabled>Select the agreed option</option>
+                  <option value="cash">Cash / Check — {money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice))}</option>
+                  <option value="card">Card / PayPal — {money(est.total)}</option>
+                </select>
+                <label className={label}>Reason for correction</label>
+                <textarea
+                  name="reason"
+                  minLength={8}
+                  maxLength={500}
+                  required
+                  rows={2}
+                  placeholder="Example: Customer paid cash; accepted estimate was recorded as Card by mistake."
+                  className={input}
+                />
+                <button className="w-full rounded-lg bg-indigo-700 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-800">
+                  Correct accepted option &amp; contract total
+                </button>
+              </form>
+              <p className="mt-3 text-xs text-indigo-800">
+                After this correction, adjust the deposit invoice to the actual payment received. QuickBooks is not changed; coordinate it with the bookkeeper.
+              </p>
+            </Card>
+          )}
+
           {est.status === "accepted" &&
             depositInv?.status === "paid" &&
             (user.role === "admin" || user.role === "manager") && (
               <Card className="border-amber-200 bg-amber-50/60 p-5">
                 <h2 className="mb-2 text-sm font-semibold text-amber-900">
-                  Correct paper-estimate pricing
+                  Correct a signed paper quote’s total
                 </h2>
                 <p className="mb-3 text-xs leading-5 text-amber-800">
-                  Use this only when the signed paper quote did not include the
-                  cash-discount option. It updates this estimate, its paid
-                  deposit, the related sale/job, and reporting value together.
-                  It does not change the company-wide cash-discount setting.
+                  Use only when a signed paper quote has a different total from
+                  this accepted estimate. This changes the paid deposit to 50%
+                  of the corrected total. Do not use it for a payment-option
+                  correction or to record a different amount actually received.
                 </p>
                 <form action={correctPaperEstimateContract} className="space-y-2">
                   <input type="hidden" name="estimateId" value={est.id} />
