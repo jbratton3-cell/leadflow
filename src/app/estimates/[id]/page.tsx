@@ -151,7 +151,9 @@ export default async function EstimateDetailPage({
       )}
       {paymentCorrection && paymentCorrection !== "updated" && (
         <div className="mb-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          {paymentCorrection === "invalid" && "Select Cash/Check or Card/PayPal and enter a reason."}
+          {paymentCorrection === "invalid" && "Select Cash/Check or Card/PayPal, enter the agreed contract total, and provide a reason."}
+          {paymentCorrection === "contract-total" && "The corrected contract total must be positive and cannot exceed the estimate's list price."}
+          {paymentCorrection === "card-total" && "Card/PayPal must use the estimate's standard list price."}
           {paymentCorrection === "not-accepted" && "Only an accepted estimate can have its payment option corrected here."}
           {paymentCorrection === "deposit-missing" && "A single active deposit invoice could not be found for this estimate."}
           {paymentCorrection === "processor-payment" && "A PayPal payment is in progress or captured. Resolve it with the payment processor before changing the accepted option."}
@@ -160,7 +162,7 @@ export default async function EstimateDetailPage({
           {paymentCorrection === "multiple-jobs" && "Multiple jobs are linked to this sale. No changes were made; review the contract records first."}
           {paymentCorrection === "exceeds-contract" && "The saved cash/card price is below amounts already invoiced. No changes were made."}
           {paymentCorrection === "unchanged" && "The estimate already matches that payment option and contract amount."}
-          {!['invalid','not-accepted','deposit-missing','processor-payment','final-exists','multiple-sales','multiple-jobs','exceeds-contract','unchanged'].includes(paymentCorrection) && "The payment-option correction could not be completed. No changes were made; contact an administrator."}
+          {!['invalid','contract-total','card-total','not-accepted','deposit-missing','processor-payment','final-exists','multiple-sales','multiple-jobs','exceeds-contract','unchanged'].includes(paymentCorrection) && "The payment-option correction could not be completed. No changes were made; contact an administrator."}
         </div>
       )}
 
@@ -544,9 +546,23 @@ export default async function EstimateDetailPage({
                   className={input}
                 >
                   <option value="" disabled>Select the agreed option</option>
-                  <option value="cash">Cash / Check — {money(cashPrice(est.total, est.cashDiscountPercent, est.cashPrice))}</option>
-                  <option value="card">Card / PayPal — {money(est.total)}</option>
+                  <option value="cash">Cash / Check</option>
+                  <option value="card">Card / PayPal</option>
                 </select>
+                <label className={label}>Agreed contract total ($)</label>
+                <input
+                  name="contractTotal"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={Number(est.total)}
+                  defaultValue={est.paymentChoice === "cash" ? cashPrice(est.total, est.cashDiscountPercent, est.cashPrice).toFixed(2) : Number(est.total).toFixed(2)}
+                  className={input}
+                  required
+                />
+                <p className="text-xs text-indigo-700">
+                  The saved estimate has no Cash/Check price. Enter the exact amount from the accepted offer; for Card/PayPal, use the standard list price of {money(est.total)}.
+                </p>
                 <label className={label}>Reason for correction</label>
                 <textarea
                   name="reason"

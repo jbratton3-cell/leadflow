@@ -358,9 +358,17 @@ export async function correctAcceptedPaymentChoice(formData: FormData) {
   if (user.role !== "admin") return;
   const estimateId = Number(formData.get("estimateId"));
   const paymentChoice = req(formData.get("paymentChoice"));
+  const requestedContractTotal = num(formData.get("contractTotal"));
   const reason = req(formData.get("reason"));
   const fail = (code: string) => redirect(`/estimates/${estimateId || ""}?paymentCorrection=${code}`);
-  if (!estimateId || !["cash", "card"].includes(paymentChoice) || reason.length < 8 || reason.length > 500) {
+  if (
+    !estimateId ||
+    !["cash", "card"].includes(paymentChoice) ||
+    !Number.isFinite(requestedContractTotal) ||
+    requestedContractTotal <= 0 ||
+    reason.length < 8 ||
+    reason.length > 500
+  ) {
     return fail("invalid");
   }
 
@@ -392,13 +400,14 @@ export async function correctAcceptedPaymentChoice(formData: FormData) {
       .limit(1);
     if (finalInvoice) return { error: "final-exists" as const };
 
-    const correctedTotal = contractPrice(
-      est.total,
-      est.cashDiscountPercent,
-      paymentChoice === "card",
-      est.cashPrice,
-    );
-    if (!Number.isFinite(correctedTotal) || correctedTotal <= 0) return { error: "invalid" as const };
+    const listTotal = Number(est.total);
+    const correctedTotal = requestedContractTotal;
+    if (!Number.isFinite(listTotal) || listTotal <= 0 || correctedTotal > listTotal) {
+      return { error: "contract-total" as const };
+    }
+    if (paymentChoice === "card" && Math.abs(correctedTotal - listTotal) > 0.005) {
+      return { error: "card-total" as const };
+    }
     if (est.paymentChoice === paymentChoice && Math.abs(Number(deposit.contractTotal) - correctedTotal) < 0.005) {
       return { error: "unchanged" as const };
     }
@@ -427,7 +436,12 @@ export async function correctAcceptedPaymentChoice(formData: FormData) {
     const now = new Date();
     await tx
       .update(estimates)
-      .set({ paymentChoice, updatedAt: now })
+      .set({
+        paymentChoice,
+        cashDiscountPercent: paymentChoice === "cash" ? "0" : est.cashDiscountPercent,
+        cashPrice: paymentChoice === "cash" ? correctedTotal.toFixed(2) : est.cashPrice,
+        updatedAt: now,
+      })
       .where(and(eq(estimates.id, est.id), eq(estimates.orgId, user.orgId)));
     if (sale) {
       await tx
