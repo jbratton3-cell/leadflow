@@ -132,14 +132,15 @@ export default async function InvoiceDetailPage({
           {q.correction === "invalid" && "Enter a valid actual amount and a reason for the correction."}
           {q.correction === "not-found" && "Invoice not found in this account."}
           {q.correction === "not-eligible" && "Only an active deposit invoice can be adjusted here."}
-          {q.correction === "processor-payment" && "This invoice is tied to an online card or PayPal payment. Correct it through the payment processor and bookkeeper instead."}
+          {q.correction === "processor-payment" && "This invoice has a PayPal order or capture. Correct it through the payment processor and bookkeeper instead."}
+          {q.correction === "payment-method" && "Select the actual offline payment method received: cash, check, ACH, or other."}
           {q.correction === "unchanged" && "The entered amount matches the current invoice amount; no change was made."}
           {q.correction === "multiple-finals" && "More than one active final invoice is linked. No changes were made; review the invoice history first."}
           {q.correction === "final-locked" && "A final invoice has already been paid or has an active payment. No changes were made; reconcile it with the bookkeeper first."}
           {q.correction === "payment-record" && "The linked payment records do not match a simple one-payment adjustment. No changes were made; review the payment ledger first."}
           {q.correction === "external-ledger" && "The linked payment record is not a LeadFlow-recorded payment. No changes were made; reconcile it with the bookkeeper."}
           {q.correction === "exceeds-contract" && "The corrected deposit would exceed the remaining contract balance. No changes were made."}
-          {!['admin-only','invalid','not-found','not-eligible','processor-payment','unchanged','multiple-finals','final-locked','payment-record','external-ledger','exceeds-contract'].includes(q.correction) && "The deposit correction could not be completed. No changes were made; contact an administrator."}
+          {!['admin-only','invalid','not-found','not-eligible','processor-payment','payment-method','unchanged','multiple-finals','final-locked','payment-record','external-ledger','exceeds-contract'].includes(q.correction) && "The deposit correction could not be completed. No changes were made; contact an administrator."}
         </div>
       )}
 
@@ -349,7 +350,7 @@ export default async function InvoiceDetailPage({
               <p className="mt-2 text-xs leading-5 text-amber-800">
                 Adjust the deposit invoice amount after estimate acceptance. If already paid, enter the actual amount received; if unpaid, enter the corrected amount due. The contract total stays unchanged, and the final amount is recalculated. This updates LeadFlow only—not QuickBooks.
               </p>
-              {inv.paypalOrderId || inv.paypalCaptureId || (inv.status === "paid" && (inv.paymentMethod === "paypal" || inv.paymentMethod === "card")) ? (
+              {inv.paypalOrderId || inv.paypalCaptureId ? (
                 <p className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900">
                   This invoice is associated with an online payment route. Resolve any processor-side payment first; this correction form is for manually recorded payments such as cash or check.
                 </p>
@@ -368,6 +369,30 @@ export default async function InvoiceDetailPage({
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                     required
                   />
+                  {inv.status === "paid" && (
+                    <>
+                      <label className="block pt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        Actual payment method received
+                      </label>
+                      <select
+                        name="actualMethod"
+                        defaultValue=""
+                        required
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="" disabled>Select the actual method</option>
+                        <option value="cash">Cash</option>
+                        <option value="check">Check</option>
+                        <option value="ach">ACH</option>
+                        <option value="other">Other offline payment</option>
+                      </select>
+                      {(inv.paymentMethod === "card" || inv.paymentMethod === "paypal") && (
+                        <p className="text-xs text-amber-800">
+                          LeadFlow currently records {inv.paymentMethod}. Select the verified offline method above; this correction does not change a processor transaction.
+                        </p>
+                      )}
+                    </>
+                  )}
                   <label className="block pt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Reason for correction
                   </label>

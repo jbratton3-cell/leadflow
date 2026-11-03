@@ -673,6 +673,7 @@ export async function adjustDepositInvoiceAmount(formData: FormData) {
   const user = await requireAccess("invoices");
   const id = Number(formData.get("id"));
   const rawAmount = (formData.get("actualAmount") ?? "").toString().trim();
+  const actualMethod = (formData.get("actualMethod") ?? "").toString().trim().toLowerCase();
   const reason = (formData.get("reason") ?? "").toString().trim();
   const fail = (code: string) => redirect(`/invoices/${id || ""}?correction=${code}`);
 
@@ -698,12 +699,12 @@ export async function adjustDepositInvoiceAmount(formData: FormData) {
       return { error: "not-eligible" as const };
     }
     const paymentAlreadyRecorded = invoice.status === "paid";
-    if (
-      invoice.paypalOrderId ||
-      invoice.paypalCaptureId ||
-      (paymentAlreadyRecorded && (invoice.paymentMethod === "paypal" || invoice.paymentMethod === "card"))
-    ) {
+    if (invoice.paypalOrderId || invoice.paypalCaptureId) {
       return { error: "processor-payment" as const };
+    }
+    const offlineMethods = ["cash", "check", "ach", "other"];
+    if (paymentAlreadyRecorded && !offlineMethods.includes(actualMethod)) {
+      return { error: "payment-method" as const };
     }
 
     const contractTotal = Number(invoice.contractTotal);
@@ -773,16 +774,24 @@ export async function adjustDepositInvoiceAmount(formData: FormData) {
 
     await tx
       .update(invoices)
-      .set({ amount: newAmount.toFixed(2), updatedAt: now })
+      .set({
+        amount: newAmount.toFixed(2),
+        paymentMethod: paymentAlreadyRecorded ? actualMethod : invoice.paymentMethod,
+        updatedAt: now,
+      })
       .where(and(eq(invoices.id, invoice.id), eq(invoices.orgId, user.orgId)));
 
     if (paymentAlreadyRecorded) {
       const existingNotes = paymentRows[0].notes?.trim();
+      const methodNote = invoice.paymentMethod !== actualMethod
+        ? `; method corrected from ${invoice.paymentMethod || "unspecified"} to ${actualMethod}`
+        : "";
+      const correctionAudit = `${auditLine}${methodNote}`;
       await tx
         .update(hcpPayments)
         .set({
           amount: newAmount.toFixed(2),
-          notes: existingNotes ? `${existingNotes}\n${auditLine}` : auditLine,
+          notes: existingNotes ? `${existingNotes}\n${correctionAudit}` : correctionAudit,
         })
         .where(and(eq(hcpPayments.id, paymentRows[0].id), eq(hcpPayments.orgId, user.orgId)));
     }
