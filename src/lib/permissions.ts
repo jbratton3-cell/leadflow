@@ -34,7 +34,7 @@ export const ROLES: { key: Role; label: string; description: string }[] = [
   {
     key: "agent",
     label: "Sales / Call Agent",
-    description: "Prospects, call center, appointments, and sales only.",
+    description: "Prospects, call center, appointments, estimates, and sales.",
   },
   {
     key: "production",
@@ -73,7 +73,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports",
     "import",
   ],
-  agent: ["dashboard", "leads", "appointments", "estimates", "sales"],
+  agent: ["dashboard", "leads", "call_center", "appointments", "estimates", "sales"],
   production: ["dashboard", "leads", "appointments", "production"],
 };
 
