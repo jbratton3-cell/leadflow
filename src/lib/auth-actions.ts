@@ -23,6 +23,7 @@ import {
 } from "@/lib/auth";
 import {
   sendEmail,
+  sendLeadFlowInvitationEmail,
   sendSms,
   inviteEmailHtml,
   passwordResetEmailHtml,
@@ -312,7 +313,7 @@ export async function createInvite(
 
   // Try delivery (best-effort; falls back to shareable link)
   let deliveredVia: "email" | "sms" | "link" = "link";
-  const emailed = await sendEmail({
+  const emailed = await sendLeadFlowInvitationEmail({
     to: email,
     subject: "You're invited to LeadFlow",
     html: inviteEmailHtml(name, link),
@@ -348,7 +349,7 @@ export async function createInvite(
   const message =
     channels.length > 0
       ? `Invitation sent via ${channels.join(" & ")}. You can also share the link below.`
-      : "Email/SMS not configured — share this invite link directly:";
+      : "The invitation could not be sent by email or text — share this link directly:";
 
   return { link, message };
 }
@@ -404,7 +405,7 @@ export async function createWorkspaceInvite(
     expiresAt,
   });
 
-  const emailed = await sendEmail({
+  const emailed = await sendLeadFlowInvitationEmail({
     to: email,
     subject: `Your ${company} LeadFlow workspace invitation`,
     html: inviteEmailHtml(name, link),
@@ -422,7 +423,7 @@ export async function createWorkspaceInvite(
     link,
     message: emailed
       ? "Workspace created and invitation sent by email. You can also share the link below."
-      : "Workspace created. Email is not configured, so share the link below directly.",
+      : "Workspace created. The invitation email could not be sent, so share the link below directly.",
   };
 }
 
@@ -434,7 +435,7 @@ export async function resendInvite(formData: FormData) {
   if (!inv || inv.acceptedAt) return;
 
   const link = `${getBaseUrl()}/invite/${inv.token}`;
-  await sendEmail({
+  await sendLeadFlowInvitationEmail({
     to: inv.email,
     subject: "Your LeadFlow invitation",
     html: inviteEmailHtml(inv.name, link),

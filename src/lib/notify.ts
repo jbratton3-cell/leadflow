@@ -53,6 +53,7 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
   fromName?: string;
+  fromAddress?: string;
   replyTo?: string;
   attachments?: { filename: string; content: Buffer; contentType?: string; cid?: string }[];
 }): Promise<boolean> {
@@ -66,7 +67,7 @@ export async function sendEmail(opts: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${opts.fromName ?? process.env.CRM_ORGANIZATION_NAME ?? "LeadFlow"} <no-reply@${PRODUCT_DOMAIN}>`,
+          from: `${opts.fromName ?? process.env.CRM_ORGANIZATION_NAME ?? "LeadFlow"} <${opts.fromAddress ?? `no-reply@${PRODUCT_DOMAIN}`}>`,
           to: opts.to,
           subject: opts.subject,
           html: opts.html,
@@ -115,6 +116,22 @@ export async function sendEmail(opts: {
     console.error("Gmail send error:", err);
     return false;
   }
+}
+
+// Invitations are platform messages, not contractor messages. Never fall back
+// to a tenant's Gmail account: if product email is unavailable, the caller can
+// share the invitation link directly instead.
+export async function sendLeadFlowInvitationEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false;
+  return sendEmail({
+    ...opts,
+    fromName: "LeadFlow",
+    fromAddress: "no-reply@leadflowcrm.info",
+  });
 }
 
 // Send an SMS via the Twilio REST API (no SDK dependency).
