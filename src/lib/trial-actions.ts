@@ -5,12 +5,12 @@ import { db } from "@/db";
 import { leads, estimates, estimateItems, invoices, jobs, sales, products, leadSources, organizations } from "@/db/schema";
 import { eq, and, like, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireNonCaller } from "@/lib/auth";
 
 const MARKER = "[leadflow-sample]";
 
 async function requireTrial() {
-  const user = await requireUser();
+  const user = await requireNonCaller();
   const [org] = await db.select().from(organizations).where(eq(organizations.id, user.orgId)).limit(1);
   if (!org || org.plan !== "trial") return null;
   return user;

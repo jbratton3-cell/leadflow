@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Card, Badge } from "@/components/ui";
 import DispositionForm from "@/components/DispositionForm";
+import CallerLeadDetail from "@/components/CallerLeadDetail";
 import OutreachForm from "@/components/OutreachForm";
 import { getSources, getProducts, getReps, getSalesReps, getCallReps, toMap } from "@/lib/queries";
 import { requireAccess } from "@/lib/auth";
@@ -64,7 +65,8 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ invoice?: string; location?: string }>;
 }) {
-  const { orgId } = await requireAccess("leads");
+  const user = await requireAccess("leads");
+  const { orgId } = user;
 
   const { id } = await params;
   const q = await searchParams;
@@ -75,6 +77,7 @@ export default async function LeadDetailPage({
     .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
     .limit(1);
   if (!lead) notFound();
+  if (user.role === "caller") return <CallerLeadDetail lead={lead} />;
 
   const [orgRow] = await db
     .select({ name: organizations.name })

@@ -19,6 +19,9 @@ export async function POST(req: Request) {
         if (!user) {
           throw new Error("Not authenticated");
         }
+        if (user.role === "caller") {
+          throw new Error("Not authorized");
+        }
         return {
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ userId: user.id }),

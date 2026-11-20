@@ -97,6 +97,14 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
+// Preserve existing staff workflows while preventing the limited Caller role
+// from invoking legacy staff-only actions that previously checked login only.
+export async function requireNonCaller(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (user.role === "caller") redirect("/call-center?denied=1");
+  return user;
+}
+
 // Require a specific permission. Redirects unauthorized users to the dashboard.
 export async function requireAccess(perm: Permission): Promise<SessionUser> {
   const user = await requireUser();

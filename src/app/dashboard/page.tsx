@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { sql, desc, eq, gte, lt, and, inArray } from "drizzle-orm";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageHeader, StatCard, Card, Badge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import {
@@ -122,6 +123,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ denied?: string }>;
 }) {
   const user = await requireUser();
+  if (user.role === "caller") redirect("/call-center");
   const orgId = user.orgId;
   const { denied } = await searchParams;
   const now = new Date();

@@ -17,6 +17,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+  if (user.role === "caller") {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
 
   const { id: raw } = await params;
   const id = Number(raw);

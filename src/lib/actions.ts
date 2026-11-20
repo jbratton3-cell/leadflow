@@ -19,7 +19,7 @@ import { accountDisplayName, orgHasEmailOutreach } from "@/lib/constants";
 import { createAndSendFinalInvoice } from "@/lib/invoice-actions";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireNonCaller, requireUser } from "@/lib/auth";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = (v ?? "").toString().trim();
@@ -44,7 +44,7 @@ function toDate(v: FormDataEntryValue | null): Date | null {
 /* ------------------------------ LEADS ------------------------------ */
 
 export async function createLead(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   let productId = num(formData.get("productId"));
   const productInterest = str(formData.get("productInterest"));
 
@@ -98,7 +98,7 @@ export async function createLead(formData: FormData) {
 }
 
 export async function updateLead(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   const assignedRepId = num(formData.get("assignedRepId"));
   await db
@@ -152,6 +152,9 @@ export async function logCall(formData: FormData) {
   const notes = str(formData.get("notes"));
   const callbackAt = toDate(formData.get("callbackAt"));
   const repId = num(formData.get("repId"));
+  const [ownedLead] = await db.select({ id: leads.id }).from(leads)
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId))).limit(1);
+  if (!ownedLead) return;
 
   // "Appointment" disposition triggers the inline scheduler and books an appointment.
   if (disposition === "appt_set") {
@@ -232,6 +235,7 @@ export async function logCall(formData: FormData) {
 
 let outreachTableReady = false;
 export async function ensureOutreachTable() {
+  await requireNonCaller();
   if (outreachTableReady) return;
   await pool.query(`
     CREATE TABLE IF NOT EXISTS outreach_logs (
@@ -252,7 +256,7 @@ export async function ensureOutreachTable() {
 }
 
 export async function logOutreach(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const [org] = await db
     .select({ name: organizations.name })
     .from(organizations)
@@ -298,6 +302,9 @@ export async function createAppointment(formData: FormData) {
   const leadId = Number(formData.get("leadId"));
   const scheduledAt = toDate(formData.get("scheduledAt"));
   if (!scheduledAt) return;
+  const [ownedLead] = await db.select({ id: leads.id }).from(leads)
+    .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId))).limit(1);
+  if (!ownedLead) return;
 
   await db.insert(appointments).values({
     orgId,
@@ -366,7 +373,7 @@ export async function updateAppointmentStatus(formData: FormData) {
 /* ------------------------------ SALES ------------------------------ */
 
 export async function createSale(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const leadId = Number(formData.get("leadId"));
   const amount = num(formData.get("amount")) ?? 0;
   const appointmentId = num(formData.get("appointmentId"));
@@ -444,7 +451,7 @@ export async function createSale(formData: FormData) {
 // Selecting a service location automatically links the job to its parent billing
 // account instead of creating an unrelated manual customer.
 export async function createJob(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const propertyId = num(formData.get("propertyId"));
   let location: typeof properties.$inferSelect | null = null;
   let account: typeof leads.$inferSelect | null = null;
@@ -508,7 +515,7 @@ export async function createJob(formData: FormData) {
 // primary address remains the bill-to address; this record identifies where
 // the estimate, job, and invoice work is performed.
 export async function createProperty(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const leadId = num(formData.get("leadId"));
   const propertyName = str(formData.get("propertyName")) ?? str(formData.get("name"));
   const contactName = str(formData.get("contactName"));
@@ -544,7 +551,7 @@ export async function createProperty(formData: FormData) {
 }
 
 export async function updateProperty(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = num(formData.get("id"));
   const leadId = num(formData.get("leadId"));
   const propertyName = str(formData.get("propertyName"));
@@ -590,7 +597,7 @@ export async function updateProperty(formData: FormData) {
 }
 
 export async function archiveProperty(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = num(formData.get("id"));
   const leadId = num(formData.get("leadId"));
   if (!id || !leadId) return;
@@ -612,7 +619,7 @@ export async function archiveProperty(formData: FormData) {
 // Create an immediate work order under an existing billing account and service
 // location. No estimate is required for standing-contract work.
 export async function createAccountJob(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const leadId = num(formData.get("leadId"));
   const propertyId = num(formData.get("propertyId"));
   if (!leadId || !propertyId) return;
@@ -682,7 +689,7 @@ export async function createAccountJob(formData: FormData) {
 }
 
 export async function updateJob(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   const submittedLeadId = num(formData.get("leadId")); // null for manually-added jobs
   const propertyId = num(formData.get("propertyId"));
@@ -766,7 +773,7 @@ export async function updateJob(formData: FormData) {
 }
 
 export async function recordFinancingSettlement(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   const amount = num(formData.get("amount"));
   const settledAt = toDate(formData.get("settledAt")) ?? new Date();
@@ -828,7 +835,7 @@ export async function recordFinancingSettlement(formData: FormData) {
 
 // One-click completion: sets status + stamps today's date, leaves everything else.
 export async function markJobCompleted(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireNonCaller();
   const { orgId } = user;
   const id = Number(formData.get("id"));
   const submittedLeadId = num(formData.get("leadId"));
@@ -924,7 +931,7 @@ export async function markJobCompleted(formData: FormData) {
 /* --------------------------- SETTINGS ------------------------------ */
 
 export async function createRep(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(reps).values({
     orgId,
     name: req(formData.get("name")),
@@ -936,7 +943,7 @@ export async function createRep(formData: FormData) {
 }
 
 export async function createSource(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(leadSources).values({
     orgId,
     name: req(formData.get("name")),
@@ -948,7 +955,7 @@ export async function createSource(formData: FormData) {
 }
 
 export async function updateSource(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   if (!id) return;
   await db
@@ -964,7 +971,7 @@ export async function updateSource(formData: FormData) {
 }
 
 export async function createProduct(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(products).values({
     orgId,
     name: req(formData.get("name")),

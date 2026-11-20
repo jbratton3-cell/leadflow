@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { randomBytes } from "crypto";
 import { db } from "@/db";
@@ -7,7 +7,7 @@ import type { Estimate, Invoice, Job, Lead } from "@/db/schema";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireAccess, requireUser } from "@/lib/auth";
+import { requireAccess, requireNonCaller } from "@/lib/auth";
 import {
   sendEmail,
   invoiceEmailHtml,
@@ -317,7 +317,8 @@ export async function createAndSendFinalInvoice(job: Job): Promise<void> {
 // Create a final invoice manually when a job was completed outside the normal
 // production workflow or the final contract amount changed.
 export async function createManualFinalInvoice(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const leadId = Number(formData.get("leadId"));
   const requestedJobId = Number(formData.get("jobId")) || null;
   const amount = Number(formData.get("amount"));
@@ -432,7 +433,8 @@ export async function createManualFinalInvoice(formData: FormData) {
 // Record a deposit as already collected (e.g. paper estimate paid in the
 // field). Creates the deposit invoice in PAID state — no email is sent.
 export async function recordDepositPaid(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const estimateId = Number(formData.get("estimateId"));
   const method = (formData.get("method") ?? "other").toString();
   const rawAmount = formData.get("amount")?.toString().trim() ?? "";
@@ -585,6 +587,7 @@ export async function markInvoiceViewed(token: string) {
 }
 
 export async function customerInvoiceChoice(formData: FormData) {
+  "use server";
   const token = (formData.get("token") ?? "").toString().trim();
   const choice = (formData.get("choice") ?? "").toString().trim(); // cash | finance (legacy: direct)
   if (!token || !["cash", "direct", "finance"].includes(choice)) return;
@@ -630,7 +633,8 @@ export async function customerInvoiceChoice(formData: FormData) {
 /* ------------------------- office (CRM) ------------------------- */
 
 export async function markInvoicePaid(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   const method = (formData.get("method") ?? "other").toString();
   const [invoice] = await db
@@ -670,6 +674,7 @@ export async function markInvoicePaid(formData: FormData) {
  * intentionally not modified here; the bookkeeper reconciles that ledger.
  */
 export async function adjustDepositInvoiceAmount(formData: FormData) {
+  "use server";
   const user = await requireAccess("invoices");
   const id = Number(formData.get("id"));
   const rawAmount = (formData.get("actualAmount") ?? "").toString().trim();
@@ -838,7 +843,8 @@ export async function adjustDepositInvoiceAmount(formData: FormData) {
 }
 
 export async function sendPaymentReceipt(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   if (!id) return;
 
@@ -909,7 +915,8 @@ export async function sendPaymentReceipt(formData: FormData) {
 }
 
 export async function voidInvoice(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   await db
     .update(invoices)
@@ -919,7 +926,8 @@ export async function voidInvoice(formData: FormData) {
 }
 
 export async function resendInvoice(formData: FormData) {
-  const { orgId } = await requireUser();
+  "use server";
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   if (!id) redirect("/invoices");
 

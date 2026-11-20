@@ -5,7 +5,7 @@ import { documents, leads } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { del } from "@vercel/blob";
-import { requireUser } from "@/lib/auth";
+import { requireNonCaller } from "@/lib/auth";
 
 // Record an uploaded scan against a lead.
 export async function saveDocument(opts: {
@@ -15,7 +15,7 @@ export async function saveDocument(opts: {
   mimeType: string;
   sizeBytes: number;
 }) {
-  const user = await requireUser();
+  const user = await requireNonCaller();
   const [lead] = await db
     .select({ id: leads.id })
     .from(leads)
@@ -38,7 +38,7 @@ export async function saveDocument(opts: {
 
 // Remove a document record and its stored file (admin/manager only).
 export async function deleteDocument(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireNonCaller();
   if (user.role !== "admin" && user.role !== "manager") {
     throw new Error("Not allowed");
   }

@@ -526,7 +526,7 @@ export async function acceptInvite(
       name: inserted[0].name,
       email: inserted[0].email,
       phone: inserted[0].phone,
-      role: inserted[0].role === "production" ? "production" : "sales",
+      role: inserted[0].role === "production" ? "production" : inserted[0].role === "caller" ? "call_center" : "sales",
       active: true,
     });
   }
@@ -544,10 +544,27 @@ export async function updateUserRole(formData: FormData) {
   const role = str(formData.get("role")) as Role;
   if (!ROLE_PERMISSIONS[role]) return;
   // Scope to the admin's own organization.
-  await db
-    .update(users)
-    .set({ role })
+  const [target] = await db.select().from(users)
+    .where(and(eq(users.id, id), eq(users.orgId, admin.orgId))).limit(1);
+  if (!target) return;
+  await db.update(users).set({ role })
     .where(and(eq(users.id, id), eq(users.orgId, admin.orgId)));
+  // Keep the call-center rep dropdown in sync for transitions involving Caller.
+  if (role === "caller" || target.role === "caller") {
+    const [rep] = await db.select().from(reps)
+      .where(and(eq(reps.orgId, admin.orgId), sql`lower(${reps.email}) = lower(${target.email})`))
+      .limit(1);
+    const repRole = role === "caller" ? "call_center" : role === "production" ? "production" : "sales";
+    if (rep) {
+      await db.update(reps).set({ role: repRole })
+        .where(and(eq(reps.id, rep.id), eq(reps.orgId, admin.orgId)));
+    } else if (role === "caller") {
+      await db.insert(reps).values({
+        orgId: admin.orgId, name: target.name, email: target.email,
+        phone: target.phone, role: repRole, active: target.active,
+      });
+    }
+  }
   revalidatePath("/settings");
 }
 

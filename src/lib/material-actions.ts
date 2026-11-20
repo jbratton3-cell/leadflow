@@ -5,7 +5,7 @@ import { suppliers, materials, materialOrders, materialOrderItems, jobs, leads }
 import { eq, and, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAccess, requireUser } from "@/lib/auth";
+import { requireAccess, requireNonCaller } from "@/lib/auth";
 import { sendEmail, materialOrderEmailHtml, getBaseUrl } from "@/lib/notify";
 
 function req(v: FormDataEntryValue | null): string {
@@ -15,7 +15,7 @@ function req(v: FormDataEntryValue | null): string {
 /* ------------------------- settings: suppliers ------------------------- */
 
 export async function createSupplier(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(suppliers).values({
     orgId,
     name: req(formData.get("name")),
@@ -27,7 +27,7 @@ export async function createSupplier(formData: FormData) {
 }
 
 export async function deleteSupplier(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   await db.delete(suppliers).where(and(eq(suppliers.id, id), eq(suppliers.orgId, orgId)));
   revalidatePath("/settings");
@@ -36,7 +36,7 @@ export async function deleteSupplier(formData: FormData) {
 /* ------------------------- settings: materials ------------------------- */
 
 export async function createMaterial(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(materials).values({
     orgId,
     name: req(formData.get("name")),
@@ -47,7 +47,7 @@ export async function createMaterial(formData: FormData) {
 }
 
 export async function deleteMaterial(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   await db.update(materials).set({ active: false }).where(and(eq(materials.id, id), eq(materials.orgId, orgId)));
   revalidatePath("/settings");

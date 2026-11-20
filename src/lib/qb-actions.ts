@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { requireAccess } from "@/lib/auth";
 import { disconnectQb, ensureQbColumns, qbPost, qbQuery } from "@/lib/quickbooks";
@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function disconnectQbAction() {
+  "use server";
   const user = await requireAccess("settings");
   await disconnectQb(user.orgId);
   revalidatePath("/settings");
@@ -134,6 +135,7 @@ export async function rememberQbInvoiceIfExists(orgId: number, inv: typeof invoi
 }
 
 export async function linkQbInvoice(formData: FormData) {
+  "use server";
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
   const id = Number(formData.get("id"));
@@ -147,6 +149,7 @@ export async function linkQbInvoice(formData: FormData) {
 }
 
 export async function pushInvoiceToQuickBooks(formData: FormData) {
+  "use server";
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
   const id = Number(formData.get("id"));
@@ -236,6 +239,7 @@ async function postQbPayment(
 }
 
 export async function recordQbPayment(formData: FormData) {
+  "use server";
   const { orgId } = await requireAccess("invoices");
   await ensureQbColumns();
   const id = Number(formData.get("id"));

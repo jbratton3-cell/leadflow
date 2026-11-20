@@ -4,14 +4,14 @@ import { db } from "@/db";
 import { pricebookItems } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireNonCaller } from "@/lib/auth";
 
 function req(v: FormDataEntryValue | null): string {
   return (v ?? "").toString().trim();
 }
 
 export async function createPricebookItem(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   await db.insert(pricebookItems).values({
     orgId,
     name: req(formData.get("name")),
@@ -26,7 +26,7 @@ export async function createPricebookItem(formData: FormData) {
 }
 
 export async function deletePricebookItem(formData: FormData) {
-  const { orgId } = await requireUser();
+  const { orgId } = await requireNonCaller();
   const id = Number(formData.get("id"));
   await db
     .update(pricebookItems)

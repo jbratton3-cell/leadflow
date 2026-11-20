@@ -9,7 +9,7 @@ import FloatingTrialGuide from "@/components/FloatingTrialGuide";
 // Rendered from the root layout so it follows the user across every page.
 export default async function TrialGuideHost() {
   const user = await getSessionUser();
-  if (!user) return null;
+  if (!user || user.role === "caller") return null;
 
   const [org] = await db
     .select()

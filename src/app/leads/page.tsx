@@ -25,7 +25,9 @@ export default async function LeadsPage({
 }: {
   searchParams: Promise<{ stage?: string; q?: string; page?: string }>;
 }) {
-  const { orgId } = await requireAccess("leads");
+  const user = await requireAccess("leads");
+  const { orgId } = user;
+  const isCaller = user.role === "caller";
   const { stage, q, page: pageParam } = await searchParams;
   const search = q?.trim();
   const pageSize = 50;
@@ -140,12 +142,12 @@ export default async function LeadsPage({
         title="Prospects"
         subtitle="All leads from every source, tracked through the pipeline."
         action={
-          <Link
+          !isCaller ? <Link
             href="/leads/new"
             className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
           >
             + New Prospect
-          </Link>
+          </Link> : undefined
         }
       />
 
@@ -229,12 +231,12 @@ export default async function LeadsPage({
             <p className="text-sm text-slate-600">
               No prospect found for <span className="font-semibold text-slate-800">“{search}”</span>.
             </p>
-            <Link
+            {!isCaller && <Link
               href={`/leads/new?q=${encodeURIComponent(search)}`}
               className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
             >
               Create new prospect
-            </Link>
+            </Link>}
           </div>
         ) : (
           <EmptyState message="No prospects yet. Add a new prospect to get started." />
@@ -251,9 +253,9 @@ export default async function LeadsPage({
                   <th className="px-4 py-3 font-medium">Source</th>
                   <th className="px-4 py-3 font-medium">Stage</th>
                   <th className="px-4 py-3 font-medium">Rep</th>
-                  <th className="px-4 py-3 text-right font-medium">Est. Value</th>
+                  {!isCaller && <th className="px-4 py-3 text-right font-medium">Est. Value</th>}
                   <th className="px-4 py-3 font-medium">Updated</th>
-                  <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
+                  {!isCaller && <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -303,18 +305,18 @@ export default async function LeadsPage({
                     <td className="px-4 py-3 text-slate-600">
                       {l.assignedRepId ? repMap.get(l.assignedRepId)?.name ?? "—" : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-700">
+                    {!isCaller && <td className="px-4 py-3 text-right font-medium text-slate-700">
                       {money(l.estimatedValue)}
-                    </td>
+                    </td>}
                     <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(l.updatedAt)}</td>
-                    <td className="px-4 py-3 text-right">
+                    {!isCaller && <td className="px-4 py-3 text-right">
                       <Link
                         href={`/leads/${l.id}/edit`}
                         className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
                         Edit
                       </Link>
-                    </td>
+                    </td>}
                   </tr>
                 ))}
               </tbody>

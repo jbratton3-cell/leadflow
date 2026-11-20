@@ -13,7 +13,11 @@ const { can, ROLE_PERMISSIONS, ROLES } = result.exports;
 assert.deepEqual(Array.from(ROLE_PERMISSIONS.agent), [
   'dashboard', 'leads', 'call_center', 'appointments', 'estimates', 'sales',
 ]);
-for (const role of ['admin', 'manager', 'agent']) {
+assert.deepEqual(Array.from(ROLE_PERMISSIONS.caller), ['leads', 'call_center', 'appointments']);
+for (const permission of ['dashboard', 'users', 'settings', 'import', 'invoices', 'estimates', 'sales', 'reports', 'job_financials', 'production', 'marketing']) {
+  assert.equal(can('caller', permission), false, `caller must not gain ${permission} access`);
+}
+for (const role of ['admin', 'manager', 'agent', 'caller']) {
   assert.equal(can(role, 'call_center'), true, `${role} should access the call center`);
 }
 for (const role of ['production', '', null, 'unknown']) {

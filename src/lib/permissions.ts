@@ -2,7 +2,7 @@
 // Each "permission" maps to an area of the app. Nav, pages, and actions
 // all check against these.
 
-export type Role = "admin" | "manager" | "agent" | "production";
+export type Role = "admin" | "manager" | "agent" | "caller" | "production";
 
 export type Permission =
   | "dashboard"
@@ -35,6 +35,11 @@ export const ROLES: { key: Role; label: string; description: string }[] = [
     key: "agent",
     label: "Sales / Call Agent",
     description: "Prospects, call center, appointments, estimates, and sales.",
+  },
+  {
+    key: "caller",
+    label: "Caller",
+    description: "Prospects, call center, and appointments; no estimates, invoices, or sales.",
   },
   {
     key: "production",
@@ -74,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "import",
   ],
   agent: ["dashboard", "leads", "call_center", "appointments", "estimates", "sales"],
+  caller: ["leads", "call_center", "appointments"],
   production: ["dashboard", "leads", "appointments", "production"],
 };
 

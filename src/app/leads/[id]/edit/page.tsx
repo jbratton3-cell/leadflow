@@ -20,7 +20,9 @@ export default async function EditLeadPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { orgId } = await requireAccess("leads");
+  const user = await requireAccess("leads");
+  if (user.role === "caller") redirect("/call-center?denied=1");
+  const { orgId } = user;
   const { id } = await params;
   const leadId = Number(id);
   const [lead] = await db

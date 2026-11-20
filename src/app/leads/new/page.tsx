@@ -16,6 +16,7 @@ export default async function NewLeadPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const me = await requireAccess("leads");
+  if (me.role === "caller") redirect("/call-center?denied=1");
   const search = ((await searchParams).q ?? "").trim();
 
   const [sources, prods, salesReps, allReps] = await Promise.all([

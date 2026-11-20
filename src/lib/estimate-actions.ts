@@ -1157,7 +1157,9 @@ export async function respondToEstimate(formData: FormData) {
 }
 
 export async function getEstimateWithItems(id: number) {
-  const [est] = await db.select().from(estimates).where(eq(estimates.id, id)).limit(1);
+  const { orgId } = await requireAccess("estimates");
+  const [est] = await db.select().from(estimates)
+    .where(and(eq(estimates.id, id), eq(estimates.orgId, orgId))).limit(1);
   if (!est) return null;
   const items = await db
     .select()
