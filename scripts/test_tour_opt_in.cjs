@@ -1,0 +1,10 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const layout = fs.readFileSync('src/app/layout.tsx', 'utf8');
+const tour = fs.readFileSync('src/app/tour/page.tsx', 'utf8');
+const tourStep = fs.readFileSync('src/app/tour/[slug]/page.tsx', 'utf8');
+assert(!layout.includes('TrialGuideHost'), 'Logged-in layout must not mount the automatic trial guide');
+assert(tour.includes('Start the public tour'), 'Visitors must still be able to start the public tour');
+assert(tour.includes('PUBLIC_TOUR_STEPS[0].slug'), 'Public tour start must link to its first step');
+assert(tourStep.includes('PublicTourDemo') && tourStep.includes('Product tour progress'), 'Public tour steps and demo must remain available');
+console.log('Tour opt-in regression checks passed.');
